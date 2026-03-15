@@ -1,5 +1,9 @@
 """Global constants for Dungeoneer."""
 
+# Localisation — change via dungeoneer.core.i18n.set_language()
+# Supported: "en", "cs"
+LANGUAGE = "en"
+
 # Display
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720

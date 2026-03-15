@@ -34,6 +34,9 @@ from dungeoneer.rendering.floating_numbers import FloatingNumbers
 from dungeoneer.rendering.ui.hud import HUD
 from dungeoneer.rendering.ui.combat_log import CombatLog
 from dungeoneer.rendering.ui.inventory_ui import InventoryUI
+from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
+from dungeoneer.rendering.ui.help_screen import HelpScreen
+from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.audio.audio_manager import AudioManager
 
 if TYPE_CHECKING:
@@ -52,15 +55,23 @@ class GameScene(Scene):
         self.hud            = HUD()
         self.combat_log     = CombatLog()
         self.inventory_ui   = InventoryUI()
+        self.weapon_picker  = WeaponPickerUI()
+        self.help_screen    = HelpScreen()
+        self.alert_banner   = AlertBanner()
         self.audio          = AudioManager()
         self.floating_nums  = FloatingNumbers()
         self.player: Player | None = None
         self.floor:  Floor  | None = None
-        self._game_over       = False
-        self._subscribed      = False
-        self._inventory_open  = False
-        self._pending_advance = False   # waiting for enemy-turn delay
-        self._advance_timer   = 0.0     # seconds remaining before advance fires
+        self._game_over          = False
+        self._subscribed         = False
+        self._inventory_open     = False
+        self._weapon_picker_open = False
+        self._help_open          = False
+        self._heal_confirm: UseItemAction | None = None  # overheal waiting for confirmation
+        self._had_visible_enemies = False  # for alert-banner trigger detection
+        self._pending_advance    = False   # waiting for enemy-turn delay
+        self._advance_timer      = 0.0     # seconds remaining before advance fires
+        self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
 
     def on_enter(self) -> None:
         log.info("GameScene.on_enter")
@@ -140,6 +151,7 @@ class GameScene(Scene):
 
         compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
         self.turn_manager.build_queue(self.floor)
+        self._had_visible_enemies = False
 
         log.info(
             "Floor %d loaded  actors=%s  stair=%s",
@@ -166,7 +178,7 @@ class GameScene(Scene):
         # Award credits from enemy
         if enemy.credits_drop > 0:
             self.player.credits += enemy.credits_drop
-            bus.post(LogMessageEvent(f"+{enemy.credits_drop} cr.", (180, 220, 100)))
+            bus.post(LogMessageEvent(f"+¥{enemy.credits_drop}", (180, 220, 100)))
             log.info("Credits drop: %d from %s", enemy.credits_drop, enemy.name)
         # Drop item if any
         item = enemy.drop_loot()
@@ -205,6 +217,7 @@ class GameScene(Scene):
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, credits_earned=credits,
+            audio=self.audio,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
 
@@ -215,18 +228,38 @@ class GameScene(Scene):
     def handle_events(self, events: List[pygame.event.Event]) -> None:
         for event in events:
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F1:
+                    self._help_open = not self._help_open
+                    return
+                if self._help_open:
+                    if self.help_screen.handle_key(event.key):
+                        self._help_open = False
+                    return
                 if event.key == pygame.K_ESCAPE:
                     if self._inventory_open:
                         self._inventory_open = False
+                    elif self._weapon_picker_open:
+                        self._weapon_picker_open = False
                     else:
                         self.app.quit()
                     return
                 if event.key == pygame.K_i:
                     self._inventory_open = not self._inventory_open
+                    self._weapon_picker_open = False
+                    return
+                if event.key == pygame.K_c:
+                    if self._weapon_picker_open:
+                        self._weapon_picker_open = False
+                    else:
+                        self._weapon_picker_open = True
+                        self._inventory_open = False
+                        self.weapon_picker.open(self.player)
                     return
 
         if self._inventory_open:
             self._handle_inventory_input(events)
+        elif self._weapon_picker_open:
+            self._handle_weapon_picker_input(events)
         else:
             self._handle_player_input(events)
 
@@ -235,10 +268,20 @@ class GameScene(Scene):
         assert self.floor  is not None
 
         for event in events:
-            if event.type != pygame.KEYDOWN:
+            if event.type == pygame.MOUSEMOTION:
+                self.inventory_ui.handle_mouse_motion(event.pos)
                 continue
 
-            action = self.inventory_ui.handle_key(event.key, self.player)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                action = self.inventory_ui.handle_mouse_button(event, self.player)
+            elif event.type == pygame.KEYDOWN:
+                action = self.inventory_ui.handle_key(event.key, self.player)
+            else:
+                continue
+
+            if action == "close":
+                self._inventory_open = False
+                return
             if action is None:
                 continue
 
@@ -250,13 +293,51 @@ class GameScene(Scene):
                 bus.post(LogMessageEvent(result.message, result.msg_colour))
 
             if result.success:
-                # Equip/Use costs a turn; Drop is free
+                if isinstance(action, UseItemAction):
+                    self.audio.play("heal")
                 if not isinstance(action, DropItemAction):
                     self._inventory_open = False
                     self._schedule_advance()
             break
 
+    def _handle_weapon_picker_input(self, events: List[pygame.event.Event]) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        for event in events:
+            if event.type == pygame.MOUSEMOTION:
+                self.weapon_picker.handle_mouse_motion(event.pos)
+                continue
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                result = self.weapon_picker.handle_mouse_button(event, self.player)
+            elif event.type == pygame.KEYDOWN:
+                result = self.weapon_picker.handle_key(event.key, self.player)
+            else:
+                continue
+
+            if result == "close":
+                self._weapon_picker_open = False
+                return
+            if result is None:
+                continue
+
+            action = result
+            if not action.validate(self.player, self.floor):
+                continue
+
+            outcome = action.execute(self.player, self.floor, self.resolver)
+            if outcome.message:
+                bus.post(LogMessageEvent(outcome.message, outcome.msg_colour))
+
+            if outcome.success:
+                self._weapon_picker_open = False
+                self._schedule_advance()
+            break
+
     def _handle_player_input(self, events: List[pygame.event.Event]) -> None:
+        if self.alert_banner.is_blocking:
+            return
         is_pt = self.turn_manager.is_player_turn()
         if not is_pt or self._game_over or self._pending_advance:
             if not self._game_over:
@@ -274,9 +355,27 @@ class GameScene(Scene):
             if event.type != pygame.KEYDOWN:
                 continue
 
-            action = self._key_to_action(event.key)
-            if action is None:
-                continue
+            key = event.key
+
+            # --- Overheal confirmation ---
+            if self._heal_confirm is not None:
+                pending = self._heal_confirm
+                self._heal_confirm = None
+                if key in (pygame.K_h, pygame.K_RETURN, pygame.K_KP_ENTER):
+                    action = pending
+                else:
+                    bus.post(LogMessageEvent("Heal cancelled.", (120, 120, 140)))
+                    action = self._key_to_action(key)
+                    if action is None:
+                        continue
+            elif key == pygame.K_h:
+                action = self._try_quick_heal()
+                if action is None:
+                    continue  # blocked or confirm pending — no turn advance
+            else:
+                action = self._key_to_action(key)
+                if action is None:
+                    continue
 
             log.debug(
                 "Player action: %s  pos=(%d,%d)  hp=%d/%d",
@@ -302,15 +401,32 @@ class GameScene(Scene):
 
             if isinstance(action, ReloadAction):
                 self.audio.play("reload")
+            elif isinstance(action, UseItemAction):
+                self.audio.play("heal")
 
-            self._schedule_advance()
+            # Schedule staggered burst effects (e.g. SMG 3-round burst)
+            burst = result.burst_events
+            if burst:
+                bus.post(burst[0])  # first shot fires immediately
+                for i, ev in enumerate(burst[1:], start=1):
+                    self._burst_queue.append((i * self._BURST_INTERVAL, ev))
+                self._schedule_advance(extra_delay=(len(burst) - 1) * self._BURST_INTERVAL)
+            else:
+                self._schedule_advance()
+
+            # Alert banner: trigger when first enemy becomes visible this encounter
+            now_visible = self._any_enemy_visible()
+            if now_visible and not self._had_visible_enemies:
+                self.alert_banner.trigger()
+            self._had_visible_enemies = now_visible
             break
 
     # ------------------------------------------------------------------
     # Turn-advance helpers
     # ------------------------------------------------------------------
 
-    _COMBAT_DELAY = 0.14   # seconds to pause after player acts while enemies visible
+    _COMBAT_DELAY   = 0.14   # seconds to pause after player acts while enemies visible
+    _BURST_INTERVAL = 0.09   # seconds between burst shots (visual/audio only)
 
     def _any_enemy_visible(self) -> bool:
         if self.floor is None:
@@ -321,11 +437,11 @@ class GameScene(Scene):
                     return True
         return False
 
-    def _schedule_advance(self) -> None:
+    def _schedule_advance(self, extra_delay: float = 0.0) -> None:
         """Advance enemy turns — immediately if no enemy is visible, delayed otherwise."""
         if self._any_enemy_visible():
             self._pending_advance = True
-            self._advance_timer   = self._COMBAT_DELAY
+            self._advance_timer   = self._COMBAT_DELAY + extra_delay
         else:
             self.turn_manager.advance(self.floor, self.resolver)
 
@@ -350,7 +466,7 @@ class GameScene(Scene):
                 return OpenContainerAction(container)
             return MoveAction(dx, dy)
 
-        if key in (pygame.K_PERIOD, pygame.K_KP5):
+        if key in (pygame.K_PERIOD, pygame.K_KP5, pygame.K_SPACE):
             return WaitAction()
         if key == pygame.K_r:
             return ReloadAction()
@@ -361,14 +477,17 @@ class GameScene(Scene):
                 return OpenContainerAction(container)
             return StairAction()
         if key == pygame.K_f:
+            w = self.player.equipped_weapon
+            if w and w.range_type == RangeType.MELEE:
+                return self._nearest_melee_target()
             return self._nearest_ranged_target()
-        if key == pygame.K_h:
-            return self._quick_heal()
         return None
 
-    def _quick_heal(self):
+    def _try_quick_heal(self) -> UseItemAction | None:
+        """Returns a UseItemAction to execute immediately, or None (blocked / confirm pending)."""
         assert self.player is not None
         from dungeoneer.items.consumable import Consumable
+
         healables = [
             i for i in self.player.inventory
             if isinstance(i, Consumable) and i.heal_amount > 0
@@ -376,12 +495,27 @@ class GameScene(Scene):
         if not healables:
             bus.post(LogMessageEvent("No healing items.", (180, 80, 80)))
             return None
+
         missing = self.player.max_hp - self.player.hp
-        # Strongest that fits exactly; if all overheal, use the weakest to waste least
+        if missing <= 0:
+            bus.post(LogMessageEvent("Already at full health.", (120, 120, 140)))
+            return None
+
         exact = [i for i in healables if i.heal_amount <= missing]
-        chosen = max(exact, key=lambda c: c.heal_amount) if exact \
-            else min(healables, key=lambda c: c.heal_amount)
-        return UseItemAction(chosen)
+        if exact:
+            return UseItemAction(max(exact, key=lambda c: c.heal_amount))
+
+        # All items would overheal — ask for confirmation
+        chosen = min(healables, key=lambda c: c.heal_amount)
+        self._heal_confirm = UseItemAction(chosen)
+        overheal = chosen.heal_amount - missing
+        count_str = f" x{chosen.count}" if chosen.count > 1 else ""
+        bus.post(LogMessageEvent(
+            f"{chosen.name}{count_str}: +{chosen.heal_amount} HP (overheal +{overheal})."
+            f"  [H/Enter] Confirm",
+            (200, 160, 60),
+        ))
+        return None
 
     def _find_adjacent_container(self):
         assert self.player is not None
@@ -445,12 +579,49 @@ class GameScene(Scene):
         )
         return RangedAttackAction(nearest, max_range=w.range_tiles)
 
+    def _nearest_melee_target(self):
+        assert self.player is not None
+        assert self.floor  is not None
+
+        w = self.player.equipped_weapon
+        reach = w.range_tiles if w else 1
+
+        # Chebyshev distance — same metric used by MeleeAttackAction.validate
+        in_reach = [
+            a for a in self.floor.actors
+            if isinstance(a, Enemy) and a.alive
+            and self.floor.dungeon_map.visible[a.y, a.x]
+            and max(abs(a.x - self.player.x), abs(a.y - self.player.y)) <= reach
+        ]
+        if not in_reach:
+            bus.post(LogMessageEvent("No enemy in melee range.", (180, 80, 80)))
+            return WaitAction()
+
+        nearest = min(
+            in_reach,
+            key=lambda e: max(abs(e.x - self.player.x), abs(e.y - self.player.y)),
+        )
+        return MeleeAttackAction(nearest, range_tiles=reach)
+
     # ------------------------------------------------------------------
     # Scene interface
     # ------------------------------------------------------------------
 
     def update(self, dt: float) -> None:
+        self.alert_banner.update(dt)
         self.floating_nums.update(dt)
+
+        # Fire deferred burst-shot DamageEvents at staggered intervals
+        if self._burst_queue:
+            remaining = []
+            for t, ev in self._burst_queue:
+                t -= dt
+                if t <= 0.0:
+                    bus.post(ev)
+                else:
+                    remaining.append((t, ev))
+            self._burst_queue = remaining
+
         if self._pending_advance and not self._game_over:
             self._advance_timer -= dt
             if self._advance_timer <= 0.0:
@@ -465,5 +636,10 @@ class GameScene(Scene):
                 combat_log=self.combat_log,
             )
             self.floating_nums.draw(screen, self.renderer.camera)
+            self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
+            elif self._weapon_picker_open:
+                self.weapon_picker.draw(screen, self.player)
+            if self._help_open:
+                self.help_screen.draw(screen)

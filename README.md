@@ -21,13 +21,15 @@ Requires Python 3.11+.
 | `E` / `>` / Numpad Enter | Descend stairs (or open adjacent container) |
 | `F` | Fire ranged weapon at nearest visible enemy |
 | `R` | Reload |
-| `H` | Quick-use healing item |
-| `.` / Numpad 5 | Wait (skip turn) |
+| `H` | Quick-use healing item (asks confirmation if it would overheal) |
+| `.` / Numpad 5 / `Space` | Wait (skip turn) |
+| `C` | Open weapon-swap picker |
 | `I` | Open/close inventory |
 | `E` | Equip weapon *(in inventory)* |
 | `1`–`8` | Use item in slot *(in inventory)* |
 | `D` | Drop item *(in inventory)* |
-| `Esc` | Close inventory / quit |
+| `F1` | Open/close help overlay |
+| `Esc` | Close overlay / quit |
 
 ## How to play
 
@@ -37,6 +39,7 @@ Requires Python 3.11+.
 - **Open the Objective Vault** on the final floor to win.
 
 Enemies only activate when they see you. Guards chase and fight in melee; Drones keep their distance and shoot.
+A `!` banner appears above your character when enemies first spot you.
 
 ## Difficulty
 
@@ -49,18 +52,23 @@ Edit the difficulty in `dungeoneer/core/difficulty.py` or select at launch (if a
 | Player HP | 35 | 30 | 25 |
 | Starting ammo | 8× 9mm | — | — |
 
+## Language
+
+Default language is English. To switch to Czech, set `LANGUAGE = "cs"` in `dungeoneer/core/settings.py`.
+
 ## Project structure
 
 ```
 main.py                  # Entry point
 dungeoneer/
-├── core/                # Game loop, scenes, event bus, settings
+├── core/                # Game loop, scenes, event bus, settings, i18n, difficulty
 ├── entities/            # Player, enemies, items on floor
 ├── items/               # Weapons, consumables, ammo, inventory
 ├── combat/              # Turn manager, actions, damage, LOS
 ├── ai/                  # Pathfinding (A*), enemy behaviour states
 ├── world/               # BSP dungeon generator, map, FOV
-├── rendering/           # Renderer, camera, HUD, combat log, UI
+├── rendering/           # Renderer, camera, tile renderer, entity renderer
+│   └── ui/              # HUD, CombatLog, InventoryUI, WeaponPickerUI, HelpScreen, AlertBanner
 ├── audio/               # Sound/music manager
 └── data/                # Enemy and item definitions
 assets/                  # Sprites, audio, fonts

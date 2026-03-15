@@ -133,7 +133,7 @@ def _make_container_open() -> pygame.Surface:
 
 
 def _make_item_loot() -> pygame.Surface:
-    """Item on the floor — glowing amber diamond."""
+    """Item on the floor — glowing amber diamond (generic fallback)."""
     surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
     cx, cy = _TS // 2, _TS // 2
 
@@ -158,18 +158,185 @@ def _make_item_loot() -> pygame.Surface:
     return surf
 
 
+def _make_item_loot_melee() -> pygame.Surface:
+    """Melee weapon on the floor — diagonal knife, silver blade, blue glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (100, 180, 255, 38), (16, 16), 11)
+    surf.blit(glow, (0, 0))
+
+    # Blade: wide diamond-tipped polygon from top-left to centre
+    blade_pts = [(7, 9), (9, 7), (21, 17), (21, 19), (19, 21), (17, 21)]
+    pygame.draw.polygon(surf, (175, 188, 210), blade_pts)
+    pygame.draw.polygon(surf, (225, 238, 255), blade_pts, 1)
+    # Edge highlight along the top face
+    pygame.draw.line(surf, (255, 255, 255), (9, 8), (19, 18), 1)
+
+    # Guard (cross-piece)
+    pygame.draw.rect(surf, (120, 110, 90), (17, 17, 5, 5))
+    pygame.draw.rect(surf, (155, 145, 120), (17, 17, 5, 5), 1)
+
+    # Handle
+    handle_pts = [(21, 21), (23, 19), (27, 25), (25, 27)]
+    pygame.draw.polygon(surf, (65, 50, 35), handle_pts)
+    pygame.draw.line(surf, (105, 80, 55), (22, 21), (25, 26), 1)
+
+    return surf
+
+
+def _make_item_loot_ranged() -> pygame.Surface:
+    """Ranged weapon on the floor — top-down gun silhouette, cyan glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (0, 220, 180, 35), (16, 16), 11)
+    surf.blit(glow, (0, 0))
+
+    # Barrel (horizontal)
+    pygame.draw.rect(surf, (55, 55, 70), (6, 13, 17, 5))
+    pygame.draw.rect(surf, (85, 85, 105), (6, 13, 17, 5), 1)
+    # Receiver / slide (slightly taller block)
+    pygame.draw.rect(surf, (68, 68, 84), (14, 11, 9, 9))
+    pygame.draw.rect(surf, (95, 95, 115), (14, 11, 9, 9), 1)
+    # Grip (angled down from receiver)
+    pygame.draw.rect(surf, (50, 50, 65), (17, 19, 5, 7))
+    pygame.draw.rect(surf, (78, 78, 98), (17, 19, 5, 7), 1)
+    # Muzzle flash hint
+    pygame.draw.line(surf, (120, 210, 255), (6, 14), (6, 17), 1)
+    # Sight dot (cyan)
+    pygame.draw.rect(surf, (0, 220, 180), (20, 12, 2, 2))
+
+    return surf
+
+
+def _make_item_loot_ammo() -> pygame.Surface:
+    """Ammo on the floor — three brass bullet casings."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (215, 155, 25, 38), (16, 16), 10)
+    surf.blit(glow, (0, 0))
+
+    for bx in (9, 16, 23):
+        # Casing
+        pygame.draw.ellipse(surf, (155, 95, 28), (bx - 2, 13, 5, 9))
+        pygame.draw.ellipse(surf, (195, 140, 50), (bx - 2, 13, 5, 9), 1)
+        # Bullet tip (brass-yellow cap)
+        pygame.draw.ellipse(surf, (215, 185, 55), (bx - 1, 11, 3, 5))
+        # Rim (base)
+        pygame.draw.line(surf, (220, 170, 60), (bx - 2, 22), (bx + 2, 22), 1)
+
+    return surf
+
+
+def _make_vault_closed() -> pygame.Surface:
+    """Corp Vault — objective container. Heavy blue-steel safe with pulsing cyan glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+
+    # Wide outer glow
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.rect(glow, (30, 160, 255, 45), (1, 2, _TS - 2, _TS - 4))
+    surf.blit(glow, (0, 0))
+
+    # Safe body — dark steel blue
+    pygame.draw.rect(surf, (18, 28, 52), (3, 4, _TS - 6, _TS - 8))
+    # Body border — bright cyan
+    pygame.draw.rect(surf, (40, 190, 255), (3, 4, _TS - 6, _TS - 8), 1)
+
+    # Corner reinforcement brackets
+    for bx, by, dx, dy in [
+        (3, 4, 1, 1), (_TS - 6, 4, -1, 1),
+        (3, _TS - 8, 1, -1), (_TS - 6, _TS - 8, -1, -1),
+    ]:
+        pygame.draw.line(surf, (100, 220, 255), (bx, by), (bx + dx * 4, by), 2)
+        pygame.draw.line(surf, (100, 220, 255), (bx, by), (bx, by + dy * 4), 2)
+
+    # Central vault wheel (concentric circles)
+    cx, cy = _TS // 2, _TS // 2 + 1
+    pygame.draw.circle(surf, (25, 80, 150), (cx, cy), 6)
+    pygame.draw.circle(surf, (40, 190, 255), (cx, cy), 6, 1)
+    pygame.draw.circle(surf, (40, 190, 255), (cx, cy), 3, 1)
+    # Spokes (4-way)
+    for dx2, dy2 in [(0, -6), (0, 6), (-6, 0), (6, 0)]:
+        pygame.draw.line(surf, (40, 190, 255), (cx, cy), (cx + dx2, cy + dy2), 1)
+
+    # Top label bar
+    pygame.draw.rect(surf, (22, 55, 105), (5, 5, _TS - 10, 4))
+    pygame.draw.line(surf, (60, 140, 220), (6, 7), (_TS - 7, 7), 1)
+
+    return surf
+
+
+def _make_vault_open() -> pygame.Surface:
+    """Corp Vault — looted/opened. Door ajar, dim glow, contents gone."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+
+    # Dim glow
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.rect(glow, (20, 80, 140, 25), (1, 2, _TS - 2, _TS - 4))
+    surf.blit(glow, (0, 0))
+
+    # Body — very dark
+    pygame.draw.rect(surf, (10, 16, 30), (3, 4, _TS - 6, _TS - 8))
+    pygame.draw.rect(surf, (30, 70, 120), (3, 4, _TS - 6, _TS - 8), 1)
+
+    # Open door panel (rotated out to the left side)
+    pygame.draw.rect(surf, (18, 35, 65), (3, 4, 5, _TS - 8))
+    pygame.draw.rect(surf, (35, 90, 150), (3, 4, 5, _TS - 8), 1)
+
+    # Dark interior
+    pygame.draw.rect(surf, (6, 10, 20), (8, 5, _TS - 11, _TS - 10))
+
+    # Dim wheel remains
+    cx, cy = _TS // 2 + 1, _TS // 2 + 1
+    pygame.draw.circle(surf, (20, 50, 90), (cx, cy), 5, 1)
+    pygame.draw.circle(surf, (20, 50, 90), (cx, cy), 2, 1)
+
+    return surf
+
+
+def _make_item_loot_consumable() -> pygame.Surface:
+    """Consumable on the floor — green medkit cross with glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (0, 200, 80, 42), (cx, cy), 11)
+    surf.blit(glow, (0, 0))
+
+    # Dark background tile
+    pygame.draw.rect(surf, (16, 38, 22), (cx - 7, cy - 7, 14, 14))
+    pygame.draw.rect(surf, (0, 145, 58), (cx - 7, cy - 7, 14, 14), 1)
+
+    # Cross arms
+    pygame.draw.rect(surf, (0, 200, 80), (cx - 5, cy - 2, 10, 4))   # horizontal
+    pygame.draw.rect(surf, (0, 200, 80), (cx - 2, cy - 5, 4, 10))   # vertical
+
+    # Highlight on cross
+    pygame.draw.line(surf, (140, 255, 170), (cx - 4, cy - 1), (cx + 3, cy - 1), 1)
+
+    return surf
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 _BUILDERS: dict[str, object] = {
-    "wall":             lambda: _make_wall_tile(dark=False),
-    "wall_dark":        lambda: _make_wall_tile(dark=True),
-    "player":           _make_player_sprite,
-    "guard":            _make_guard_sprite,
-    "container_closed": _make_container_closed,
-    "container_open":   _make_container_open,
-    "item_loot":        _make_item_loot,
+    "wall":                  lambda: _make_wall_tile(dark=False),
+    "wall_dark":             lambda: _make_wall_tile(dark=True),
+    "player":                _make_player_sprite,
+    "guard":                 _make_guard_sprite,
+    "container_closed":      _make_container_closed,
+    "container_open":        _make_container_open,
+    "vault_closed":          _make_vault_closed,
+    "vault_open":            _make_vault_open,
+    "item_loot":             _make_item_loot,
+    "item_loot_melee":       _make_item_loot_melee,
+    "item_loot_ranged":      _make_item_loot_ranged,
+    "item_loot_ammo":        _make_item_loot_ammo,
+    "item_loot_consumable":  _make_item_loot_consumable,
 }
 
 

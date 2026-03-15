@@ -25,6 +25,7 @@ class AudioManager:
         self._rng = rng
         self._sounds: dict[str, pygame.mixer.Sound] = {}
         self._build_sounds()
+        self._pending_sounds: list = []  # [(time_remaining, name, volume)]
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -56,7 +57,13 @@ class AudioManager:
 
     def _on_damage(self, event: DamageEvent) -> None:
         if isinstance(event.attacker, Player):
-            self.play("pistol_shot" if event.is_ranged else "melee_hit")
+            if event.is_ranged:
+                weapon = getattr(event.attacker, "equipped_weapon", None)
+                weapon_id = getattr(weapon, "id", "") if weapon else ""
+                sound = "smg_shot" if weapon_id == "smg" else "pistol_shot"
+                self.play(sound)
+            else:
+                self.play("melee_hit")
         else:
             # Enemy attack sound
             self.play("drone_shot" if event.is_ranged else "melee_hit", 0.55)
@@ -144,6 +151,7 @@ class AudioManager:
             "footstep":    self._to_sound(self._gen_footstep()),
             "melee_hit":   self._to_sound(self._gen_melee_hit()),
             "pistol_shot": self._to_sound(self._gen_pistol_shot()),
+            "smg_shot":    self._to_sound(self._gen_smg_shot()),
             "drone_shot":  self._to_sound(self._gen_drone_shot()),
             "hit_taken":   self._to_sound(self._gen_hit_taken()),
             "enemy_death": self._to_sound(self._gen_enemy_death()),
@@ -151,6 +159,9 @@ class AudioManager:
             "stair":       self._to_sound(self._gen_stair()),
             "reload":      self._to_sound(self._gen_reload()),
             "no_ammo":     self._to_sound(self._gen_no_ammo()),
+            "heal":        self._to_sound(self._gen_heal()),
+            "victory":     self._to_sound(self._gen_victory()),
+            "defeat":      self._to_sound(self._gen_defeat()),
         }
 
     def _gen_footstep(self) -> np.ndarray:
@@ -177,6 +188,15 @@ class AudioManager:
         return self._mix(
             self._concat(bang, self._silence(1)),
             self._concat(self._silence(5), tail),
+        )
+
+    def _gen_smg_shot(self) -> np.ndarray:
+        # Shorter, snappier than pistol — faster decay, higher pitch crack
+        bang = self._noise(10, vol=0.85, exp=0.5)   # sharp crack
+        tail = self._noise(60, vol=0.25, exp=2.5)   # quick fade
+        return self._mix(
+            self._concat(bang, self._silence(1)),
+            self._concat(self._silence(3), tail),
         )
 
     def _gen_drone_shot(self) -> np.ndarray:
@@ -209,12 +229,50 @@ class AudioManager:
         return self._concat(note1, gap, note2)
 
     def _gen_reload(self) -> np.ndarray:
-        # Two mechanical clicks with a short gap
-        click = self._tone(900, 25, vol=0.5, waveform="square", exp=1.5)
-        gap   = self._silence(60)
-        clack = self._tone(700, 35, vol=0.55, waveform="square", exp=1.2)
-        return self._concat(click, gap, clack)
+        # Phase 1 — magazine insertion: mid-range clack
+        ins_noise = self._noise(50, vol=0.65, exp=1.4)
+        ins_tone  = self._tone(420, 50, vol=0.40, freq_end=300, exp=1.5)
+        insert    = self._mix(ins_noise, ins_tone)
+
+        gap = self._silence(70)
+
+        # Phase 2 — slide/bolt snap forward: sharp metallic crack
+        snap_noise = self._noise(22, vol=0.75, exp=0.7)
+        snap_tone  = self._tone(1100, 22, vol=0.35, waveform="square", exp=2.5)
+        snap       = self._mix(snap_noise, snap_tone)
+
+        return self._concat(insert, gap, snap)
 
     def _gen_no_ammo(self) -> np.ndarray:
         # Dry low click — empty chamber
         return self._tone(220, 30, vol=0.45, waveform="square", exp=1.0)
+
+    def _gen_victory(self) -> np.ndarray:
+        # Triumphant 4-note ascending arpeggio + shimmer tail
+        n1 = self._tone(330, 110, vol=0.55, exp=1.8)   # E4
+        n2 = self._tone(440, 110, vol=0.60, exp=1.8)   # A4
+        n3 = self._tone(550, 130, vol=0.65, exp=1.6)   # C#5
+        n4 = self._tone(660, 260, vol=0.70, exp=1.2)   # E5  (longer sustain)
+        shimmer = self._tone(880, 220, vol=0.30, freq_end=1100, exp=1.4)
+        tail = self._mix(n4, self._concat(self._silence(40), shimmer))
+        return self._concat(
+            n1, self._silence(20),
+            n2, self._silence(20),
+            n3, self._silence(20),
+            tail,
+        )
+
+    def _gen_defeat(self) -> np.ndarray:
+        # Somber descending tone + low rumble — distinct from player_death stab
+        thud  = self._noise(60, vol=0.55, exp=1.2)
+        fall  = self._tone(220, 500, vol=0.65, freq_end=55, exp=0.7)
+        rumble = self._tone(60, 400, vol=0.30, freq_end=35, exp=0.5)
+        body  = self._mix(fall, rumble)
+        return self._concat(self._mix(thud, body[:len(thud)]), body[len(thud):])
+
+    def _gen_heal(self) -> np.ndarray:
+        # Stim injector: short mechanical click → warm ascending shimmer
+        click  = self._tone(1100, 18, vol=0.45, waveform="square", exp=1.0)
+        gap    = self._silence(20)
+        shimmer = self._tone(280, 260, vol=0.55, freq_end=560, exp=1.4)
+        return self._concat(self._mix(click, shimmer[:len(click)]), gap, shimmer)

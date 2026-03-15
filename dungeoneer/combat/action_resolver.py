@@ -53,12 +53,17 @@ class ActionResolver:
                 bus.post(LogMessageEvent(f"Picked up {item.name}.", (200, 220, 100)))
                 continue
 
-            # --- Melee weapons → always discard ---
+            # --- Melee weapon duplicate → discard (already have one of this type) ---
             if isinstance(item, Weapon) and item.range_type == RangeType.MELEE:
-                floor.remove_item_entity(item_e)
-                log.info("Discarded melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
-                bus.post(LogMessageEvent(f"Left {item.name} behind.", (120, 100, 80)))
-                continue
+                already_have = (
+                    (player.equipped_weapon is not None and player.equipped_weapon.id == item.id)
+                    or any(isinstance(i, Weapon) and i.id == item.id for i in player.inventory)
+                )
+                if already_have:
+                    floor.remove_item_entity(item_e)
+                    log.info("Discarded duplicate melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
+                    bus.post(LogMessageEvent(f"Already have {item.name}, left it.", (120, 100, 80)))
+                    continue
 
             # --- Ranged weapon duplicate → strip for ammo instead ---
             if isinstance(item, Weapon) and item.range_type == RangeType.RANGED:
@@ -102,6 +107,11 @@ class ActionResolver:
         log.debug("melee  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
         bus.post(DamageEvent(actor, target, result.actual, is_ranged=False, is_crit=result.is_crit))
 
+        if target.alive:
+            brain = getattr(target, "ai_brain", None)
+            if brain is not None:
+                brain.alert(actor.x, actor.y)
+
         if not target.alive:
             bus.post(DeathEvent(target))
             msg += f" {target.name} is down!"
@@ -116,30 +126,71 @@ class ActionResolver:
         from dungeoneer.entities.player import Player
         from dungeoneer.items.item import RangeType
 
-        # Consume ammo from player's equipped weapon
+        # Validate weapon before entering burst loop
         if isinstance(actor, Player):
             w = actor.equipped_weapon
             if w is None or w.range_type != RangeType.RANGED:
                 return ActionResult(False, "No ranged weapon equipped.", (180, 80, 80))
             if w.ammo_current <= 0:
                 return ActionResult(False, "Out of ammo! Press R to reload.", (255, 80, 80))
-            w.ammo_current -= 1
 
         target = action.target
-        result = calc_ranged(actor, target)
+        weapon = getattr(actor, "equipped_weapon", None)
+        shots = getattr(weapon, "shots", 1) if weapon else 1
 
-        crit_str = " CRITICAL!" if result.is_crit else ""
-        colour   = (255, 200, 80) if result.is_crit else (220, 180, 60)
-        msg = f"{actor.name} shoots {target.name} for {result.actual} dmg.{crit_str}"
-        log.debug("ranged  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
-        bus.post(DamageEvent(actor, target, result.actual, is_ranged=True, is_crit=result.is_crit))
+        # For player burst weapons (shots > 1), DamageEvents are collected and returned
+        # so GameScene can post them with staggered delays for visual/audio effect.
+        # For single-shot and enemy actions, post immediately as usual.
+        is_player_burst = isinstance(actor, Player) and shots > 1
+
+        total_actual = 0
+        any_crit = False
+        burst_events = []
+
+        for _ in range(shots):
+            if not target.alive:
+                break
+            # Consume ammo for each shot
+            if isinstance(actor, Player):
+                w = actor.equipped_weapon
+                if w is None or w.range_type != RangeType.RANGED:
+                    break
+                if w.ammo_current <= 0:
+                    break
+                w.ammo_current -= 1
+
+            result = calc_ranged(actor, target)
+            total_actual += result.actual
+            if result.is_crit:
+                any_crit = True
+            log.debug("ranged  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
+
+            dmg_event = DamageEvent(actor, target, result.actual, is_ranged=True, is_crit=result.is_crit)
+            if is_player_burst:
+                burst_events.append(dmg_event)
+            else:
+                bus.post(dmg_event)
+
+        if total_actual == 0:
+            return ActionResult(False, "Out of ammo! Press R to reload.", (255, 80, 80))
+
+        shots_fired = len(burst_events) if is_player_burst else shots
+        crit_str  = " CRITICAL!" if any_crit else ""
+        colour    = (255, 200, 80) if any_crit else (220, 180, 60)
+        burst_str = f" ({shots_fired}×)" if shots_fired > 1 else ""
+        msg = f"{actor.name} shoots {target.name}{burst_str} for {total_actual} dmg.{crit_str}"
+
+        if target.alive:
+            brain = getattr(target, "ai_brain", None)
+            if brain is not None:
+                brain.alert(actor.x, actor.y)
 
         if not target.alive:
             bus.post(DeathEvent(target))
             msg += f" {target.name} is down!"
             floor.remove_dead()
 
-        return ActionResult(True, msg, colour)
+        return ActionResult(True, msg, colour, burst_events=burst_events)
 
     def resolve_open_container(
         self, actor: "Actor", action: "OpenContainerAction", floor: "Floor"  # type: ignore[name-defined]
@@ -158,7 +209,7 @@ class ActionResolver:
         credits_str = ""
         if container.credits > 0 and isinstance(actor, Player):
             actor.credits += container.credits
-            credits_str = f"  +{container.credits} cr"
+            credits_str = f"  +¥{container.credits}"
 
         # Mission objective — special handling
         if container.is_objective:

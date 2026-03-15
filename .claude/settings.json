@@ -4,10 +4,14 @@
       "WebFetch",
       "WebSearch",
       "Bash(python *)",
-      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/**)"
+      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/**)",
+      "Bash(xargs grep:*)",
+      "Read(//c/Users/karel/Documents/Python/Dungeoneer/**)",
+      "Bash(find /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer -type f \\\\\\(-name *.png -o -name *.mp3 -o -name *.wav -o -name *.ogg \\\\\\))"
     ],
     "additionalDirectories": [
-      "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory"
+      "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",
+      "c:\\Users\\karel\\Documents\\Python\\Dungeoneer\\dungeoneer"
     ]
   }
 }
