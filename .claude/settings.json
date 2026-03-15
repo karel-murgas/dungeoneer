@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch",
+      "WebSearch",
+      "Bash(python *)",
+      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+"""Difficulty presets — all tunable numbers in one place."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Difficulty:
+    name: str
+
+    # Enemies per floor
+    guards_per_floor:     int = 5
+    drones_per_floor:     int = 3
+
+    # Containers per floor
+    containers_per_floor: int = 3
+
+    # Player starting stats
+    player_max_hp:        int  = 30
+    player_attack:        int  = 4
+    player_defence:       int  = 1
+    starting_ammo:        dict = field(default_factory=dict)   # empty = only what's in the gun
+
+    # Credits reward for securing the mission objective (final floor)
+    objective_credits:    int  = 150
+
+
+# ---------------------------------------------------------------------------
+# Presets
+# ---------------------------------------------------------------------------
+
+EASY = Difficulty(
+    name="Easy",
+    guards_per_floor=3,
+    drones_per_floor=2,
+    containers_per_floor=4,
+    player_max_hp=35,
+    starting_ammo={"9mm": 8},   # one spare magazine
+    # 3g×10 + 2d×15 + 4c×15 = 120/floor × 3 floors = 360
+    objective_credits=360,
+)
+
+NORMAL = Difficulty(
+    name="Normal",
+    guards_per_floor=5,
+    drones_per_floor=3,
+    containers_per_floor=3,
+    player_max_hp=30,
+    # starting_ammo left empty — only what's already in the pistol
+    # 5g×10 + 3d×15 + 3c×15 = 140/floor × 3 floors = 420
+    objective_credits=420,
+)
+
+HARD = Difficulty(
+    name="Hard",
+    guards_per_floor=7,
+    drones_per_floor=4,
+    containers_per_floor=2,
+    player_max_hp=25,
+    player_defence=0,
+    # 7g×10 + 4d×15 + 2c×15 = 160/floor × 3 floors = 480
+    objective_credits=480,
+)
