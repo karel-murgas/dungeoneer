@@ -618,6 +618,16 @@ class HackScene(Scene):
         scan_surf.fill((*_NEON_CYAN, 18))
         screen.blit(scan_surf, (panel.x, scan_y))
 
+        # Pre-compute port-side assignments for all active nodes
+        # (uses normalised sx/sy so independent of panel size)
+        port_sides: dict[tuple[int, int], int] = {}
+        for node in nodes:
+            if not node.active:
+                continue
+            active_nbs = [nodes[nb_id] for nb_id in node.neighbors if nodes[nb_id].active]
+            for nb_id, side in _assign_port_sides(node, active_nbs).items():
+                port_sides[(node.node_id, nb_id)] = side
+
         # --- Edges ---
         for node in nodes:
             if not node.active:
@@ -630,16 +640,24 @@ class HackScene(Scene):
                 if not nb.active:
                     continue
                 nbx, nby = self._node_screen_pos(nb, panel)
-                self._draw_edge(screen, nx, ny, nbx, nby, node.node_id, nb_id, reachable_ids, player)
+                src_side = port_sides.get((node.node_id, nb_id), _SIDE_RIGHT)
+                tgt_side = port_sides.get((nb_id, node.node_id), _SIDE_LEFT)
+                sp = _node_port(nx,  ny,  src_side)
+                tp = _node_port(nbx, nby, tgt_side)
+                self._draw_edge(screen, sp, src_side, tp, node.node_id, nb_id, player)
 
-        # Moving dot along bent-path edge
+        # Moving dot along port-routed edge
         if self._state == _State.MOVING and self._params.move_time > 0:
             progress = 1.0 - self._move_timer / self._params.move_time
             src = nodes[self._prev_node]
             dst = nodes[self._pending_node]
-            sx2, sy2 = self._node_screen_pos(src, panel)
-            dx2, dy2 = self._node_screen_pos(dst, panel)
-            pts = _bent_path(sx2, sy2, dx2, dy2)
+            snx, sny = self._node_screen_pos(src, panel)
+            dnx, dny = self._node_screen_pos(dst, panel)
+            src_side = port_sides.get((self._prev_node, self._pending_node), _SIDE_RIGHT)
+            tgt_side = port_sides.get((self._pending_node, self._prev_node), _SIDE_LEFT)
+            sp = _node_port(snx, sny, src_side)
+            tp = _node_port(dnx, dny, tgt_side)
+            pts = _edge_path(sp[0], sp[1], src_side, tp[0], tp[1])
             mx, my = _pos_along_path(pts, progress)
             self._draw_glow(screen, _COL_PLAYER, mx, my, 5, layers=2, max_alpha=120)
             pygame.draw.circle(screen, _COL_PLAYER, (mx, my), 5)
@@ -689,21 +707,24 @@ class HackScene(Scene):
     def _draw_edge(
         self,
         screen: pygame.Surface,
-        x1: int, y1: int, x2: int, y2: int,
+        src_port: tuple[int, int],
+        src_side: int,
+        tgt_port: tuple[int, int],
         id_a: int, id_b: int,
-        reachable_ids: set[int],
         player: int,
     ) -> None:
-        """Draw a single edge as an orthogonal bent path with animated data packets."""
+        """Draw a single edge as a port-routed L-shaped path with animated data packets."""
         is_active_edge = (id_a == player or id_b == player)
         edge_color = _NEON_CYAN if is_active_edge else _COL_EDGE
         line_w     = 2 if is_active_edge else 1
 
-        pts = _bent_path(x1, y1, x2, y2)
+        sx, sy = src_port
+        tx, ty = tgt_port
+        pts = _edge_path(sx, sy, src_side, tx, ty)
         for i in range(len(pts) - 1):
             pygame.draw.line(screen, edge_color, pts[i], pts[i + 1], line_w)
 
-        # Animated data packets that travel along the bent path
+        # Animated data packets travelling along the path
         path_len = sum(
             math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1])
             for i in range(len(pts) - 1)
@@ -996,13 +1017,62 @@ def _node_label(node: HackNode) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Bent-path routing helpers
+# Port-based orthogonal routing helpers
 # ---------------------------------------------------------------------------
 
-def _bent_path(x1: int, y1: int, x2: int, y2: int) -> list[tuple[int, int]]:
-    """3-segment orthogonal (Z-shaped) path: H → V → H through the x-midpoint."""
-    mx = (x1 + x2) // 2
-    return [(x1, y1), (mx, y1), (mx, y2), (x2, y2)]
+_SIDE_TOP    = 0   # exits upward
+_SIDE_RIGHT  = 1   # exits rightward
+_SIDE_BOTTOM = 2   # exits downward
+_SIDE_LEFT   = 3   # exits leftward
+
+# Ideal angle (atan2 convention: y-down) for each side
+_SIDE_IDEAL: list[float] = [-math.pi / 2, 0.0, math.pi / 2, math.pi]
+
+
+def _assign_port_sides(node: HackNode, neighbors: list[HackNode]) -> dict[int, int]:
+    """
+    Assign each neighbor to a unique exit side of *node*.
+    Returns {neighbor_id: side}.  At most 4 neighbors supported (max degree = 4).
+    """
+    if not neighbors:
+        return {}
+
+    def _adiff(a: float, b: float) -> float:
+        return abs((a - b + math.pi) % (2 * math.pi) - math.pi)
+
+    nb_angles = sorted(
+        [(nb.node_id, math.atan2(nb.sy - node.sy, nb.sx - node.sx)) for nb in neighbors],
+        key=lambda x: x[1],
+    )
+    available = list(range(4))
+    result: dict[int, int] = {}
+    for nb_id, angle in nb_angles:
+        best = min(available, key=lambda s: _adiff(angle, _SIDE_IDEAL[s]))
+        result[nb_id] = best
+        available.remove(best)
+    return result
+
+
+def _node_port(nx: int, ny: int, side: int) -> tuple[int, int]:
+    """Screen midpoint of the given side of a node centred at (nx, ny)."""
+    r = _NODE_R
+    if side == _SIDE_TOP:    return (nx,     ny - r)
+    if side == _SIDE_RIGHT:  return (nx + r, ny    )
+    if side == _SIDE_BOTTOM: return (nx,     ny + r)
+    return                          (nx - r, ny    )   # _SIDE_LEFT
+
+
+def _edge_path(sx: int, sy: int, exit_side: int,
+               tx: int, ty: int) -> list[tuple[int, int]]:
+    """
+    2-segment L-shaped path from port (sx,sy) to port (tx,ty).
+    Horizontal exit → go H first, then V.
+    Vertical exit   → go V first, then H.
+    """
+    if exit_side in (_SIDE_LEFT, _SIDE_RIGHT):
+        return [(sx, sy), (tx, sy), (tx, ty)]
+    else:
+        return [(sx, sy), (sx, ty), (tx, ty)]
 
 
 def _pos_along_path(pts: list[tuple[int, int]], t: float) -> tuple[int, int]:
