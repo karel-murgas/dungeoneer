@@ -660,7 +660,31 @@ class HackScene(Scene):
             for nb_id, side in _assign_port_sides(node, active_nbs).items():
                 port_sides[(node.node_id, nb_id)] = side
 
-        all_rects = list(node_rects.values())
+        # --- Pre-compute all edge paths (sequential so each avoids prior segments) ---
+        _obs_all = list(node_rects.values())
+        routed_segs: list[tuple[int, int, int, int]] = []
+        edge_paths:  dict[tuple[int, int], list[tuple[int, int]]] = {}
+        for _node in nodes:
+            if not _node.active:
+                continue
+            _nx, _ny = node_screen[_node.node_id]
+            for _nb_id in _node.neighbors:
+                if _nb_id < _node.node_id:
+                    continue
+                _nb = nodes[_nb_id]
+                if not _nb.active:
+                    continue
+                _nbx, _nby = node_screen[_nb_id]
+                _ss = port_sides.get((_node.node_id, _nb_id), _SIDE_RIGHT)
+                _ts = port_sides.get((_nb_id, _node.node_id), _SIDE_LEFT)
+                _sp = _node_port(_nx,  _ny,  _ss)
+                _tp = _node_port(_nbx, _nby, _ts)
+                _pts = _edge_path(_sp[0], _sp[1], _ss, _tp[0], _tp[1], _ts,
+                                  _obs_all, routed_segs)
+                edge_paths[(_node.node_id, _nb_id)] = _pts
+                for _i in range(len(_pts) - 1):
+                    routed_segs.append((_pts[_i][0], _pts[_i][1],
+                                        _pts[_i+1][0], _pts[_i+1][1]))
 
         # --- Edges ---
         for node in nodes:
@@ -678,11 +702,9 @@ class HackScene(Scene):
                 tgt_side = port_sides.get((nb_id, node.node_id), _SIDE_LEFT)
                 sp = _node_port(nx,  ny,  src_side)
                 tp = _node_port(nbx, nby, tgt_side)
-                # Rects to skip when clipping: all nodes except these two endpoints
-                skip = [r for nid, r in node_rects.items()
-                        if nid != node.node_id and nid != nb_id]
-                self._draw_edge(screen, sp, src_side, tp, tgt_side,
-                                node.node_id, nb_id, player, skip)
+                pts = edge_paths[(node.node_id, nb_id)]
+                self._draw_edge(screen, pts, sp, src_side, tp, tgt_side,
+                                node.node_id, nb_id, player, node_rects)
 
         # Moving dot along port-routed edge
         if self._state == _State.MOVING and self._params.move_time > 0:
@@ -693,11 +715,17 @@ class HackScene(Scene):
                                        self._node_screen_pos(src, panel))
             dnx, dny = node_screen.get(self._pending_node,
                                        self._node_screen_pos(dst, panel))
-            src_side = port_sides.get((self._prev_node, self._pending_node), _SIDE_RIGHT)
-            tgt_side = port_sides.get((self._pending_node, self._prev_node), _SIDE_LEFT)
-            sp = _node_port(snx, sny, src_side)
-            tp = _node_port(dnx, dny, tgt_side)
-            pts = _edge_path(sp[0], sp[1], src_side, tp[0], tp[1], tgt_side)
+            _dot_key = (min(self._prev_node, self._pending_node),
+                        max(self._prev_node, self._pending_node))
+            pts = edge_paths.get(_dot_key)
+            if pts is None:
+                src_side = port_sides.get((self._prev_node, self._pending_node), _SIDE_RIGHT)
+                tgt_side = port_sides.get((self._pending_node, self._prev_node), _SIDE_LEFT)
+                sp = _node_port(snx, sny, src_side)
+                tp = _node_port(dnx, dny, tgt_side)
+                pts = _edge_path(sp[0], sp[1], src_side, tp[0], tp[1], tgt_side, _obs_all)
+            elif self._prev_node > self._pending_node:
+                pts = list(reversed(pts))
             mx, my = _pos_along_path(pts, progress)
             self._draw_glow(screen, _COL_PLAYER, mx, my, 5, layers=2, max_alpha=120)
             pygame.draw.circle(screen, _COL_PLAYER, (mx, my), 5)
@@ -747,28 +775,37 @@ class HackScene(Scene):
     def _draw_edge(
         self,
         screen: pygame.Surface,
+        pts: list[tuple[int, int]],
         src_port: tuple[int, int],
         src_side: int,
         tgt_port: tuple[int, int],
         tgt_side: int,
         id_a: int, id_b: int,
         player: int,
-        skip_rects: list[pygame.Rect],
+        node_rects: dict[int, pygame.Rect],
     ) -> None:
-        """Draw a single edge with proper H↔H / V↔V routing and node-body clipping."""
+        """Draw a pre-computed edge path with node-body clipping as safety fallback."""
         is_active_edge = (id_a == player or id_b == player)
         edge_color = _NEON_CYAN if is_active_edge else _COL_EDGE
         line_w     = 2 if is_active_edge else 1
 
         sx, sy = src_port
         tx, ty = tgt_port
-        pts = _edge_path(sx, sy, src_side, tx, ty, tgt_side)
 
-        # Draw each segment, clipping out any portion inside a foreign node
-        for i in range(len(pts) - 1):
+        # Per-segment clipping:
+        # - first segment:  don't clip source node (path starts at its border)
+        # - last segment:   don't clip target node (path ends at its border)
+        # - middle segments: clip against ALL nodes (catches re-entry into src/tgt)
+        n_segs = len(pts) - 1
+        for i in range(n_segs):
             x1, y1 = pts[i]
             x2, y2 = pts[i + 1]
-            for (ax, ay), (bx, by) in _clip_ortho_segment(x1, y1, x2, y2, skip_rects):
+            is_first = (i == 0)
+            is_last  = (i == n_segs - 1)
+            clip = [r for nid, r in node_rects.items()
+                    if not (is_first and nid == id_a)
+                    and not (is_last  and nid == id_b)]
+            for (ax, ay), (bx, by) in _clip_ortho_segment(x1, y1, x2, y2, clip):
                 pygame.draw.line(screen, edge_color, (ax, ay), (bx, by), line_w)
 
         # Animated data packets travelling along the full path
@@ -1071,6 +1108,10 @@ _SIDE_LEFT   = 3   # exits leftward
 # Ideal angle (atan2 convention: y-down) for each side
 _SIDE_IDEAL: list[float] = [-math.pi / 2, 0.0, math.pi / 2, math.pi]
 
+# Unit-direction vectors for each side (screen coords, y-down)
+_SIDE_DX = [0, 1, 0, -1]   # TOP, RIGHT, BOTTOM, LEFT
+_SIDE_DY = [-1, 0, 1, 0]   # TOP, RIGHT, BOTTOM, LEFT
+
 
 def _assign_port_sides(node: HackNode, neighbors: list[HackNode]) -> dict[int, int]:
     """
@@ -1105,32 +1146,132 @@ def _node_port(nx: int, ny: int, side: int) -> tuple[int, int]:
     return                          (nx - r, ny    )   # _SIDE_LEFT
 
 
-def _edge_path(sx: int, sy: int, src_side: int,
-               tx: int, ty: int, tgt_side: int) -> list[tuple[int, int]]:
+def _edge_path(
+    sx: int, sy: int, src_side: int,
+    tx: int, ty: int, tgt_side: int,
+    obstacle_rects: "list[pygame.Rect] | None" = None,
+    routed_segs: "list[tuple[int,int,int,int]] | None" = None,
+) -> list[tuple[int, int]]:
     """
-    Orthogonal route from port (sx,sy) to port (tx,ty) respecting both sides.
+    Orthogonal route from port (sx,sy) to port (tx,ty) with obstacle avoidance.
 
-    Same-axis pair (H↔H or V↔V) → 3-segment route through midpoint so both
-    ends leave/enter in the correct direction.
-    Mixed pair (H↔V or V↔H) → clean 2-segment L.
+    Rules:
+    - Exits and enters perpendicular from the centre of the node side.
+    - Perpendicular stub of at least NODE_R at each end before any turn.
+    - The route (excluding the two stubs) must not touch any obstacle_rect.
+    - Max one connection per side is guaranteed by _assign_port_sides upstream.
     """
-    src_h = src_side in (_SIDE_LEFT, _SIDE_RIGHT)
-    tgt_h = tgt_side in (_SIDE_LEFT, _SIDE_RIGHT)
+    MIN_STUB = _NODE_R
+    CLEAR    = _NODE_R   # half-node clearance beyond every node-rect edge
 
-    if src_h and tgt_h:
-        # H → V → H  (midpoint in X)
-        mid = (sx + tx) // 2
-        return [(sx, sy), (mid, sy), (mid, ty), (tx, ty)]
-    elif not src_h and not tgt_h:
-        # V → H → V  (midpoint in Y)
-        mid = (sy + ty) // 2
-        return [(sx, sy), (sx, mid), (tx, mid), (tx, ty)]
-    elif src_h:
-        # H exit, V entry — L via (tx, sy)
-        return [(sx, sy), (tx, sy), (tx, ty)]
-    else:
-        # V exit, H entry — L via (sx, ty)
-        return [(sx, sy), (sx, ty), (tx, ty)]
+    if not obstacle_rects:
+        obstacle_rects = []
+
+    # Inflate each obstacle by CLEAR pixels on all sides for the collision check.
+    obs = [r.inflate(CLEAR * 2, CLEAR * 2) for r in obstacle_rects]
+
+    # Stub end-points: one step of MIN_STUB outward from each port.
+    s1x = sx + _SIDE_DX[src_side] * MIN_STUB
+    s1y = sy + _SIDE_DY[src_side] * MIN_STUB
+    s2x = tx + _SIDE_DX[tgt_side] * MIN_STUB
+    s2y = ty + _SIDE_DY[tgt_side] * MIN_STUB
+
+    # ------------------------------------------------------------------
+    def _seg_ok(x1: int, y1: int, x2: int, y2: int) -> bool:
+        """True iff the axis-aligned segment does not intersect any obstacle."""
+        if x1 == x2 and y1 == y2:
+            return True
+        for r in obs:
+            if y1 == y2:   # horizontal
+                if r.top < y1 < r.bottom:
+                    if min(x1, x2) < r.right and max(x1, x2) > r.left:
+                        return False
+            else:           # vertical
+                if r.left < x1 < r.right:
+                    if min(y1, y2) < r.bottom and max(y1, y2) > r.top:
+                        return False
+        return True
+
+    def _build(waypoints: "list[tuple[int,int]]") -> "list[tuple[int,int]]":
+        """Assemble full path and strip consecutive duplicates."""
+        raw = [(sx, sy), (s1x, s1y)] + waypoints + [(s2x, s2y), (tx, ty)]
+        out = [raw[0]]
+        for p in raw[1:]:
+            if p != out[-1]:
+                out.append(p)
+        return out
+
+    def _middle_ok(pts: "list[tuple[int,int]]") -> bool:
+        """Check middle segments (skip first and last stub) against node obstacles."""
+        for i in range(1, len(pts) - 2):
+            if not _seg_ok(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]):
+                return False
+        return True
+
+    PAR_GAP = _NODE_R   # minimum perpendicular distance between parallel segments
+
+    def _parallel_ok(pts: "list[tuple[int,int]]") -> bool:
+        """No middle segment runs parallel and within PAR_GAP of any routed segment."""
+        if not routed_segs:
+            return True
+        for i in range(1, len(pts) - 2):
+            x1, y1 = pts[i];  x2, y2 = pts[i + 1]
+            for ex1, ey1, ex2, ey2 in routed_segs:
+                if y1 == y2 and ey1 == ey2:          # both horizontal
+                    if abs(y1 - ey1) < PAR_GAP:
+                        lo1, hi1 = min(x1, x2), max(x1, x2)
+                        lo2, hi2 = min(ex1, ex2), max(ex1, ex2)
+                        if lo1 < hi2 and lo2 < hi1:
+                            return False
+                elif x1 == x2 and ex1 == ex2:         # both vertical
+                    if abs(x1 - ex1) < PAR_GAP:
+                        lo1, hi1 = min(y1, y2), max(y1, y2)
+                        lo2, hi2 = min(ey1, ey2), max(ey1, ey2)
+                        if lo1 < hi2 and lo2 < hi1:
+                            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Build bypass offsets from every obstacle edge and every routed segment.
+    bypass_ys: list[int] = []
+    bypass_xs: list[int] = []
+    for r in obstacle_rects:
+        bypass_ys += [r.top  - CLEAR - 1, r.bottom + CLEAR + 1]
+        bypass_xs += [r.left - CLEAR - 1, r.right  + CLEAR + 1]
+    for ex1, ey1, ex2, ey2 in (routed_segs or []):
+        if ey1 == ey2:    bypass_ys += [ey1 - PAR_GAP, ey1 + PAR_GAP]
+        elif ex1 == ex2:  bypass_xs += [ex1 - PAR_GAP, ex1 + PAR_GAP]
+    mid_y = (s1y + s2y) // 2
+    mid_x = (s1x + s2x) // 2
+    bypass_ys.sort(key=lambda v: abs(v - mid_y))
+    bypass_xs.sort(key=lambda v: abs(v - mid_x))
+
+    # ------------------------------------------------------------------
+    # Candidate middle waypoints (order = preference, simplest first).
+    candidates: list[list[tuple[int, int]]] = []
+
+    # 1. Straight connection (only if stubs are already co-linear)
+    if s1x == s2x or s1y == s2y:
+        candidates.append([])
+
+    # 2. One-bend L-routes
+    candidates.append([(s2x, s1y)])
+    candidates.append([(s1x, s2y)])
+
+    # 3. Two-bend Z/U routes around blocking nodes and routed segments
+    for by in bypass_ys:
+        candidates.append([(s1x, by), (s2x, by)])
+    for bx in bypass_xs:
+        candidates.append([(bx, s1y), (bx, s2y)])
+
+    for waypoints in candidates:
+        pts = _build(waypoints)
+        if _middle_ok(pts) and _parallel_ok(pts):
+            return pts
+
+    # Fallback: best simple L (may clip through a node — _draw_edge will
+    # handle it with its visual clipping as a last resort).
+    return _build([(s2x, s1y)])
 
 
 def _clip_ortho_segment(
