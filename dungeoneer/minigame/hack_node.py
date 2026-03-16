@@ -22,6 +22,7 @@ class LootKind(Enum):
     WEAPON       = auto()
     CREDITS      = auto()
     BONUS_TIME   = auto()
+    ARMOR        = auto()
 
 
 class SecurityKind(Enum):

@@ -59,15 +59,19 @@ class MoveAction(Action):
 
 
 class MeleeAttackAction(Action):
-    def __init__(self, target: "Actor", range_tiles: int = 1) -> None:
+    def __init__(self, target: "Actor", range_tiles: int = 1, diagonal: bool = False) -> None:
         self.target      = target
         self.range_tiles = range_tiles
+        self.diagonal    = diagonal
 
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         dx = abs(actor.x - self.target.x)
         dy = abs(actor.y - self.target.y)
-        # Chebyshev distance — covers diagonals and extended reach (range_tiles > 1)
-        return self.target.alive and max(dx, dy) <= self.range_tiles and (dx + dy) > 0
+        if not self.target.alive or (dx + dy) == 0:
+            return False
+        if self.diagonal:
+            return max(dx, dy) <= self.range_tiles      # Chebyshev — 8 neighbours
+        return (dx + dy) <= self.range_tiles            # Manhattan — 4 cardinal only
 
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         return resolver.resolve_melee(actor, self, floor)

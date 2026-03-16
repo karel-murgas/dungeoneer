@@ -7,6 +7,7 @@ from dungeoneer.core import settings
 from dungeoneer.entities.actor import Actor
 from dungeoneer.items.inventory import Inventory
 from dungeoneer.items.weapon import Weapon, make_pistol, make_combat_knife
+from dungeoneer.items.armor import Armor
 
 if TYPE_CHECKING:
     from dungeoneer.core.difficulty import Difficulty
@@ -26,10 +27,16 @@ class Player(Actor):
         )
         self.inventory:        Inventory      = Inventory()
         self.equipped_weapon:  Weapon | None  = make_pistol()
+        self.equipped_armor:   Armor  | None  = None
         self.ammo_reserves:    dict[str, int] = dict(diff.starting_ammo)
         self.credits:          int            = 0
         self.floor_depth:      int            = 1
         self.inventory.add(make_combat_knife())
+
+    @property
+    def total_defence(self) -> int:
+        bonus = self.equipped_armor.defense_bonus if self.equipped_armor else 0
+        return self.defence + bonus
 
     # ------------------------------------------------------------------
     # Weapon helpers

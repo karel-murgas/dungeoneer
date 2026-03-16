@@ -219,7 +219,7 @@ def generate_hack_map(params: HackParams, rng: random.Random | None = None) -> H
     sec_count   = min(params.security_count, len(remaining))
     sec_indices = rng.sample(remaining, sec_count)
 
-    # Distribute loot kinds with weights so weapons/bonus_time are rarer
+    # Distribute loot kinds with weights so weapons/bonus_time/armor are rarer
     _loot_pool = (
         [LootKind.AMMO]         * 3 +
         [LootKind.RIFLE_AMMO]   * 2 +
@@ -228,7 +228,8 @@ def generate_hack_map(params: HackParams, rng: random.Random | None = None) -> H
         [LootKind.MEDKIT]       * 1 +
         [LootKind.WEAPON]       * 1 +
         [LootKind.CREDITS]      * 3 +
-        [LootKind.BONUS_TIME]   * 1
+        [LootKind.BONUS_TIME]   * 1 +
+        [LootKind.ARMOR]        * 1
     )
     all_sec_kinds = list(SecurityKind)
 

@@ -87,6 +87,17 @@ class HUD:
         ht_surf = self._font_small.render(heal_str, True, heal_col)
         screen.blit(ht_surf, (bar_x, bar_y + bar_h + 6 + 20))
 
+        # --- Equipped armor (below heal line) ---
+        armor = getattr(player, "equipped_armor", None)
+        if armor is not None:
+            armor_str = f"[ARMOR] {armor.name}  -{armor.defense_bonus} dmg"
+            armor_col = (140, 200, 100)
+        else:
+            armor_str = "[ARMOR] —"
+            armor_col = (60, 80, 55)
+        ar_surf = self._font_small.render(armor_str, True, armor_col)
+        screen.blit(ar_surf, (bar_x, bar_y + bar_h + 6 + 40))
+
         # --- Floor depth + credits (top-right) ---
         depth_text = self._font_large.render(
             f"FLOOR {player.floor_depth}", True, (120, 200, 180)

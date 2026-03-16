@@ -155,18 +155,28 @@ class InventoryUI:
 
         # --- Equipped weapon line ---
         eq_y = oy + _PAD + 28
-        screen.blit(self._font.render("EQUIPPED:", True, _COL_DIM), (ox + _PAD, eq_y))
+        screen.blit(self._font.render("WEAPON:", True, _COL_DIM), (ox + _PAD, eq_y))
         if player.equipped_weapon:
             w = player.equipped_weapon
             eq_surf = self._font_bold.render(f"{w.name}   {w.stat_line()}", True, _COL_EQ)
-            screen.blit(eq_surf, (ox + _PAD + 90, eq_y))
+            screen.blit(eq_surf, (ox + _PAD + 75, eq_y))
         else:
-            screen.blit(self._font.render("— none —", True, _COL_DIM), (ox + _PAD + 90, eq_y))
+            screen.blit(self._font.render("— none —", True, _COL_DIM), (ox + _PAD + 75, eq_y))
 
-        pygame.draw.line(screen, (40, 60, 55), (ox + _PAD, eq_y + 22), (ox + _W - _PAD, eq_y + 22))
+        # --- Equipped armor line ---
+        ar_y = eq_y + 20
+        screen.blit(self._font.render("ARMOR:", True, _COL_DIM), (ox + _PAD, ar_y))
+        armor = getattr(player, "equipped_armor", None)
+        if armor is not None:
+            ar_surf = self._font_bold.render(f"{armor.name}   {armor.stat_line()}", True, (140, 200, 100))
+            screen.blit(ar_surf, (ox + _PAD + 75, ar_y))
+        else:
+            screen.blit(self._font.render("— none —", True, _COL_DIM), (ox + _PAD + 75, ar_y))
+
+        pygame.draw.line(screen, (40, 60, 55), (ox + _PAD, ar_y + 22), (ox + _W - _PAD, ar_y + 22))
 
         # --- Item list ---
-        list_y    = eq_y + 30
+        list_y    = ar_y + 30
         footer_y  = oy + _H - _PAD - 26
         list_max_y = footer_y - 14
 

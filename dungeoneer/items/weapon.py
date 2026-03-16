@@ -15,6 +15,7 @@ class Weapon(Item):
     ammo_capacity: int       = 0    # 0 = unlimited/melee
     ammo_current:  int       = 0
     range_tiles:   int       = 1    # max attack range in tiles
+    diagonal:      bool      = False  # True = also reaches diagonal neighbours
     ammo_type:     str       = ""   # "9mm", "rifle", "shell", "" = melee
     shots:         int       = 1    # rounds fired per attack action (burst fire)
 
@@ -22,7 +23,8 @@ class Weapon(Item):
         if self.range_type == RangeType.RANGED:
             burst = f"  ×{self.shots}" if self.shots > 1 else ""
             return f"{self.damage_min}–{self.damage_max} dmg{burst}  {self.ammo_current}/{self.ammo_capacity}  ~{self.range_tiles}t"
-        return f"{self.damage_min}–{self.damage_max} dmg"
+        reach = self.range_tiles + 0.5 if self.diagonal else self.range_tiles
+        return f"{self.damage_min}–{self.damage_max} dmg  ~{reach:g}t"
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +93,7 @@ def make_energy_sword() -> Weapon:
         attack_bonus=2,
         ammo_capacity=0, ammo_current=0,
         range_tiles=1,
+        diagonal=True,
     )
 
 def make_rifle() -> Weapon:
