@@ -1124,13 +1124,16 @@ def _assign_port_sides(node: HackNode, neighbors: list[HackNode]) -> dict[int, i
     def _adiff(a: float, b: float) -> float:
         return abs((a - b + math.pi) % (2 * math.pi) - math.pi)
 
-    nb_angles = sorted(
-        [(nb.node_id, math.atan2(nb.sy - node.sy, nb.sx - node.sx)) for nb in neighbors],
-        key=lambda x: x[1],
-    )
+    nb_angles = [(nb.node_id, math.atan2(nb.sy - node.sy, nb.sx - node.sx))
+                 for nb in neighbors]
+    # Process most-certain assignments first (smallest angular distance to
+    # their best side), so a diagonal neighbor never "steals" a cardinal side
+    # from a neighbor that clearly belongs to it.
     available = list(range(4))
     result: dict[int, int] = {}
-    for nb_id, angle in nb_angles:
+    for nb_id, angle in sorted(nb_angles,
+                                key=lambda x: min(_adiff(x[1], _SIDE_IDEAL[s])
+                                                  for s in range(4))):
         best = min(available, key=lambda s: _adiff(angle, _SIDE_IDEAL[s]))
         result[nb_id] = best
         available.remove(best)
