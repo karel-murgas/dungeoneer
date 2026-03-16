@@ -44,7 +44,7 @@ _COL_LOOT      = _NEON_GREEN
 _COL_LOOT_D    = (16,   40,  20)
 _COL_SEC_HID   = (80,   58,  18)
 _COL_SEC_REV   = _NEON_RED
-_COL_PLAYER    = _NEON_CYAN
+_COL_PLAYER    = _NEON_YELLOW
 _COL_EDGE      = (18,   50,  70)
 _COL_EDGE_D    = (12,   20,  28)
 _COL_FLOW      = _NEON_CYAN
@@ -138,7 +138,7 @@ class HackScene(Scene):
         # Pre-scale item sprites from the main game (32×32 → 28×28 to fit in node)
         _icon_size = 38
         self._item_sprites: dict[str, pygame.Surface] = {}
-        for _key in ("item_loot_ammo", "item_loot_consumable", "item_loot_ranged", "item_loot"):
+        for _key in ("item_loot_ammo", "item_loot_consumable", "item_loot_ranged", "item_loot_armor", "item_loot"):
             _raw = procedural_sprites.get(_key)
             if _raw is not None:
                 self._item_sprites[_key] = pygame.transform.scale(_raw, (_icon_size, _icon_size))
@@ -933,11 +933,13 @@ class HackScene(Scene):
             spr = self._item_sprites.get("item_loot_consumable")
         elif kind == LootKind.WEAPON:
             spr = self._item_sprites.get("item_loot_ranged")
+        elif kind == LootKind.ARMOR:
+            spr = self._item_sprites.get("item_loot_armor")
         else:
             spr = None
 
         if spr is not None:
-            screen.blit(spr, (cx - half, cy - half))
+            screen.blit(spr, (cx - spr.get_width() // 2, cy - spr.get_height() // 2))
             return
 
         # ---- fallback geometry for CREDITS and BONUS_TIME ----
@@ -1678,6 +1680,7 @@ def _make_loot_item(kind: LootKind) -> Optional["Item"]:
     from dungeoneer.items.ammo import make_9mm_ammo, make_rifle_ammo, make_shotgun_ammo
     from dungeoneer.items.consumable import make_stim_pack, make_medkit
     from dungeoneer.items.weapon import make_shotgun, make_rifle, make_smg
+    from dungeoneer.items.armor import make_basic_armor
 
     if kind == LootKind.AMMO:         return make_9mm_ammo(8)
     if kind == LootKind.RIFLE_AMMO:   return make_rifle_ammo(3)
@@ -1685,4 +1688,5 @@ def _make_loot_item(kind: LootKind) -> Optional["Item"]:
     if kind == LootKind.HEAL:         return make_stim_pack()
     if kind == LootKind.MEDKIT:       return make_medkit()
     if kind == LootKind.WEAPON:       return _r.choice([make_shotgun, make_rifle, make_smg])()
+    if kind == LootKind.ARMOR:        return make_basic_armor()
     return None

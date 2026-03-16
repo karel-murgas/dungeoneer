@@ -8,6 +8,7 @@ class ItemType(Enum):
     WEAPON     = auto()
     CONSUMABLE = auto()
     AMMO       = auto()
+    ARMOR      = auto()
 
 
 class RangeType(Enum):

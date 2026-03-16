@@ -631,14 +631,16 @@ class GameScene(Scene):
         from dungeoneer.items.consumable import make_stim_pack, make_medkit
         from dungeoneer.items.ammo import make_9mm_ammo, make_rifle_ammo
         from dungeoneer.items.weapon import make_rifle, make_shotgun
+        from dungeoneer.items.armor import make_basic_armor
 
         pool = [
-            (0.30, lambda: make_stim_pack()),
-            (0.15, lambda: make_medkit()),
-            (0.25, lambda: make_9mm_ammo(8)),
-            (0.12, lambda: make_rifle_ammo(3)),
+            (0.27, lambda: make_stim_pack()),
+            (0.13, lambda: make_medkit()),
+            (0.22, lambda: make_9mm_ammo(8)),
+            (0.11, lambda: make_rifle_ammo(3)),
             (0.10, lambda: make_shotgun()),
             (0.08, lambda: make_rifle()),
+            (0.09, lambda: make_basic_armor()),
         ]
         items = []
         count = random.randint(1, 2)
@@ -683,23 +685,24 @@ class GameScene(Scene):
 
         w = self.player.equipped_weapon
         reach = w.range_tiles if w else 1
+        diag  = w.diagonal    if w else False
 
-        # Chebyshev distance — same metric used by MeleeAttackAction.validate
+        def dist(e):
+            dx = abs(e.x - self.player.x)
+            dy = abs(e.y - self.player.y)
+            return max(dx, dy) if diag else (dx + dy)
+
         in_reach = [
             a for a in self.floor.actors
             if isinstance(a, Enemy) and a.alive
             and self.floor.dungeon_map.visible[a.y, a.x]
-            and max(abs(a.x - self.player.x), abs(a.y - self.player.y)) <= reach
+            and dist(a) <= reach
         ]
         if not in_reach:
             bus.post(LogMessageEvent("No enemy in melee range.", (180, 80, 80)))
             return WaitAction()
 
-        nearest = min(
-            in_reach,
-            key=lambda e: max(abs(e.x - self.player.x), abs(e.y - self.player.y)),
-        )
-        return MeleeAttackAction(nearest, range_tiles=reach)
+        return MeleeAttackAction(min(in_reach, key=dist), range_tiles=reach, diagonal=diag)
 
     # ------------------------------------------------------------------
     # Scene interface

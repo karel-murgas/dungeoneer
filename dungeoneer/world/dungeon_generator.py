@@ -9,6 +9,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
+from dungeoneer.core.settings import STAIR_FARTHEST_CANDIDATES
 from dungeoneer.world.map import DungeonMap
 from dungeoneer.world.room import Room
 from dungeoneer.world.tile import TileType
@@ -104,13 +105,19 @@ class DungeonGenerator:
         px, py = start_room.cx, start_room.cy
         spawns.append(SpawnDesc("player", px, py))
 
-        # Stairs in last room
-        end_room = rooms[-1]
+        # Stairs in one of the N farthest rooms from the start room
+        other_rooms = rooms[1:]
+        other_rooms_sorted = sorted(
+            other_rooms,
+            key=lambda r: (r.cx - start_room.cx) ** 2 + (r.cy - start_room.cy) ** 2,
+            reverse=True,
+        )
+        end_room = self._rng.choice(other_rooms_sorted[:STAIR_FARTHEST_CANDIDATES])
         sx, sy = end_room.cx, end_room.cy
         dungeon_map.set_type(sx, sy, TileType.STAIR_DOWN)
 
         # Distribute enemies in middle rooms (not start or end room)
-        middle_rooms = rooms[1:-1] if len(rooms) > 2 else rooms[1:]
+        middle_rooms = [r for r in rooms if r is not start_room and r is not end_room]
         enemy_rooms = self._rng.sample(
             middle_rooms,
             min(guards + drones, len(middle_rooms)),

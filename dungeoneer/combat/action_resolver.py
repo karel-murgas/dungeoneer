@@ -31,6 +31,7 @@ class ActionResolver:
     def _auto_pickup(self, player: "Player", floor: "Floor") -> None:  # type: ignore[name-defined]
         from dungeoneer.core.event_bus import bus, LogMessageEvent
         from dungeoneer.items.ammo import AmmoPickup
+        from dungeoneer.items.armor import Armor
         from dungeoneer.items.weapon import Weapon
         from dungeoneer.items.item import RangeType
 
@@ -51,6 +52,19 @@ class ActionResolver:
                 floor.remove_item_entity(item_e)
                 log.info("Ammo pickup: %s at (%d,%d)", item.name, player.x, player.y)
                 bus.post(LogMessageEvent(f"Picked up {item.name}.", (200, 220, 100)))
+                continue
+
+            # --- Armor → auto-equip if slot empty, else discard ---
+            if isinstance(item, Armor):
+                if player.equipped_armor is not None:
+                    floor.remove_item_entity(item_e)
+                    log.info("Discarded duplicate armor: %s at (%d,%d)", item.name, player.x, player.y)
+                    bus.post(LogMessageEvent(f"Already wearing {player.equipped_armor.name}, left it.", (120, 100, 80)))
+                else:
+                    player.equipped_armor = item
+                    floor.remove_item_entity(item_e)
+                    log.info("Auto-equipped armor: %s at (%d,%d)", item.name, player.x, player.y)
+                    bus.post(LogMessageEvent(f"Equipped {item.name}  -{item.defense_bonus} dmg.", (180, 220, 140)))
                 continue
 
             # --- Melee weapon duplicate → discard (already have one of this type) ---

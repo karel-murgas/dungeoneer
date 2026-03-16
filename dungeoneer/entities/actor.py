@@ -23,9 +23,14 @@ class Actor(Entity):
         self.defence = defence   # damage reduction
         self.alive   = True
 
+    @property
+    def total_defence(self) -> int:
+        """Effective defence including any equipped armor bonuses."""
+        return self.defence
+
     def take_damage(self, amount: int) -> int:
         """Apply damage (after reduction). Returns actual damage dealt."""
-        actual = max(1, amount - self.defence)
+        actual = max(1, amount - self.total_defence)
         self.hp -= actual
         if self.hp <= 0:
             self.hp = 0
