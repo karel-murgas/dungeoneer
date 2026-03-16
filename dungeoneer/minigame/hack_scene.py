@@ -135,12 +135,13 @@ class HackScene(Scene):
         self._font_xs  = pygame.font.SysFont("consolas", 11, bold=True)
 
         # Pre-scale item sprites from the main game (32×32 → 28×28 to fit in node)
-        _icon_size = 28
+        _icon_size = 38
         self._item_sprites: dict[str, pygame.Surface] = {}
         for _key in ("item_loot_ammo", "item_loot_consumable", "item_loot_ranged", "item_loot"):
             _raw = procedural_sprites.get(_key)
             if _raw is not None:
                 self._item_sprites[_key] = pygame.transform.scale(_raw, (_icon_size, _icon_size))
+        self._font_bonus = pygame.font.SysFont("consolas", 15, bold=True)
 
     # ------------------------------------------------------------------
     # Input
@@ -816,7 +817,7 @@ class HackScene(Scene):
 
     def _draw_node_icon(self, screen: pygame.Surface, node: HackNode, cx: int, cy: int) -> None:
         """Blit main-game sprites (or simple geometry) inside a node square."""
-        sz = 28  # pre-scaled sprite size
+        sz = 38  # pre-scaled sprite size
         half = sz // 2
 
         if node.ntype == NodeType.ENTRY:
@@ -875,9 +876,8 @@ class HackScene(Scene):
 
         elif kind == LootKind.BONUS_TIME:
             color = (80, 180, 255)
-            pygame.draw.circle(screen, color, (cx, cy), 8, 1)
-            pygame.draw.line(screen, color, (cx, cy-5), (cx, cy+5), 2)
-            pygame.draw.line(screen, color, (cx-5, cy), (cx+5, cy), 2)
+            t_surf = self._font_bonus.render("+3s", True, color)
+            screen.blit(t_surf, (cx - t_surf.get_width() // 2, cy - t_surf.get_height() // 2))
 
     def _draw_key_badge(self, screen: pygame.Surface, nx: int, ny: int, label: str) -> None:
         bsurf = self._font_xs.render(label, True, (0, 0, 0))
