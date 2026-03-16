@@ -1,31 +1,24 @@
 """TileRenderer: draws map tiles using Dithart sci-fi sprites with FOV shading.
 
 Tile index mapping for tileset_for_free.png (8 cols × 15 rows, 32×32, 0-indexed).
-Indices verified against the author's free_scifi_tileset_example.tmx (GID = index+1).
+Indices verified by pixel-matching against godot_minimal_3x3_autotile.png.
 
   FLOOR      → 112   (row 14 col 0)  plain sci-fi floor
   STAIR_DOWN → 47    (row  5 col 7)  hatch/stair
   DOOR       → 40    (row  5 col 0)  door
 
-Wall autotile — 4-bit cardinal mask: N=bit0, S=bit1, W=bit2, E=bit3 (1 = floor neighbor)
-─────────────────────────────────────────────────────────────────────────────────────────
-  0b0001 (N)   → 42   north face       (floor to north = south wall of room shows tile 42)
-  0b0010 (S)   → 88   south face       (floor to south = north wall shows tile 88)
-  0b0100 (W)   → 20   left-side face   (floor to west)
-  0b1000 (E)   → 16   right-side face  (floor to east)
+Wall autotile — 8-bit neighbour mask:
+  bit0=N  bit1=S  bit2=W  bit3=E  bit4=NW  bit5=NE  bit6=SW  bit7=SE
+  Value 1 = floor neighbour, 0 = wall neighbour.
 
-  0b0101 (N+W) →  9   NW inner corner
-  0b1001 (N+E) → 11   NE inner corner
-  0b0110 (S+W) → 25   SW inner corner
-  0b1010 (S+E) → 27   SE inner corner
+The primary lookup table (_WALL_AUTOTILE_8BIT) covers all 47 autotile positions
+from the Godot minimal-3×3 template (pixel-matched against the tileset).
+Diagonal context distinguishes variants of the same cardinal face — e.g. a
+south-face wall (N floor) looks different when another room also touches the
+SW or SE diagonal.
 
-When all 4 cardinal neighbours are walls (mask == 0), one diagonal neighbour
-determines the outer-corner tile:
-  SE floor →  1   outer top-left  (room extends SE of this tile)
-  SW floor →  3   outer top-right (room extends SW)
-  NE floor → 24   outer bot-left  (room extends NE)
-  NW floor → 28   outer bot-right (room extends NW)
-  none     →  0   true interior surface
+For rare 8-bit masks not in the table the code falls back to the 15-entry
+4-bit cardinal table (_WALL_AUTOTILE), which is always a reasonable approximation.
 
 Floor tile 112 is always rendered beneath wall face tiles because some face
 tiles have transparent areas.
@@ -63,33 +56,101 @@ _RECT_COLOURS: dict[TileType, tuple] = {
 }
 
 # ---------------------------------------------------------------------------
-# Wall autotile table  (mask bits: N=0, S=1, W=2, E=3; set = floor neighbor)
+# Wall autotile — 8-bit full-neighbour table
+# Derived by pixel-matching godot_minimal_3x3_autotile.png against tileset.
+# bit0=N, bit1=S, bit2=W, bit3=E, bit4=NW, bit5=NE, bit6=SW, bit7=SE (1=floor)
 # ---------------------------------------------------------------------------
-_WALL_AUTOTILE: dict[int, int] = {
-    # Single exposed face
-    0b0001: 42,   # N floor → tile 42
-    0b0010: 88,   # S floor → tile 88
-    0b0100: 20,   # W floor → left-side face
-    0b1000: 16,   # E floor → right-side face
+_WALL_AUTOTILE_8BIT: dict[int, int] = {
+    # ── No cardinal floor (outer corners / true interior) ──────────────────
+    0b00000000:  0,  # all walls — true interior block
+    0b00010000: 28,  # NW floor only
+    0b00100000: 24,  # NE floor only
+    0b01000000:  3,  # SW floor only
+    0b10000000:  1,  # SE floor only
+    0b00110000: 30,  # NW+NE
+    0b01010000: 14,  # NW+SW
+    0b10010000: 71,  # NW+SE
+    0b01100000: 63,  # NE+SW
+    0b10100000: 13,  # NE+SE
+    0b11000000: 22,  # SW+SE
+    0b01110000: 70,  # NW+NE+SW
+    0b10110000: 67,  # NW+NE+SE
+    0b11010000: 60,  # NW+SW+SE
+    0b11100000: 59,  # NE+SW+SE
+    0b11110000:  4,  # all 4 diagonals
 
-    # Two adjacent faces — inner corners
+    # ── N floor only ────────────────────────────────────────────────────────
+    0b00110001: 42,  # + NW+NE          (standard south-face wall)
+    0b01110001: 51,  # + NW+NE+SW
+    0b10110001: 52,  # + NW+NE+SE
+    0b11110001: 48,  # + all diagonals
+
+    # ── S floor only ────────────────────────────────────────────────────────
+    0b11000010: 88,  # + SW+SE          (standard north-face wall)
+    0b11010010: 68,  # + NW+SW+SE
+    0b11100010: 69,  # + NE+SW+SE
+    0b11110010: 65,  # + all diagonals
+
+    # ── W floor only ────────────────────────────────────────────────────────
+    0b01010100: 20,  # + NW+SW          (standard east-face wall)
+    0b01110100: 57,  # + NW+NE+SW
+    0b11010100: 50,  # + NW+SW+SE
+    0b11110100: 56,  # + all diagonals
+
+    # ── E floor only ────────────────────────────────────────────────────────
+    0b10101000: 16,  # + NE+SE          (standard west-face wall)
+    0b10111000: 58,  # + NW+NE+SE
+    0b11101000: 49,  # + NE+SW+SE
+    0b11111000: 55,  # + all diagonals
+
+    # ── N+W floor ───────────────────────────────────────────────────────────
+    0b01110101: 27,  # + NW+NE+SW  (SE=wall — classic inner NW corner)
+    0b11110101: 53,  # + all diagonals
+
+    # ── N+E floor ───────────────────────────────────────────────────────────
+    0b10111001: 25,  # + NW+NE+SE  (SW=wall — classic inner NE corner)
+    0b11111001: 54,  # + all diagonals
+
+    # ── S+W floor ───────────────────────────────────────────────────────────
+    0b11010110: 11,  # + NW+SW+SE  (NE=wall — classic inner SW corner)
+    0b11110110: 64,  # + all diagonals
+
+    # ── S+E floor ───────────────────────────────────────────────────────────
+    0b11101010:  9,  # + NE+SW+SE  (NW=wall — classic inner SE corner)
+    0b11111010: 66,  # + all diagonals
+
+    # ── Opposite-face corridors ──────────────────────────────────────────────
+    0b11110011:  6,  # N+S + all diagonals  (EW corridor)
+    0b11111100: 23,  # W+E + all diagonals  (NS corridor)
+
+    # ── T-junctions / end caps ──────────────────────────────────────────────
+    0b11110111:  5,  # N+S+W + all diagonals  (W cap)
+    0b11111011:  7,  # N+S+E + all diagonals  (E cap)
+    0b11111101: 15,  # N+W+E + all diagonals  (N cap)
+    0b11111110: 31,  # S+W+E + all diagonals  (S cap)
+
+    # ── Isolated pillar ─────────────────────────────────────────────────────
+    0b11111111: 21,  # all floor neighbours
+}
+
+# Fallback: 4-bit cardinal mask for 8-bit masks not listed above.
+# bit0=N, bit1=S, bit2=W, bit3=E  (1 = floor neighbour)
+_WALL_AUTOTILE: dict[int, int] = {
+    0b0001: 42,   # N
+    0b0010: 88,   # S
+    0b0100: 20,   # W
+    0b1000: 16,   # E
     0b0101: 27,   # N+W
     0b1001: 25,   # N+E
     0b0110: 11,   # S+W
     0b1010:  9,   # S+E
-
-    # Two opposite faces
     0b0011:  6,   # N+S
     0b1100: 23,   # E+W
-
-    # T-junctions / wall end caps
-    0b0111:  5,   # N+S+W → W cap (wall to E only)
-    0b1011:  7,   # N+S+E → E cap (wall to W only)
-    0b1101: 15,   # N+E+W → N cap (wall to S only)
-    0b1110: 31,   # S+E+W → S cap (wall to N only)
-
-    # Isolated wall pillar (floor on all four sides)
-    0b1111: 21,
+    0b0111:  5,   # N+S+W
+    0b1011:  7,   # N+S+E
+    0b1101: 15,   # N+W+E
+    0b1110: 31,   # S+W+E
+    0b1111: 21,   # all cardinals
 }
 
 
@@ -107,31 +168,27 @@ def _floor_at(dungeon_map: "DungeonMap", x: int, y: int) -> bool:  # type: ignor
 def _autotile_index(dungeon_map: "DungeonMap", x: int, y: int) -> int:  # type: ignore[name-defined]
     """Return the spritesheet index for the wall tile at (x, y).
 
-    Uses the 4-bit cardinal mask first.  When all four cardinal neighbours
-    are also walls (mask == 0) the tile sits at an outer corner of a room;
-    a diagonal check selects the matching corner piece so it blends with the
-    face tiles bordering it.
+    Computes an 8-bit neighbour mask (cardinals + diagonals) and looks it up
+    in _WALL_AUTOTILE_8BIT.  Falls back to the 4-bit cardinal table for any
+    mask not explicitly listed.
     """
-    n = _floor_at(dungeon_map, x,     y - 1)
-    s = _floor_at(dungeon_map, x,     y + 1)
-    w = _floor_at(dungeon_map, x - 1, y    )
-    e = _floor_at(dungeon_map, x + 1, y    )
-    mask = n | (s << 1) | (w << 2) | (e << 3)
+    n  = _floor_at(dungeon_map, x,     y - 1)
+    s  = _floor_at(dungeon_map, x,     y + 1)
+    w  = _floor_at(dungeon_map, x - 1, y    )
+    e  = _floor_at(dungeon_map, x + 1, y    )
+    nw = _floor_at(dungeon_map, x - 1, y - 1)
+    ne = _floor_at(dungeon_map, x + 1, y - 1)
+    sw = _floor_at(dungeon_map, x - 1, y + 1)
+    se = _floor_at(dungeon_map, x + 1, y + 1)
 
-    if mask != 0:
-        return _WALL_AUTOTILE.get(mask, 0)
+    mask8 = (n       | (s  << 1) | (w  << 2) | (e  << 3)
+             | (nw << 4) | (ne << 5) | (sw << 6) | (se << 7))
 
-    # All cardinal neighbours are walls — check diagonals for outer corners.
-    # Diagonal order matters: check the most visually prominent direction first.
-    if _floor_at(dungeon_map, x + 1, y + 1):   # SE floor → outer top-left corner
-        return 1
-    if _floor_at(dungeon_map, x - 1, y + 1):   # SW floor → outer top-right corner
-        return 3
-    if _floor_at(dungeon_map, x + 1, y - 1):   # NE floor → outer bottom-left corner
-        return 24
-    if _floor_at(dungeon_map, x - 1, y - 1):   # NW floor → outer bottom-right corner
-        return 28
-    return 0   # true interior — no adjacent room in any direction
+    if mask8 in _WALL_AUTOTILE_8BIT:
+        return _WALL_AUTOTILE_8BIT[mask8]
+
+    # Fallback for unlisted diagonal combinations — use cardinal bits only.
+    return _WALL_AUTOTILE.get(n | (s << 1) | (w << 2) | (e << 3), 0)
 
 
 def _make_shadow(ts: int, horizontal: bool) -> pygame.Surface:
