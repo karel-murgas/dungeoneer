@@ -168,9 +168,10 @@ class HackScene(Scene):
             if self._state != _State.IDLE:
                 continue
 
-            direction = _key_to_direction(key)
-            if direction is not None:
-                target = self._nearest_neighbor_in_direction(*direction)
+            side = _KEY_TO_SIDE.get(key)
+            if side is not None:
+                port_sides = self._player_port_sides()
+                target = next((nb_id for nb_id, s in port_sides.items() if s == side), None)
                 if target is not None:
                     self._start_move(target)
 
@@ -394,6 +395,11 @@ class HackScene(Scene):
                 }
             self._audio.play("hack_complete", volume=0.7)
 
+        # Auto-finish when all loot nodes have been collected
+        remaining = [n for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and not n.hacked]
+        if not remaining:
+            self._finish(success=True)
+
     def _finish(self, success: bool) -> None:
         self._done_success = success
         self._done_timer   = 2.2
@@ -409,38 +415,18 @@ class HackScene(Scene):
     # Private — input helpers
     # ------------------------------------------------------------------
 
+    def _player_port_sides(self) -> dict[int, int]:
+        """Return {neighbor_id: side} port assignments for the current player node."""
+        player_node = self._hack_map.get(self._player_node)
+        nodes = self._hack_map.nodes
+        active_nbs = [nodes[nb_id] for nb_id in player_node.neighbors
+                      if nodes[nb_id].active]
+        return _assign_port_sides(player_node, active_nbs)
+
     def _compute_key_assignments(self) -> dict[int, str]:
-        """Return {neighbor_node_id: key_label} for all reachable neighbors."""
-        assigned: dict[int, str] = {}
-        seen_labels: set[str] = set()
-
-        for _key, (dx, dy), label in _DIRECTIONS_8:
-            if label in seen_labels:
-                continue
-            target_id = self._nearest_neighbor_in_direction(dx, dy)
-            if target_id is not None and target_id not in assigned:
-                assigned[target_id] = label
-                seen_labels.add(label)
-
-        return assigned
-
-    def _nearest_neighbor_in_direction(self, dx: float, dy: float) -> Optional[int]:
-        player = self._hack_map.get(self._player_node)
-        best_id  = None
-        best_dot = 0.0
-
-        for nb in self._hack_map.neighbors_of(self._player_node):
-            vx = nb.sx - player.sx
-            vy = nb.sy - player.sy
-            length = math.hypot(vx, vy)
-            if length == 0:
-                continue
-            dot = (dx * vx + dy * vy) / length
-            if dot > best_dot:
-                best_dot = dot
-                best_id  = nb.node_id
-
-        return best_id
+        """Return {neighbor_node_id: key_label} based on exit port side."""
+        return {nb_id: _SIDE_KEY_LABEL[side]
+                for nb_id, side in self._player_port_sides().items()}
 
     # ------------------------------------------------------------------
     # Private — rendering helpers
@@ -1040,34 +1026,6 @@ class HackScene(Scene):
 
 
 # ---------------------------------------------------------------------------
-# Pure helpers — directions
-# ---------------------------------------------------------------------------
-
-_D7 = math.sqrt(2) / 2
-
-_DIRECTIONS_8 = [
-    (pygame.K_w,     ( 0.0, -1.0), "W"),
-    (pygame.K_UP,    ( 0.0, -1.0), "W"),
-    (pygame.K_d,     ( 1.0,  0.0), "D"),
-    (pygame.K_RIGHT, ( 1.0,  0.0), "D"),
-    (pygame.K_s,     ( 0.0,  1.0), "S"),
-    (pygame.K_DOWN,  ( 0.0,  1.0), "S"),
-    (pygame.K_a,     (-1.0,  0.0), "A"),
-    (pygame.K_LEFT,  (-1.0,  0.0), "A"),
-    (pygame.K_e,     ( _D7, -_D7), "E"),
-    (pygame.K_c,     ( _D7,  _D7), "C"),
-    (pygame.K_z,     (-_D7,  _D7), "Z"),
-    (pygame.K_q,     (-_D7, -_D7), "Q"),
-]
-
-_KEY_TO_DIR: dict[int, tuple[float, float]] = {k: d for k, d, _ in _DIRECTIONS_8}
-
-
-def _key_to_direction(key: int) -> Optional[tuple[float, float]]:
-    return _KEY_TO_DIR.get(key)
-
-
-# ---------------------------------------------------------------------------
 # Pure helpers — node visuals
 # ---------------------------------------------------------------------------
 
@@ -1111,6 +1069,17 @@ _SIDE_IDEAL: list[float] = [-math.pi / 2, 0.0, math.pi / 2, math.pi]
 # Unit-direction vectors for each side (screen coords, y-down)
 _SIDE_DX = [0, 1, 0, -1]   # TOP, RIGHT, BOTTOM, LEFT
 _SIDE_DY = [-1, 0, 1, 0]   # TOP, RIGHT, BOTTOM, LEFT
+
+# Navigation — WSAD + arrows mapped to port sides, and badge labels
+_KEY_TO_SIDE: dict[int, int] = {
+    pygame.K_w: _SIDE_TOP,    pygame.K_UP:    _SIDE_TOP,
+    pygame.K_d: _SIDE_RIGHT,  pygame.K_RIGHT: _SIDE_RIGHT,
+    pygame.K_s: _SIDE_BOTTOM, pygame.K_DOWN:  _SIDE_BOTTOM,
+    pygame.K_a: _SIDE_LEFT,   pygame.K_LEFT:  _SIDE_LEFT,
+}
+_SIDE_KEY_LABEL: dict[int, str] = {
+    _SIDE_TOP: "W", _SIDE_RIGHT: "D", _SIDE_BOTTOM: "S", _SIDE_LEFT: "A",
+}
 
 
 def _assign_port_sides(node: HackNode, neighbors: list[HackNode]) -> dict[int, int]:
@@ -1272,9 +1241,21 @@ def _edge_path(
         if _middle_ok(pts) and _parallel_ok(pts):
             return pts
 
-    # Fallback: best simple L (may clip through a node — _draw_edge will
-    # handle it with its visual clipping as a last resort).
-    return _build([(s2x, s1y)])
+    # Fallback: choose the L-route whose first segment is perpendicular to
+    # the source exit direction so the path goes *away* from the source node
+    # before turning — prevents visually doubling back into it.
+    # For LEFT/RIGHT exits: go vertical first (x stays at s1x, y changes).
+    # For TOP/BOTTOM exits: go horizontal first (y stays at s1y, x changes).
+    # Still respect the parallel-gap constraint where possible.
+    if src_side in (_SIDE_LEFT, _SIDE_RIGHT):
+        options = [[(s1x, s2y)], [(s2x, s1y)]]
+    else:
+        options = [[(s2x, s1y)], [(s1x, s2y)]]
+    for waypoints in options:
+        pts = _build(waypoints)
+        if _parallel_ok(pts):
+            return pts
+    return _build(options[0])
 
 
 def _clip_ortho_segment(

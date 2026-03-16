@@ -19,22 +19,25 @@ _MIN_LOOT_DIST = 3   # minimum BFS hops from entry for loot nodes
 
 @dataclass
 class HackParams:
-    node_count:     int   = 11
+    node_count:     int   = 15
     loot_count:     int   = 4
-    security_count: int   = 2
-    time_limit:     float = 10.0
+    security_count: int   = 3
+    time_limit:     float = 9.0
     move_time:      float = 0.30
     hack_time:      float = 0.60
+    loot_spread:    int   = 3   # minimum BFS hops between any two loot nodes
 
     @classmethod
     def for_difficulty(cls, difficulty: "Difficulty") -> "HackParams":
         name = difficulty.name.lower()
         if name == "easy":
-            return cls(node_count=10, loot_count=5, security_count=1,
-                       time_limit=12.0, move_time=0.25, hack_time=0.50)
+            return cls(node_count=12, loot_count=5, security_count=1,
+                       time_limit=12.0, move_time=0.25, hack_time=0.50,
+                       loot_spread=2)
         if name == "hard":
-            return cls(node_count=14, loot_count=3, security_count=3,
-                       time_limit=8.0,  move_time=0.35, hack_time=0.70)
+            return cls(node_count=18, loot_count=3, security_count=4,
+                       time_limit=7.0,  move_time=0.35, hack_time=0.70,
+                       loot_spread=3)
         return cls()
 
 
@@ -163,22 +166,47 @@ def generate_hack_map(params: HackParams, rng: random.Random | None = None) -> H
     nodes[entry_idx].ntype = NodeType.ENTRY
 
     # ------------------------------------------------------------------
-    # Phase 5: BFS distances from chosen entry on the full graph
+    # Phase 5: BFS distances from chosen entry + pairwise distances
+    # (pairwise used for spread-aware loot placement)
     # ------------------------------------------------------------------
-    hop_dist = _bfs_distances(nodes, entry_idx)
+    hop_dist  = _bfs_distances(nodes, entry_idx)
+    pairwise  = {i: _bfs_distances(nodes, i) for i in range(n)}
 
     # ------------------------------------------------------------------
     # Phase 6: Assign node types
-    # Loot nodes must be at least _MIN_LOOT_DIST hops from entry.
+    # Loot nodes must be at least _MIN_LOOT_DIST hops from entry AND
+    # at least params.loot_spread hops from every other loot node so
+    # that the player must make route decisions instead of chaining
+    # nearby nodes.
     # ------------------------------------------------------------------
     non_entry = [i for i in range(n) if nodes[i].ntype != NodeType.ENTRY]
 
-    far_nodes = [i for i in non_entry if hop_dist.get(i, 0) >= _MIN_LOOT_DIST]
+    far_nodes  = [i for i in non_entry if hop_dist.get(i, 0) >= _MIN_LOOT_DIST]
+    loot_count = min(params.loot_count, len(far_nodes))
 
-    # Strictly enforce distance constraint.
-    # If fewer far nodes exist than requested, use what's available.
-    loot_count   = min(params.loot_count, len(far_nodes))
-    loot_indices = rng.sample(far_nodes, loot_count)
+    # Greedy spread-aware placement: each new loot node must be at least
+    # loot_spread hops from all already-placed loot nodes.
+    available    = list(far_nodes)
+    rng.shuffle(available)
+    loot_indices: list[int] = []
+    for _ in range(loot_count):
+        if not available:
+            break
+        if not loot_indices:
+            pick = available[0]
+        else:
+            spread_ok = [c for c in available
+                         if all(pairwise[c].get(p, 0) >= params.loot_spread
+                                for p in loot_indices)]
+            if spread_ok:
+                pick = rng.choice(spread_ok)
+            else:
+                # Fallback: maximise minimum distance to already-placed loot
+                pick = max(available,
+                           key=lambda c: min(pairwise[c].get(p, 0)
+                                             for p in loot_indices))
+        loot_indices.append(pick)
+        available.remove(pick)
 
     remaining   = [i for i in non_entry if i not in loot_indices]
     sec_count   = min(params.security_count, len(remaining))
