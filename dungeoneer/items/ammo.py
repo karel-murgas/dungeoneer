@@ -32,3 +32,14 @@ def make_rifle_ammo(count: int = 3) -> AmmoPickup:
         ammo_type="rifle",
         ammo_count=count,
     )
+
+
+def make_shotgun_ammo(count: int = 4) -> AmmoPickup:
+    return AmmoPickup(
+        id="ammo_shell",
+        name=f"Shells ×{count}",
+        description=f"{count} shotgun shells.",
+        item_type=ItemType.AMMO,
+        ammo_type="shell",
+        ammo_count=count,
+    )
