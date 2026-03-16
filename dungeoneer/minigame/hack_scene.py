@@ -645,46 +645,59 @@ class HackScene(Scene):
         scan_surf.fill((*_NEON_CYAN, 18))
         screen.blit(scan_surf, (panel.x, scan_y))
 
-        # Pre-compute port-side assignments for all active nodes
-        # (uses normalised sx/sy so independent of panel size)
-        port_sides: dict[tuple[int, int], int] = {}
+        # Pre-compute port-side assignments and screen rects for all active nodes
+        port_sides:  dict[tuple[int, int], int]   = {}
+        node_screen: dict[int, tuple[int, int]]   = {}
+        node_rects:  dict[int, pygame.Rect]        = {}
         for node in nodes:
             if not node.active:
                 continue
+            nx, ny = self._node_screen_pos(node, panel)
+            node_screen[node.node_id] = (nx, ny)
+            node_rects[node.node_id]  = pygame.Rect(nx - _NODE_R, ny - _NODE_R,
+                                                     _NODE_R * 2, _NODE_R * 2)
             active_nbs = [nodes[nb_id] for nb_id in node.neighbors if nodes[nb_id].active]
             for nb_id, side in _assign_port_sides(node, active_nbs).items():
                 port_sides[(node.node_id, nb_id)] = side
+
+        all_rects = list(node_rects.values())
 
         # --- Edges ---
         for node in nodes:
             if not node.active:
                 continue
-            nx, ny = self._node_screen_pos(node, panel)
+            nx, ny = node_screen[node.node_id]
             for nb_id in node.neighbors:
                 if nb_id < node.node_id:
                     continue
                 nb = nodes[nb_id]
                 if not nb.active:
                     continue
-                nbx, nby = self._node_screen_pos(nb, panel)
+                nbx, nby = node_screen[nb_id]
                 src_side = port_sides.get((node.node_id, nb_id), _SIDE_RIGHT)
                 tgt_side = port_sides.get((nb_id, node.node_id), _SIDE_LEFT)
                 sp = _node_port(nx,  ny,  src_side)
                 tp = _node_port(nbx, nby, tgt_side)
-                self._draw_edge(screen, sp, src_side, tp, node.node_id, nb_id, player)
+                # Rects to skip when clipping: all nodes except these two endpoints
+                skip = [r for nid, r in node_rects.items()
+                        if nid != node.node_id and nid != nb_id]
+                self._draw_edge(screen, sp, src_side, tp, tgt_side,
+                                node.node_id, nb_id, player, skip)
 
         # Moving dot along port-routed edge
         if self._state == _State.MOVING and self._params.move_time > 0:
             progress = 1.0 - self._move_timer / self._params.move_time
             src = nodes[self._prev_node]
             dst = nodes[self._pending_node]
-            snx, sny = self._node_screen_pos(src, panel)
-            dnx, dny = self._node_screen_pos(dst, panel)
+            snx, sny = node_screen.get(self._prev_node,
+                                       self._node_screen_pos(src, panel))
+            dnx, dny = node_screen.get(self._pending_node,
+                                       self._node_screen_pos(dst, panel))
             src_side = port_sides.get((self._prev_node, self._pending_node), _SIDE_RIGHT)
             tgt_side = port_sides.get((self._pending_node, self._prev_node), _SIDE_LEFT)
             sp = _node_port(snx, sny, src_side)
             tp = _node_port(dnx, dny, tgt_side)
-            pts = _edge_path(sp[0], sp[1], src_side, tp[0], tp[1])
+            pts = _edge_path(sp[0], sp[1], src_side, tp[0], tp[1], tgt_side)
             mx, my = _pos_along_path(pts, progress)
             self._draw_glow(screen, _COL_PLAYER, mx, my, 5, layers=2, max_alpha=120)
             pygame.draw.circle(screen, _COL_PLAYER, (mx, my), 5)
@@ -737,21 +750,28 @@ class HackScene(Scene):
         src_port: tuple[int, int],
         src_side: int,
         tgt_port: tuple[int, int],
+        tgt_side: int,
         id_a: int, id_b: int,
         player: int,
+        skip_rects: list[pygame.Rect],
     ) -> None:
-        """Draw a single edge as a port-routed L-shaped path with animated data packets."""
+        """Draw a single edge with proper H↔H / V↔V routing and node-body clipping."""
         is_active_edge = (id_a == player or id_b == player)
         edge_color = _NEON_CYAN if is_active_edge else _COL_EDGE
         line_w     = 2 if is_active_edge else 1
 
         sx, sy = src_port
         tx, ty = tgt_port
-        pts = _edge_path(sx, sy, src_side, tx, ty)
-        for i in range(len(pts) - 1):
-            pygame.draw.line(screen, edge_color, pts[i], pts[i + 1], line_w)
+        pts = _edge_path(sx, sy, src_side, tx, ty, tgt_side)
 
-        # Animated data packets travelling along the path
+        # Draw each segment, clipping out any portion inside a foreign node
+        for i in range(len(pts) - 1):
+            x1, y1 = pts[i]
+            x2, y2 = pts[i + 1]
+            for (ax, ay), (bx, by) in _clip_ortho_segment(x1, y1, x2, y2, skip_rects):
+                pygame.draw.line(screen, edge_color, (ax, ay), (bx, by), line_w)
+
+        # Animated data packets travelling along the full path
         path_len = sum(
             math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1])
             for i in range(len(pts) - 1)
@@ -1085,17 +1105,85 @@ def _node_port(nx: int, ny: int, side: int) -> tuple[int, int]:
     return                          (nx - r, ny    )   # _SIDE_LEFT
 
 
-def _edge_path(sx: int, sy: int, exit_side: int,
-               tx: int, ty: int) -> list[tuple[int, int]]:
+def _edge_path(sx: int, sy: int, src_side: int,
+               tx: int, ty: int, tgt_side: int) -> list[tuple[int, int]]:
     """
-    2-segment L-shaped path from port (sx,sy) to port (tx,ty).
-    Horizontal exit → go H first, then V.
-    Vertical exit   → go V first, then H.
+    Orthogonal route from port (sx,sy) to port (tx,ty) respecting both sides.
+
+    Same-axis pair (H↔H or V↔V) → 3-segment route through midpoint so both
+    ends leave/enter in the correct direction.
+    Mixed pair (H↔V or V↔H) → clean 2-segment L.
     """
-    if exit_side in (_SIDE_LEFT, _SIDE_RIGHT):
+    src_h = src_side in (_SIDE_LEFT, _SIDE_RIGHT)
+    tgt_h = tgt_side in (_SIDE_LEFT, _SIDE_RIGHT)
+
+    if src_h and tgt_h:
+        # H → V → H  (midpoint in X)
+        mid = (sx + tx) // 2
+        return [(sx, sy), (mid, sy), (mid, ty), (tx, ty)]
+    elif not src_h and not tgt_h:
+        # V → H → V  (midpoint in Y)
+        mid = (sy + ty) // 2
+        return [(sx, sy), (sx, mid), (tx, mid), (tx, ty)]
+    elif src_h:
+        # H exit, V entry — L via (tx, sy)
         return [(sx, sy), (tx, sy), (tx, ty)]
     else:
+        # V exit, H entry — L via (sx, ty)
         return [(sx, sy), (sx, ty), (tx, ty)]
+
+
+def _clip_ortho_segment(
+    x1: int, y1: int, x2: int, y2: int,
+    skip_rects: list[pygame.Rect],
+) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    """
+    Split an axis-aligned segment into sub-segments that avoid *skip_rects*.
+    Returns list of ((ax,ay),(bx,by)) pairs safe to draw.
+    """
+    if y1 == y2:  # horizontal
+        lo, hi = (x1, x2) if x1 <= x2 else (x2, x1)
+        gaps: list[tuple[int, int]] = []
+        for r in skip_rects:
+            if r.top < y1 < r.bottom:
+                gx1, gx2 = max(lo, r.left), min(hi, r.right)
+                if gx1 < gx2:
+                    gaps.append((gx1, gx2))
+        if not gaps:
+            return [((x1, y1), (x2, y2))]
+        gaps.sort()
+        result, cur = [], lo
+        for g0, g1 in gaps:
+            if cur < g0:
+                a, b = (cur, y1), (g0, y1)
+                result.append((a, b) if x1 <= x2 else (b, a))
+            cur = max(cur, g1)
+        if cur < hi:
+            a, b = (cur, y1), (hi, y1)
+            result.append((a, b) if x1 <= x2 else (b, a))
+        return result
+
+    else:  # vertical
+        lo, hi = (y1, y2) if y1 <= y2 else (y2, y1)
+        gaps = []
+        for r in skip_rects:
+            if r.left < x1 < r.right:
+                gy1, gy2 = max(lo, r.top), min(hi, r.bottom)
+                if gy1 < gy2:
+                    gaps.append((gy1, gy2))
+        if not gaps:
+            return [((x1, y1), (x2, y2))]
+        gaps.sort()
+        result, cur = [], lo
+        for g0, g1 in gaps:
+            if cur < g0:
+                a, b = (x1, cur), (x1, g0)
+                result.append((a, b) if y1 <= y2 else (b, a))
+            cur = max(cur, g1)
+        if cur < hi:
+            a, b = (x1, cur), (x1, hi)
+            result.append((a, b) if y1 <= y2 else (b, a))
+        return result
 
 
 def _pos_along_path(pts: list[tuple[int, int]], t: float) -> tuple[int, int]:
