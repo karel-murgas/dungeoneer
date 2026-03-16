@@ -113,12 +113,19 @@ def generate_hack_map(params: HackParams, rng: random.Random | None = None) -> H
     all_cells    = [(c, r) for r in range(grid_rows) for c in range(grid_cols)]
     chosen_cells = rng.sample(all_cells, n)
 
+    # Keep nodes away from panel edges so bypass routes stay within the panel.
+    # H and V margins differ because the panel is much wider than it is tall.
+    _MARGIN_H = 0.07   # left / right
+    _MARGIN_V = 0.12   # top  / bottom
+
     nodes: List[HackNode] = []
     for i, (col, row) in enumerate(chosen_cells):
         jx = rng.uniform(-0.15, 0.15)
         jy = rng.uniform(-0.15, 0.15)
-        sx = (col + 0.5 + jx) / grid_cols
-        sy = (row + 0.5 + jy) / grid_rows
+        sx_raw = (col + 0.5 + jx) / grid_cols
+        sy_raw = (row + 0.5 + jy) / grid_rows
+        sx = _MARGIN_H + sx_raw * (1.0 - 2 * _MARGIN_H)
+        sy = _MARGIN_V + sy_raw * (1.0 - 2 * _MARGIN_V)
         nodes.append(HackNode(node_id=i, ntype=NodeType.EMPTY, sx=sx, sy=sy))
 
     # ------------------------------------------------------------------

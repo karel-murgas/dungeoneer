@@ -72,6 +72,7 @@ class GameScene(Scene):
         self._pending_advance    = False   # waiting for enemy-turn delay
         self._advance_timer      = 0.0     # seconds remaining before advance fires
         self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
+        self._hack_just_completed = False  # advance enemy turns once hack scene pops
 
     def on_enter(self) -> None:
         log.info("GameScene.on_enter")
@@ -84,6 +85,20 @@ class GameScene(Scene):
         self._unsubscribe_events()
         self.audio.detach()
         self.combat_log.close()
+
+    def on_resume(self) -> None:
+        """Called when a scene pushed on top of this one (e.g. HackScene) pops."""
+        if self._hack_just_completed and not self._game_over:
+            self._hack_just_completed = False
+            # Recompute FOV so a freshly spawned drone's visibility is up-to-date,
+            # then trigger the alert banner immediately (before the player can act).
+            if self.player and self.floor:
+                compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+                now_visible = self._any_enemy_visible()
+                if now_visible and not self._had_visible_enemies:
+                    self.alert_banner.trigger()
+                self._had_visible_enemies = now_visible
+            self._schedule_advance()
 
     # ------------------------------------------------------------------
     # Event subscriptions
@@ -390,6 +405,11 @@ class GameScene(Scene):
                     self.audio.play("no_ammo")
                 continue
 
+            # Non-objective containers trigger the hack minigame instead of opening directly.
+            if isinstance(action, OpenContainerAction) and not action.container.is_objective:
+                self._launch_hack(action.container)
+                break
+
             result = action.execute(self.player, self.floor, self.resolver)
             if result.message:
                 bus.post(LogMessageEvent(result.message, result.msg_colour))
@@ -526,6 +546,84 @@ class GameScene(Scene):
             if abs(self.player.x - c.x) <= 1 and abs(self.player.y - c.y) <= 1:
                 return c
         return None
+
+    # ------------------------------------------------------------------
+    # Hack minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_hack(self, container: "ContainerEntity") -> None:
+        from dungeoneer.minigame.hack_scene import HackScene
+        from dungeoneer.minigame.hack_generator import HackParams
+
+        params = HackParams.for_difficulty(self.difficulty)
+
+        def on_complete(success: bool, items, credits: int) -> None:
+            self._on_hack_complete(success, items, credits, container)
+
+        self.app.scenes.push(HackScene(self.app, params=params, on_complete=on_complete))
+
+    def _on_hack_complete(
+        self, success: bool, items, credits: int, container: "ContainerEntity"
+    ) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        container.opened = True
+
+        if success:
+            credits_str = ""
+            if credits > 0:
+                self.player.credits += credits
+                credits_str = f"  +¥{credits}"
+            bus.post(LogMessageEvent(f"Hacked {container.name}.{credits_str}", (200, 180, 80)))
+            for item in items:
+                self.floor.add_item_entity(ItemEntity(self.player.x, self.player.y, item))
+            self.resolver._auto_pickup(self.player, self.floor)
+        else:
+            from dungeoneer.ai.states import CombatState
+            bus.post(LogMessageEvent("Hack failed — security drone dispatched!", (220, 60, 60)))
+            sx, sy = self._find_drone_spawn(container)
+            drone = make_drone(sx, sy)
+            drone.ai_brain.set_state(CombatState())
+            self.floor.add_actor(drone)
+            log.info("Spawned alert drone at (%d,%d) after failed hack", sx, sy)
+
+        self._hack_just_completed = True
+
+    def _find_drone_spawn(self, container: "ContainerEntity") -> tuple[int, int]:
+        """Find the best tile to spawn a drone near a container: walkable, LOS to player,
+        closest to DRONE_PREFERRED_DIST away from the player."""
+        from dungeoneer.combat.line_of_sight import has_los
+        from dungeoneer.core.settings import DRONE_PREFERRED_DIST
+
+        assert self.player is not None
+        assert self.floor  is not None
+
+        cx, cy = container.x, container.y
+        px, py = self.player.x, self.player.y
+        dm = self.floor.dungeon_map
+
+        candidates: list[tuple[int, int]] = []
+        for dy in range(-8, 9):
+            for dx in range(-8, 9):
+                tx, ty = cx + dx, cy + dy
+                if not dm.in_bounds(tx, ty) or not dm.is_walkable(tx, ty):
+                    continue
+                if (tx, ty) == (px, py):
+                    continue
+                if self.floor.get_actor_at(tx, ty) is not None:
+                    continue
+                candidates.append((tx, ty))
+
+        if not candidates:
+            return cx, cy
+
+        los_candidates = [
+            (x, y) for x, y in candidates
+            if has_los(x, y, px, py, dm)
+        ]
+        pool = los_candidates if los_candidates else candidates
+        return min(pool, key=lambda p: abs(abs(p[0] - px) + abs(p[1] - py) - DRONE_PREFERRED_DIST))
 
     @staticmethod
     def _make_container(x: int, y: int) -> ContainerEntity:

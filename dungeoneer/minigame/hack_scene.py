@@ -72,7 +72,7 @@ class _State(Enum):
 # ---------------------------------------------------------------------------
 _HEADER_H  = 64
 _FOOTER_H  = 76
-_NODE_R    = 24
+_NODE_R    = 18
 _PLAYER_R  = 34
 _PULSE_AMP =  5
 _GLOW_LAYERS = 3
@@ -123,6 +123,7 @@ class HackScene(Scene):
 
         self._status: str = "Analyse the network, then move to begin."
         self._log: str    = ""
+        self._show_help: bool = False
 
         # Audio
         self._audio = HackAudio()
@@ -150,12 +151,18 @@ class HackScene(Scene):
     def handle_events(self, events: List[pygame.event.Event]) -> None:
         if self._state == _State.DONE:
             return
+        if self._sec_overlay is not None:
+            return
 
         for event in events:
             if event.type != pygame.KEYDOWN:
                 continue
 
             key = event.key
+
+            if key == pygame.K_F1:
+                self._show_help = not self._show_help
+                continue
 
             if key == pygame.K_ESCAPE:
                 if self._state == _State.HACKING:
@@ -176,6 +183,8 @@ class HackScene(Scene):
                     self._start_move(target)
 
     def handle_mouse(self, pos: tuple[int, int]) -> None:
+        if self._sec_overlay is not None:
+            return
         if self._state != _State.IDLE:
             return
         panel = self._graph_panel_rect()
@@ -215,14 +224,14 @@ class HackScene(Scene):
             if self._loot_overlay["timer"] <= 0:
                 self._loot_overlay = None
 
-        if self._timer_started:
+        if self._timer_started and not self._show_help and self._sec_overlay is None:
             self._time_remaining = max(0.0, self._time_remaining - dt)
             if self._time_remaining == 0.0:
                 self._finish(success=False)
                 return
 
         # Low-timer ticking
-        if self._timer_started and self._time_remaining <= 3.0:
+        if self._timer_started and not self._show_help and self._time_remaining <= 3.0:
             self._tick_cooldown -= dt
             if self._tick_cooldown <= 0:
                 self._audio.play("timer_tick", volume=0.6)
@@ -237,7 +246,8 @@ class HackScene(Scene):
             self._hack_timer -= dt
             if self._hack_timer <= 0:
                 self._collect_loot(self._player_node)
-                self._state = _State.IDLE
+                if self._state != _State.DONE:
+                    self._state = _State.IDLE
 
     # ------------------------------------------------------------------
     # Render
@@ -264,6 +274,9 @@ class HackScene(Scene):
 
         if self._state == _State.DONE:
             self._draw_result_overlay(screen)
+
+        if self._show_help:
+            self._draw_help_overlay(screen)
 
     # ------------------------------------------------------------------
     # Private — state machine
@@ -315,7 +328,7 @@ class HackScene(Scene):
         elif kind == SecurityKind.DESTROY_LOOT:
             victims = [
                 n for n in self._hack_map.nodes
-                if n.ntype == NodeType.LOOT and not n.hacked and n.node_id != node.node_id
+                if n.ntype == NodeType.LOOT and n.active and not n.hacked and n.node_id != node.node_id
             ]
             if victims:
                 v = random.choice(victims)
@@ -340,6 +353,10 @@ class HackScene(Scene):
                     "color": _NEON_ORANGE,
                 }
             self._state = _State.IDLE
+            # Auto-finish if security destroyed the last remaining loot node
+            remaining = [n for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.active and not n.hacked]
+            if not remaining:
+                self._finish(success=True)
 
         elif kind == SecurityKind.BLOCKED:
             self._player_node = self._prev_node
@@ -395,8 +412,8 @@ class HackScene(Scene):
                 }
             self._audio.play("hack_complete", volume=0.7)
 
-        # Auto-finish when all loot nodes have been collected
-        remaining = [n for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and not n.hacked]
+        # Auto-finish when all active loot nodes have been collected
+        remaining = [n for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.active and not n.hacked]
         if not remaining:
             self._finish(success=True)
 
@@ -590,17 +607,15 @@ class HackScene(Scene):
             screen.blit(log_surf, (14, fy + 38))
 
         # Key layout hint (right)
-        hint = "Q W E / A · D / Z S C  +  Mouse"
+        hint = "W A S D / Arrows  +  Mouse  |  [F1] Help"
         hint_surf = self._font_xs.render(hint, True, _TEXT_DIM)
         screen.blit(hint_surf, (sw - hint_surf.get_width() - 14, fy + _FOOTER_H - hint_surf.get_height() - 10))
 
         # Loot counter
-        n_hacked = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.hacked)
-        n_total  = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT)
-        # include already-hacked ones in total
-        n_total_all = n_hacked + sum(1 for n in self._hack_map.nodes
-                                     if n.ntype == NodeType.LOOT and not n.hacked)
-        counter = f"DATA: {n_hacked}/{n_total_all}"
+        n_hacked  = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.hacked)
+        n_active  = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.active)
+        n_total   = n_hacked + n_active  # hacked + still-reachable; destroyed nodes excluded
+        counter = f"DATA: {n_hacked}/{n_total}"
         c_surf = self._font_sm.render(counter, True, _NEON_GREEN if n_hacked > 0 else _TEXT_DIM)
         screen.blit(c_surf, (sw - c_surf.get_width() - 14, fy + 12))
 
@@ -728,6 +743,23 @@ class HackScene(Scene):
             # Key badge
             if node.node_id in key_badges:
                 self._draw_key_badge(screen, nx, ny, key_badges[node.node_id])
+
+        # --- Destroyed loot nodes (active=False) — ghosted with red X ---
+        for node in nodes:
+            if node.active or node.ntype != NodeType.LOOT:
+                continue
+            nx, ny = self._node_screen_pos(node, panel)
+            nr = _NODE_R
+            rect = pygame.Rect(nx - nr, ny - nr, nr * 2, nr * 2)
+            ghost = pygame.Surface((nr * 2, nr * 2), pygame.SRCALPHA)
+            ghost.fill((30, 6, 6, 120))
+            screen.blit(ghost, rect.topleft)
+            pygame.draw.rect(screen, (80, 20, 20), rect, 1)
+            r = 6
+            pygame.draw.line(screen, (160, 30, 30), (nx - r, ny - r), (nx + r, ny + r), 2)
+            pygame.draw.line(screen, (160, 30, 30), (nx + r, ny - r), (nx - r, ny + r), 2)
+            lsurf = self._font_xs.render("CORRUPT", True, (100, 30, 30))
+            screen.blit(lsurf, (nx - lsurf.get_width() // 2, ny + nr + 6))
 
         # --- Player pulse square + corner brackets ---
         pnode = nodes[player]
@@ -860,7 +892,7 @@ class HackScene(Scene):
 
     def _draw_node_icon(self, screen: pygame.Surface, node: HackNode, cx: int, cy: int) -> None:
         """Blit main-game sprites (or simple geometry) inside a node square."""
-        sz = 38  # pre-scaled sprite size
+        sz = _NODE_R * 2 - 4  # fits inside the node rect
         half = sz // 2
 
         if node.ntype == NodeType.ENTRY:
@@ -984,6 +1016,122 @@ class HackScene(Scene):
                                         tuple(int(c * fade * 0.7) for c in color))
         sx2 = sw // 2 - sub_surf.get_width() // 2
         screen.blit(sub_surf, (sx2, panel_y + 14 + main_surf.get_height() + 6))
+
+    # ------------------------------------------------------------------
+    # Draw — help overlay (F1)
+    # ------------------------------------------------------------------
+
+    def _draw_help_overlay(self, screen: pygame.Surface) -> None:
+        sw, sh = screen.get_size()
+
+        # Dim the game behind the panel
+        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 210))
+        screen.blit(dim, (0, 0))
+
+        # Panel: use most of the screen width, max 860px
+        pw = min(sw - 60, 860)
+        ph = 420
+        px = (sw - pw) // 2
+        py = (sh - ph) // 2
+
+        pygame.draw.rect(screen, _PANEL_BG, (px, py, pw, ph))
+        pygame.draw.rect(screen, _NEON_CYAN, (px, py, pw, ph), 1)
+        _draw_corner_bracket(screen, px,      py,      50, 14, _NEON_CYAN, 1)
+        _draw_corner_bracket(screen, px + pw, py,      50, 14, _NEON_CYAN, 1, flip_x=True)
+        _draw_corner_bracket(screen, px,      py + ph, 50, 14, _NEON_CYAN, 1, flip_y=True)
+        _draw_corner_bracket(screen, px + pw, py + ph, 50, 14, _NEON_CYAN, 1, flip_x=True, flip_y=True)
+
+        # Title
+        title_surf = self._font_lg.render("// INTRUSION PROTOCOL — HELP //", True, _NEON_CYAN)
+        screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, py + 14))
+        sep_y = py + 14 + title_surf.get_height() + 6
+        pygame.draw.line(screen, _NEON_CYAN, (px + 20, sep_y), (px + pw - 20, sep_y), 1)
+
+        col_l = px + 26
+        col_r = px + pw // 2 + 14
+        y_l   = sep_y + 14
+        y_r   = sep_y + 14
+        lh    = 17    # normal line height
+        lh2   = 13   # 2nd-line height (sub-description)
+        font  = self._font_sm
+
+        def _section(x: int, y: int, text: str) -> int:
+            s = self._font_md.render(text, True, _NEON_CYAN)
+            screen.blit(s, (x, y))
+            return y + 20
+
+        def _aligned(x: int, y: int,
+                     items: list[tuple[str, tuple, str]]) -> int:
+            """Single-line entries; descriptions auto-align at max-label-width."""
+            if not items:
+                return y
+            gap    = 10
+            col_dx = max(font.size(lbl)[0] for lbl, _, _ in items) + gap
+            for lbl, lc, desc in items:
+                screen.blit(font.render(lbl,  True, lc),    (x,          y))
+                screen.blit(font.render(desc, True, _TEXT), (x + col_dx, y))
+                y += lh
+            return y
+
+        def _two_line(x: int, y: int,
+                      items: list[tuple[str, tuple, str]]) -> int:
+            """Two-line entries: name (colored) + indented description below."""
+            for name, nc, desc in items:
+                screen.blit(font.render(name, True, nc),       (x + 2,  y))
+                screen.blit(font.render(desc, True, _TEXT_DIM),(x + 18, y + lh - 2))
+                y += lh + lh2
+            return y
+
+        def _bullets(x: int, y: int,
+                     items: list[tuple[tuple, str]]) -> int:
+            """Bulleted single-line entries."""
+            for bc, text in items:
+                b = font.render("• ", True, bc)
+                screen.blit(b, (x, y))
+                screen.blit(font.render(text, True, _TEXT), (x + b.get_width(), y))
+                y += lh
+            return y
+
+        # ── Left column ──────────────────────────────────────────────
+        y_l = _section(col_l, y_l, "NODE TYPES")
+        y_l = _aligned(col_l, y_l, [
+            ("►  ENTRY     ", _NEON_CYAN,   "your starting position"),
+            ("▪  DATA CACHE", _NEON_GREEN,  "hack to extract loot"),
+            ("▪  EMPTY     ", _COL_EMPTY,   "traversal only"),
+            ("▪  ICE       ", _COL_SEC_HID, "hidden trap — looks like EMPTY!"),
+        ])
+        y_l += 10
+
+        y_l = _section(col_l, y_l, "ICE EFFECTS  (triggered on entry)")
+        y_l = _two_line(col_l, y_l, [
+            ("✖  TIME PENALTY",   _NEON_RED,    "−3 seconds removed from the clock"),
+            ("✖  DATA CORRUPTED", _NEON_ORANGE, "destroys a random unhacked loot node"),
+            ("✖  ACCESS DENIED",  _NEON_RED,    "blocks entry — bounces you back"),
+        ])
+
+        # ── Right column ─────────────────────────────────────────────
+        y_r = _section(col_r, y_r, "TIMER")
+        y_r = _bullets(col_r, y_r, [
+            (_TEXT_DIM,    "Starts on your first move"),
+            (_TEXT_DIM,    "Bar at top: green → orange → red"),
+            ((80,180,255), "BONUS TIME node: +3 seconds"),
+            (_TEXT_DIM,    "Collect all data caches to finish early"),
+        ])
+        y_r += 10
+
+        y_r = _section(col_r, y_r, "CONTROLS")
+        y_r = _aligned(col_r, y_r, [
+            ("W / A / S / D", _NEON_YELLOW, "move to adjacent node"),
+            ("Arrow keys",    _NEON_YELLOW, "same as W A S D"),
+            ("Mouse click",   _NEON_YELLOW, "click a neighbour to move"),
+            ("ESC",           _NEON_YELLOW, "cancel extraction / abort hack"),
+            ("F1",            _NEON_YELLOW, "toggle this help (timer paused)"),
+        ])
+
+        # Close hint
+        close_surf = font.render("[F1]  Close help", True, _TEXT_DIM)
+        screen.blit(close_surf, (sw // 2 - close_surf.get_width() // 2, py + ph - 22))
 
     # ------------------------------------------------------------------
     # Draw — result overlay
@@ -1133,14 +1281,29 @@ def _edge_path(
     - The route (excluding the two stubs) must not touch any obstacle_rect.
     - Max one connection per side is guaranteed by _assign_port_sides upstream.
     """
-    MIN_STUB = _NODE_R
-    CLEAR    = _NODE_R   # half-node clearance beyond every node-rect edge
+    MIN_STUB      = _NODE_R
+    CLEAR_SELF    = _NODE_R  # src/tgt nodes: stub end sits on boundary → backward move blocked
+    CLEAR_INTER   = 6        # intermediate nodes: small but visible gap from node body
+    BYPASS_MARGIN = _NODE_R  # preferred visual clearance for bypass candidate positions
 
     if not obstacle_rects:
         obstacle_rects = []
 
-    # Inflate each obstacle by CLEAR pixels on all sides for the collision check.
-    obs = [r.inflate(CLEAR * 2, CLEAR * 2) for r in obstacle_rects]
+    # Identify source / target node centres from their port positions.
+    src_cx = sx - _SIDE_DX[src_side] * _NODE_R
+    src_cy = sy - _SIDE_DY[src_side] * _NODE_R
+    tgt_cx = tx - _SIDE_DX[tgt_side] * _NODE_R
+    tgt_cy = ty - _SIDE_DY[tgt_side] * _NODE_R
+
+    def _is_endpoint(r: "pygame.Rect") -> bool:
+        return (abs(r.centerx - src_cx) <= 1 and abs(r.centery - src_cy) <= 1) or \
+               (abs(r.centerx - tgt_cx) <= 1 and abs(r.centery - tgt_cy) <= 1)
+
+    # Inflate: NODE_R for src/tgt (stub sits on boundary, doubling-back blocked);
+    # 2 px for intermediates (allows routing through tight node gaps).
+    obs = [r.inflate(CLEAR_SELF * 2, CLEAR_SELF * 2) if _is_endpoint(r)
+           else r.inflate(CLEAR_INTER * 2, CLEAR_INTER * 2)
+           for r in obstacle_rects]
 
     # Stub end-points: one step of MIN_STUB outward from each port.
     s1x = sx + _SIDE_DX[src_side] * MIN_STUB
@@ -1208,13 +1371,20 @@ def _edge_path(
     bypass_ys: list[int] = []
     bypass_xs: list[int] = []
     for r in obstacle_rects:
-        bypass_ys += [r.top  - CLEAR - 1, r.bottom + CLEAR + 1]
-        bypass_xs += [r.left - CLEAR - 1, r.right  + CLEAR + 1]
+        bypass_ys += [r.top  - BYPASS_MARGIN - 1, r.bottom + BYPASS_MARGIN + 1]
+        bypass_xs += [r.left - BYPASS_MARGIN - 1, r.right  + BYPASS_MARGIN + 1]
     for ex1, ey1, ex2, ey2 in (routed_segs or []):
         if ey1 == ey2:    bypass_ys += [ey1 - PAR_GAP, ey1 + PAR_GAP]
         elif ex1 == ex2:  bypass_xs += [ex1 - PAR_GAP, ex1 + PAR_GAP]
     mid_y = (s1y + s2y) // 2
     mid_x = (s1x + s2x) // 2
+    # Clamp bypass candidates to a window around the source–target bounding box
+    # (BYPASS_MARGIN extra on each side) so the router doesn't emit large loops.
+    _PAD   = BYPASS_MARGIN * 3
+    _by_lo = min(s1y, s2y) - _PAD;  _by_hi = max(s1y, s2y) + _PAD
+    _bx_lo = min(s1x, s2x) - _PAD;  _bx_hi = max(s1x, s2x) + _PAD
+    bypass_ys = [v for v in bypass_ys if _by_lo <= v <= _by_hi]
+    bypass_xs = [v for v in bypass_xs if _bx_lo <= v <= _bx_hi]
     bypass_ys.sort(key=lambda v: abs(v - mid_y))
     bypass_xs.sort(key=lambda v: abs(v - mid_x))
 
@@ -1251,11 +1421,156 @@ def _edge_path(
         options = [[(s1x, s2y)], [(s2x, s1y)]]
     else:
         options = [[(s2x, s1y)], [(s1x, s2y)]]
+    # Both constraints
     for waypoints in options:
         pts = _build(waypoints)
-        if _parallel_ok(pts):
+        if _middle_ok(pts) and _parallel_ok(pts):
             return pts
+    # Relax parallel — still must not pass through nodes or double back
+    for waypoints in options:
+        pts = _build(waypoints)
+        if _middle_ok(pts):
+            return pts
+    # Truly last resort: BFS pathfinding on a grid (guaranteed to avoid nodes).
+    bfs_mid = _bfs_ortho_route(
+        s1x, s1y, s2x, s2y, obstacle_rects,
+        src_cx, src_cy, tgt_cx, tgt_cy,
+    )
+    if bfs_mid is not None:
+        raw = [(sx, sy), (s1x, s1y)] + bfs_mid + [(s2x, s2y), (tx, ty)]
+        out = [raw[0]]
+        for p in raw[1:]:
+            if p != out[-1]:
+                out.append(p)
+        return out
+    # No valid path at all — direct stubs (visual clipping hides node body).
     return _build(options[0])
+
+
+# ---------------------------------------------------------------------------
+# Grid-based BFS fallback router (0-1 BFS minimising turns)
+# ---------------------------------------------------------------------------
+
+def _bfs_ortho_route(
+    s1x: int, s1y: int, s2x: int, s2y: int,
+    obstacle_rects: "list[pygame.Rect]",
+    src_cx: int, src_cy: int, tgt_cx: int, tgt_cy: int,
+) -> "list[tuple[int,int]] | None":
+    """
+    0-1 BFS on a pixel grid that finds an orthogonal path from (s1x,s1y) to
+    (s2x,s2y) with the fewest turns, guaranteed to avoid all obstacle rects.
+    Returns the middle waypoints (between the two stub endpoints) or *None*.
+    """
+    from collections import deque as _deque
+
+    CELL       = _NODE_R // 3 or 4   # grid resolution (6 px for NODE_R=18)
+    CLEAR      = 6                    # clearance from intermediate nodes
+    CLEAR_SELF = _NODE_R              # clearance from src/tgt nodes
+    PAD        = _NODE_R * 4          # grid padding around all obstacles
+
+    if not obstacle_rects:
+        return [(s1x, s1y), (s2x, s2y)]
+
+    # --- grid bounds -----------------------------------------------------
+    all_xs = [r.left for r in obstacle_rects] + [r.right for r in obstacle_rects]
+    all_ys = [r.top  for r in obstacle_rects] + [r.bottom for r in obstacle_rects]
+    gx0 = min(*all_xs, s1x, s2x) - PAD
+    gy0 = min(*all_ys, s1y, s2y) - PAD
+    gx1 = max(*all_xs, s1x, s2x) + PAD
+    gy1 = max(*all_ys, s1y, s2y) + PAD
+    cols = (gx1 - gx0) // CELL + 2
+    rows = (gy1 - gy0) // CELL + 2
+
+    # --- blocked cells ---------------------------------------------------
+    blocked: set[tuple[int,int]] = set()
+    for r in obstacle_rects:
+        is_ep = (abs(r.centerx - src_cx) <= 1 and abs(r.centery - src_cy) <= 1) or \
+                (abs(r.centerx - tgt_cx) <= 1 and abs(r.centery - tgt_cy) <= 1)
+        cl = CLEAR_SELF if is_ep else CLEAR
+        inf = r.inflate(cl * 2, cl * 2)
+        c0 = max(0, (inf.left  - gx0) // CELL)
+        c1 = min(cols, (inf.right  - gx0 + CELL - 1) // CELL + 1)
+        r0 = max(0, (inf.top   - gy0) // CELL)
+        r1 = min(rows, (inf.bottom - gy0 + CELL - 1) // CELL + 1)
+        for ry in range(r0, r1):
+            for cx in range(c0, c1):
+                blocked.add((cx, ry))
+
+    start = ((s1x - gx0) // CELL, (s1y - gy0) // CELL)
+    end   = ((s2x - gx0) // CELL, (s2y - gy0) // CELL)
+    blocked.discard(start)
+    blocked.discard(end)
+
+    # --- 0-1 BFS (cost = number of turns) --------------------------------
+    _DIRS = ((0, -1), (1, 0), (0, 1), (-1, 0))   # U R D L
+    INF   = float("inf")
+    best:   dict[tuple[int,int,int], float]                    = {}
+    parent: dict[tuple[int,int,int], tuple[int,int,int] | None] = {}
+    q = _deque()
+
+    for d in range(4):
+        st = (start[0], start[1], d)
+        best[st]   = 0
+        parent[st] = None
+        q.append((0, st))
+
+    found_state = None
+    while q:
+        cost, state = q.popleft()
+        if cost > best.get(state, INF):
+            continue                         # stale entry
+        cx, cy, cd = state
+        if (cx, cy) == end:
+            found_state = state
+            break
+        for nd in range(4):
+            dx, dy = _DIRS[nd]
+            nx, ny = cx + dx, cy + dy
+            if not (0 <= nx < cols and 0 <= ny < rows):
+                continue
+            if (nx, ny) in blocked:
+                continue
+            tc = 0 if nd == cd else 1
+            nc = cost + tc
+            ns = (nx, ny, nd)
+            if nc < best.get(ns, INF):
+                best[ns]   = nc
+                parent[ns] = state
+                if tc == 0:
+                    q.appendleft((nc, ns))
+                else:
+                    q.append((nc, ns))
+
+    if found_state is None:
+        return None
+
+    # --- reconstruct & simplify ------------------------------------------
+    path: list[tuple[int,int]] = []
+    st: tuple[int,int,int] | None = found_state
+    while st is not None:
+        path.append((gx0 + st[0] * CELL + CELL // 2,
+                      gy0 + st[1] * CELL + CELL // 2))
+        st = parent[st]
+    path.reverse()
+
+    # merge collinear runs
+    if len(path) <= 2:
+        path[0]  = (s1x, s1y)
+        path[-1] = (s2x, s2y)
+        return path
+    simple = [path[0]]
+    for i in range(1, len(path) - 1):
+        px, py = simple[-1]
+        cx, cy = path[i]
+        nx, ny = path[i + 1]
+        if (px == cx == nx) or (py == cy == ny):
+            continue
+        simple.append(path[i])
+    simple.append(path[-1])
+    # snap endpoints to actual stub positions
+    simple[0]  = (s1x, s1y)
+    simple[-1] = (s2x, s2y)
+    return simple
 
 
 def _clip_ortho_segment(
