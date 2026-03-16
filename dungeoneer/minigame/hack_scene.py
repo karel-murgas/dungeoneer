@@ -117,7 +117,9 @@ class HackScene(Scene):
         self._timer_started: bool  = False  # timer waits for first move
 
         # Security effect overlay  {timer, text, sub, color}
-        self._sec_overlay: dict | None = None
+        self._sec_overlay:  dict | None = None
+        # Loot collection overlay  {timer, text, sub, color}
+        self._loot_overlay: dict | None = None
 
         self._status: str = "Analyse the network, then move to begin."
         self._log: str    = ""
@@ -206,6 +208,10 @@ class HackScene(Scene):
             self._sec_overlay["timer"] -= dt
             if self._sec_overlay["timer"] <= 0:
                 self._sec_overlay = None
+        if self._loot_overlay is not None:
+            self._loot_overlay["timer"] -= dt
+            if self._loot_overlay["timer"] <= 0:
+                self._loot_overlay = None
 
         if self._timer_started:
             self._time_remaining = max(0.0, self._time_remaining - dt)
@@ -249,8 +255,10 @@ class HackScene(Scene):
         self._draw_graph(screen, panel)
         self._draw_footer(screen)
 
-        if self._sec_overlay is not None:
-            self._draw_sec_overlay(screen)
+        if self._loot_overlay is not None:
+            self._draw_sec_overlay(screen, self._loot_overlay)
+        elif self._sec_overlay is not None:
+            self._draw_sec_overlay(screen, self._sec_overlay)
 
         if self._state == _State.DONE:
             self._draw_result_overlay(screen)
@@ -353,18 +361,36 @@ class HackScene(Scene):
             self._status = "Bonus time  +3s"
             self._log    = "[+3s]"
             self._audio.play("bonus_time", volume=0.7)
+            self._loot_overlay = {
+                "timer": 1.4,
+                "text":  "BONUS TIME",
+                "sub":   "+3 SECONDS",
+                "color": (80, 180, 255),
+            }
         elif kind == LootKind.CREDITS:
             amount = random.randint(10, 40)
             self._result_credits += amount
             self._status = f"Credits extracted  +¥{amount}"
             self._log    = f"[+¥{amount}]"
             self._audio.play("hack_complete", volume=0.7)
+            self._loot_overlay = {
+                "timer": 1.4,
+                "text":  "CREDITS EXTRACTED",
+                "sub":   f"+¥{amount}",
+                "color": _NEON_GREEN,
+            }
         else:
             item = _make_loot_item(kind)
             if item is not None:
                 self._result_items.append(item)
                 self._status = f"Extracted: {item.name}"
                 self._log    = f"[{item.name}]"
+                self._loot_overlay = {
+                    "timer": 1.4,
+                    "text":  "DATA EXTRACTED",
+                    "sub":   item.name.upper(),
+                    "color": _NEON_GREEN,
+                }
             self._audio.play("hack_complete", volume=0.7)
 
     def _finish(self, success: bool) -> None:
@@ -872,10 +898,7 @@ class HackScene(Scene):
     # Draw — security effect overlay
     # ------------------------------------------------------------------
 
-    def _draw_sec_overlay(self, screen: pygame.Surface) -> None:
-        ov = self._sec_overlay
-        if ov is None:
-            return
+    def _draw_sec_overlay(self, screen: pygame.Surface, ov: dict) -> None:
         sw, sh = screen.get_size()
         color  = ov["color"]
 
