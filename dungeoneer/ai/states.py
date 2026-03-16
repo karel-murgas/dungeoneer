@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from dungeoneer.world.floor import Floor
     from dungeoneer.combat.action import Action
 
+_SEARCH_MAX_TURNS = 8  # turns before giving up and returning to Idle
+
 
 class BehaviorState(ABC):
     @abstractmethod
@@ -101,6 +103,19 @@ class CombatState(BehaviorState):
             return MoveAction(nx - owner.x, ny - owner.y)
         return None
 
+    def _step_toward_tile(self, owner, tx: int, ty: int, floor) -> Optional["Action"]:
+        """Pathfind toward an arbitrary tile (not necessarily the player)."""
+        from dungeoneer.ai.pathfinder import Pathfinder
+        from dungeoneer.combat.action import MoveAction
+
+        path = Pathfinder().find_path((owner.x, owner.y), (tx, ty), floor.dungeon_map)
+        if not path:
+            return None
+        nx, ny = path[0]
+        if floor.get_actor_at(nx, ny) is None and floor.get_container_at(nx, ny) is None:
+            return MoveAction(nx - owner.x, ny - owner.y)
+        return None
+
     def _step_away(self, owner, player, floor) -> Optional["Action"]:
         from dungeoneer.combat.action import MoveAction
 
@@ -118,3 +133,36 @@ class CombatState(BehaviorState):
                     and floor.get_container_at(nx, ny) is None):
                 return MoveAction(ddx, ddy)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Search — enemy was hit but couldn't see attacker; investigates last known pos
+# ---------------------------------------------------------------------------
+
+class SearchState(BehaviorState):
+    def __init__(self, last_x: int, last_y: int) -> None:
+        self.last_x = last_x
+        self.last_y = last_y
+        self._turns_left = _SEARCH_MAX_TURNS
+
+    def execute(self, owner: "Actor", floor: "Floor") -> Optional["Action"]:
+        from dungeoneer.ai.perception import can_see
+        from dungeoneer.entities.player import Player
+        from dungeoneer.combat.action import WaitAction
+
+        player = next((a for a in floor.actors if isinstance(a, Player) and a.alive), None)
+
+        # Player spotted — switch to full combat
+        if player and can_see(owner.x, owner.y, player.x, player.y, floor.dungeon_map):
+            owner.ai_brain.set_state(CombatState())
+            return owner.ai_brain.current_state.execute(owner, floor)
+
+        # Reached destination or ran out of time — give up
+        self._turns_left -= 1
+        if self._turns_left <= 0 or (owner.x == self.last_x and owner.y == self.last_y):
+            owner.ai_brain.set_state(IdleState())
+            return WaitAction()
+
+        # Move toward last known position
+        step = CombatState()._step_toward_tile(owner, self.last_x, self.last_y, floor)
+        return step or WaitAction()

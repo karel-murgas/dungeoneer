@@ -1,0 +1,125 @@
+"""Help overlay — opened with F1, shows all key bindings."""
+from __future__ import annotations
+
+import pygame
+
+from dungeoneer.core import settings
+from dungeoneer.core.i18n import t
+
+_BG      = (10, 12, 20, 220)
+_BORDER  = (80, 180, 160)
+_COL_HDR = (80, 220, 200)
+_COL_KEY = (80, 200, 160)
+_COL_TXT = (180, 190, 210)
+_COL_SEC = (120, 130, 150)
+_COL_DIM = (70, 80, 95)
+
+_W   = 460
+_PAD = 16
+
+# Each section: (section_key, [(key_key, desc_key), ...])
+_SECTIONS = [
+    ("help.section.movement", [
+        ("help.key.wasd",      "help.desc.wasd"),
+        ("help.key.wait",      "help.desc.wait"),
+        ("help.key.interact",  "help.desc.interact"),
+    ]),
+    ("help.section.combat", [
+        ("help.key.shoot",     "help.desc.shoot"),
+        ("help.key.reload",    "help.desc.reload"),
+    ]),
+    ("help.section.items", [
+        ("help.key.heal",      "help.desc.heal"),
+        ("help.key.inventory", "help.desc.inventory"),
+        ("help.key.swap",      "help.desc.swap"),
+    ]),
+    ("help.section.general", [
+        ("help.key.help",      "help.desc.help"),
+        ("help.key.escape",    "help.desc.escape"),
+    ]),
+]
+
+
+class HelpScreen:
+    def __init__(self) -> None:
+        self._font_hdr   = pygame.font.SysFont("consolas", 13, bold=True)
+        self._font_key   = pygame.font.SysFont("consolas", 15, bold=True)
+        self._font_desc  = pygame.font.SysFont("consolas", 15)
+        self._font_title = pygame.font.SysFont("consolas", 18, bold=True)
+
+    # ------------------------------------------------------------------
+
+    def handle_key(self, key: int) -> bool:
+        """Returns True if the help screen should close."""
+        return key in (pygame.K_F1, pygame.K_ESCAPE, pygame.K_RETURN,
+                       pygame.K_SPACE, pygame.K_KP_ENTER)
+
+    # ------------------------------------------------------------------
+
+    def draw(self, screen: pygame.Surface) -> None:
+        sw = settings.SCREEN_WIDTH
+        sh = settings.SCREEN_HEIGHT
+
+        row_h    = 22
+        sec_gap  = 10
+        title_h  = 30
+        footer_h = 30
+
+        total_rows = sum(len(rows) for _, rows in _SECTIONS)
+        total_secs = len(_SECTIONS)
+        h = (_PAD + title_h
+             + total_secs * (14 + sec_gap + 2)
+             + total_rows * row_h
+             + footer_h + _PAD)
+
+        ox = (sw - _W) // 2
+        oy = (sh - h)  // 2
+
+        # Background panel
+        panel = pygame.Surface((_W, h), pygame.SRCALPHA)
+        panel.fill(_BG)
+        screen.blit(panel, (ox, oy))
+        pygame.draw.rect(screen, _BORDER, (ox, oy, _W, h), 2)
+
+        # Title
+        title = self._font_title.render(t("help.title"), True, _COL_HDR)
+        screen.blit(title, (ox + (_W - title.get_width()) // 2, oy + _PAD))
+        pygame.draw.line(screen, (40, 70, 65),
+                         (ox + _PAD, oy + _PAD + title_h - 4),
+                         (ox + _W - _PAD, oy + _PAD + title_h - 4))
+
+        cy = oy + _PAD + title_h + 4
+
+        for section_key, rows in _SECTIONS:
+            # Section header
+            sec_surf = self._font_hdr.render(t(section_key), True, _COL_SEC)
+            screen.blit(sec_surf, (ox + _PAD, cy))
+            cy += 16
+
+            pygame.draw.line(screen, (30, 45, 42),
+                             (ox + _PAD, cy),
+                             (ox + _W - _PAD, cy))
+            cy += 4
+
+            for key_key, desc_key in rows:
+                key_label = t(key_key)
+                key_surf  = self._font_key.render(key_label, True, _COL_KEY)
+                key_w     = key_surf.get_width() + 10
+                badge     = pygame.Rect(ox + _PAD, cy + 1, key_w, row_h - 4)
+                pygame.draw.rect(screen, (18, 35, 32), badge)
+                pygame.draw.rect(screen, (45, 90, 80), badge, 1)
+                screen.blit(key_surf, (ox + _PAD + 5, cy + 2))
+
+                desc_surf = self._font_desc.render(t(desc_key), True, _COL_TXT)
+                screen.blit(desc_surf, (ox + _PAD + key_w + 10, cy + 2))
+
+                cy += row_h
+
+            cy += sec_gap
+
+        # Footer
+        pygame.draw.line(screen, (40, 70, 65),
+                         (ox + _PAD, cy), (ox + _W - _PAD, cy))
+        cy += 6
+        footer = self._font_hdr.render(t("help.footer"), True, _COL_DIM)
+        screen.blit(footer, (ox + (_W - footer.get_width()) // 2, cy))

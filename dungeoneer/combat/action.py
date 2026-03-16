@@ -17,9 +17,14 @@ if TYPE_CHECKING:
 
 @dataclass
 class ActionResult:
-    success:    bool
-    message:    str   = ""
-    msg_colour: tuple = (200, 200, 200)
+    success:     bool
+    message:     str   = ""
+    msg_colour:  tuple = (200, 200, 200)
+    burst_events: list = None   # list of DamageEvent objects to post with staggered delay
+
+    def __post_init__(self):
+        if self.burst_events is None:
+            self.burst_events = []
 
 
 class Action(ABC):
@@ -54,13 +59,15 @@ class MoveAction(Action):
 
 
 class MeleeAttackAction(Action):
-    def __init__(self, target: "Actor") -> None:
-        self.target = target
+    def __init__(self, target: "Actor", range_tiles: int = 1) -> None:
+        self.target      = target
+        self.range_tiles = range_tiles
 
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         dx = abs(actor.x - self.target.x)
         dy = abs(actor.y - self.target.y)
-        return self.target.alive and dx <= 1 and dy <= 1 and (dx + dy) > 0
+        # Chebyshev distance — covers diagonals and extended reach (range_tiles > 1)
+        return self.target.alive and max(dx, dy) <= self.range_tiles and (dx + dy) > 0
 
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         return resolver.resolve_melee(actor, self, floor)

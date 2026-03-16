@@ -36,17 +36,17 @@ class Enemy(Actor):
 
     def drop_loot(self) -> Optional[Item]:
         """Roll the loot table. Returns an Item instance or None."""
-        from dungeoneer.items.weapon import make_combat_knife, make_shotgun, make_heavy_baton
+        from dungeoneer.items.weapon import make_combat_knife, make_shotgun, make_energy_sword
         from dungeoneer.items.consumable import make_stim_pack, make_medkit
         from dungeoneer.items.ammo import make_9mm_ammo
 
         _factories = {
-            "combat_knife": make_combat_knife,
-            "shotgun":      make_shotgun,
-            "heavy_baton":  make_heavy_baton,
-            "stim_pack":    make_stim_pack,
-            "medkit":       make_medkit,
-            "ammo_9mm":     lambda: make_9mm_ammo(5),
+            "combat_knife":  make_combat_knife,
+            "shotgun":       make_shotgun,
+            "energy_sword":  make_energy_sword,
+            "stim_pack":     make_stim_pack,
+            "medkit":        make_medkit,
+            "ammo_9mm":      lambda: make_9mm_ammo(5),
         }
 
         roll = random.random()
@@ -74,7 +74,7 @@ def make_guard(x: int, y: int) -> Enemy:
             (0.25, "ammo_9mm"),
             (0.20, "combat_knife"),
             (0.15, "stim_pack"),
-            (0.05, "heavy_baton"),
+            (0.05, "energy_sword"),
         ],
     )
 

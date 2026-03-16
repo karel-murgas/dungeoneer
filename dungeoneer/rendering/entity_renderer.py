@@ -10,10 +10,25 @@ import os
 import pygame
 
 from dungeoneer.core import settings
+from dungeoneer.items.item import ItemType, RangeType
+from dungeoneer.items.weapon import Weapon
 from dungeoneer.rendering.spritesheet import SpriteSheet
 from dungeoneer.rendering import procedural_sprites
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
+
+
+def _loot_sprite_key(item: "Item") -> str:  # type: ignore[name-defined]
+    """Return the procedural-sprite key appropriate for *item*."""
+    if item.item_type == ItemType.AMMO:
+        return "item_loot_ammo"
+    if item.item_type == ItemType.CONSUMABLE:
+        return "item_loot_consumable"
+    if item.item_type == ItemType.WEAPON:
+        if isinstance(item, Weapon) and item.range_type == RangeType.RANGED:
+            return "item_loot_ranged"
+        return "item_loot_melee"
+    return "item_loot"
 
 # Drone idle animation: 4 frames at 150 ms each
 _DRONE_FRAME_MS = 150
@@ -63,16 +78,18 @@ class EntityRenderer:
             if not floor.dungeon_map.visible[container.y, container.x]:
                 continue
             sx, sy = camera.world_to_screen(container.x, container.y)
-            key = "container_open" if container.opened else "container_closed"
+            if getattr(container, "is_objective", False):
+                key = "vault_open" if container.opened else "vault_closed"
+            else:
+                key = "container_open" if container.opened else "container_closed"
             screen.blit(procedural_sprites.get(key), (sx, sy))
 
         # Draw item entities first (so actors render on top)
-        loot_sprite = procedural_sprites.get("item_loot")
         for item_e in floor.item_entities:
             if not floor.dungeon_map.visible[item_e.y, item_e.x]:
                 continue
             sx, sy = camera.world_to_screen(item_e.x, item_e.y)
-            screen.blit(loot_sprite, (sx, sy))
+            screen.blit(procedural_sprites.get(_loot_sprite_key(item_e.item)), (sx, sy))
 
         # Draw actors
         for actor in floor.actors:

@@ -11,20 +11,37 @@ from dungeoneer.core import settings
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
 
+_BTN_W  = 200
+_BTN_H  = 44
+_BTN_NRM = (20, 40, 35)
+_BTN_HOV = (35, 90, 70)
+_COL_BORDER     = (60, 200, 160)
+_COL_BORDER_HOV = (100, 240, 200)
+
 
 class GameOverScene(Scene):
     def __init__(
         self, app: "GameApp", *, victory: bool, floor_depth: int,
-        difficulty=None, credits_earned: int = 0,
+        difficulty=None, credits_earned: int = 0, audio=None,
     ) -> None:
         super().__init__(app)
         self.victory         = victory
         self.floor_depth     = floor_depth
         self._difficulty     = difficulty
         self._credits_earned = credits_earned
-        self._font_big       = pygame.font.SysFont("consolas", 52, bold=True)
-        self._font_med       = pygame.font.SysFont("consolas", 26)
-        self._font_small     = pygame.font.SysFont("consolas", 18)
+        self._audio          = audio
+        self._font_big   = pygame.font.SysFont("consolas", 52, bold=True)
+        self._font_med   = pygame.font.SysFont("consolas", 26)
+        self._font_small = pygame.font.SysFont("consolas", 18)
+        self._font_btn   = pygame.font.SysFont("consolas", 18, bold=True)
+        # Button rects populated in render(); used for mouse hit-testing
+        self._btn_restart: pygame.Rect | None = None
+        self._btn_quit:    pygame.Rect | None = None
+        self._hovered: str | None = None   # "restart" | "quit" | None
+
+    def on_enter(self) -> None:
+        if self._audio:
+            self._audio.play("victory" if self.victory else "defeat", volume=0.85)
 
     def handle_events(self, events: List[pygame.event.Event]) -> None:
         for event in events:
@@ -32,6 +49,20 @@ class GameOverScene(Scene):
                 if event.key in (pygame.K_r, pygame.K_RETURN, pygame.K_SPACE):
                     self._restart()
                 elif event.key == pygame.K_ESCAPE:
+                    self.app.quit()
+
+            elif event.type == pygame.MOUSEMOTION:
+                hov = None
+                if self._btn_restart and self._btn_restart.collidepoint(event.pos):
+                    hov = "restart"
+                elif self._btn_quit and self._btn_quit.collidepoint(event.pos):
+                    hov = "quit"
+                self._hovered = hov
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self._btn_restart and self._btn_restart.collidepoint(event.pos):
+                    self._restart()
+                elif self._btn_quit and self._btn_quit.collidepoint(event.pos):
                     self.app.quit()
 
     def update(self, dt: float) -> None:
@@ -42,13 +73,13 @@ class GameOverScene(Scene):
         sw, sh = settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT
 
         if self.victory:
-            title = "EXTRACTION COMPLETE"
+            title  = "EXTRACTION COMPLETE"
             colour = (0, 220, 180)
-            sub = "You made it out alive."
+            sub    = "You made it out alive."
         else:
-            title = "KILLED IN ACTION"
+            title  = "KILLED IN ACTION"
             colour = (220, 60, 60)
-            sub = "Your signal has gone dark."
+            sub    = "Your signal has gone dark."
 
         t_surf = self._font_big.render(title, True, colour)
         screen.blit(t_surf, (sw // 2 - t_surf.get_width() // 2, sh // 3))
@@ -63,15 +94,37 @@ class GameOverScene(Scene):
 
         cr_colour = (80, 220, 120) if self._credits_earned > 0 else (100, 100, 120)
         cr_surf = self._font_med.render(
-            f"Credits earned: {self._credits_earned} cr", True, cr_colour
+            f"Credits earned: ¥ {self._credits_earned}", True, cr_colour
         )
         screen.blit(cr_surf, (sw // 2 - cr_surf.get_width() // 2, sh // 3 + 148))
 
-        hint = self._font_small.render(
-            "[R / Enter] Run again    [Esc] Quit", True, (80, 80, 100)
+        # --- Buttons ---
+        btn_y = sh * 2 // 3
+        gap   = 24
+
+        self._btn_restart = pygame.Rect(
+            sw // 2 - _BTN_W - gap // 2, btn_y, _BTN_W, _BTN_H
         )
-        screen.blit(hint, (sw // 2 - hint.get_width() // 2, sh * 2 // 3))
+        self._btn_quit = pygame.Rect(
+            sw // 2 + gap // 2, btn_y, _BTN_W, _BTN_H
+        )
+
+        for btn, key, label in (
+            (self._btn_restart, "restart", "Run Again  [R]"),
+            (self._btn_quit,    "quit",    "Quit  [Esc]"),
+        ):
+            is_hov = self._hovered == key
+            pygame.draw.rect(screen, _BTN_HOV if is_hov else _BTN_NRM, btn, border_radius=4)
+            pygame.draw.rect(screen, _COL_BORDER_HOV if is_hov else _COL_BORDER,
+                             btn, 2, border_radius=4)
+            lbl = self._font_btn.render(label, True,
+                                        (220, 255, 240) if is_hov else (140, 180, 160))
+            screen.blit(lbl, (btn.centerx - lbl.get_width() // 2,
+                               btn.centery - lbl.get_height() // 2))
 
     def _restart(self) -> None:
         from dungeoneer.scenes.game_scene import GameScene
-        self.app.scenes.replace(GameScene(self.app, difficulty=self._difficulty) if self._difficulty else GameScene(self.app))
+        self.app.scenes.replace(
+            GameScene(self.app, difficulty=self._difficulty)
+            if self._difficulty else GameScene(self.app)
+        )
