@@ -6,9 +6,12 @@ import random
 from enum import auto, Enum
 from typing import Callable, List, Optional, TYPE_CHECKING
 
+import os
+
 import pygame
 
 from dungeoneer.core.scene import Scene
+from dungeoneer.core.i18n import t
 from dungeoneer.minigame.hack_node import HackMap, HackNode, LootKind, NodeType, SecurityKind
 from dungeoneer.minigame.hack_generator import HackParams, generate_hack_map
 from dungeoneer.minigame.hack_audio import HackAudio
@@ -121,13 +124,19 @@ class HackScene(Scene):
         # Loot collection overlay  {timer, text, sub, color}
         self._loot_overlay: dict | None = None
 
-        self._status: str = "Analyse the network, then move to begin."
+        self._status: str = t("hack.status.initial")
         self._log: str    = ""
         self._show_help: bool = False
 
         # Audio
         self._audio = HackAudio()
         self._audio.build()
+        _music_path = os.path.join(
+            os.path.dirname(__file__), "..", "assets", "audio", "music", "hacking.mp3"
+        )
+        pygame.mixer.music.load(_music_path)
+        pygame.mixer.music.set_volume(0.30)
+        pygame.mixer.music.play(-1)
 
         # Fonts
         self._font_lg  = pygame.font.SysFont("consolas", 22, bold=True)
@@ -143,6 +152,9 @@ class HackScene(Scene):
             if _raw is not None:
                 self._item_sprites[_key] = pygame.transform.scale(_raw, (_icon_size, _icon_size))
         self._font_bonus = pygame.font.SysFont("consolas", 15, bold=True)
+
+    def on_exit(self) -> None:
+        pygame.mixer.music.fadeout(300)
 
     # ------------------------------------------------------------------
     # Input
@@ -167,7 +179,7 @@ class HackScene(Scene):
             if key == pygame.K_ESCAPE:
                 if self._state == _State.HACKING:
                     self._state  = _State.IDLE
-                    self._status = "Hack cancelled."
+                    self._status = t("hack.status.cancelled")
                 elif self._state == _State.IDLE:
                     self._finish(success=True)
                 continue
@@ -288,7 +300,7 @@ class HackScene(Scene):
         self._pending_node  = target_id
         self._move_timer    = self._params.move_time
         self._state         = _State.MOVING
-        self._status        = f"Routing to NODE-{target_id}…"
+        self._status        = t("hack.status.routing").format(n=target_id)
         self._audio.play("move", volume=0.5)
 
     def _arrive(self, target_id: int) -> None:
@@ -303,11 +315,12 @@ class HackScene(Scene):
         elif node.ntype == NodeType.LOOT and not node.hacked:
             self._hack_timer = self._params.hack_time
             self._state      = _State.HACKING
-            self._status     = f"Extracting {node.loot_kind.name.replace('_', ' ').title()}…"
+            _loot_key = f"hack.loot.{node.loot_kind.name.lower()}"
+            self._status     = t("hack.status.extracting").format(kind=t(_loot_key))
             self._audio.play("hack_start", volume=0.7)
         else:
             self._state  = _State.IDLE
-            self._status = "Navigate to loot nodes and hack them."
+            self._status = t("hack.status.navigate")
 
     def _apply_security(self, node: HackNode) -> None:
         kind = node.security_kind
@@ -315,13 +328,13 @@ class HackScene(Scene):
 
         if kind == SecurityKind.TIME_PENALTY:
             self._time_remaining = max(0.0, self._time_remaining - 3.0)
-            self._status = "ICE TRIGGERED — Time penalty  -3s!"
+            self._status = t("hack.status.time_penalty")
             self._log    = "[-3s]"
             self._state  = _State.IDLE
             self._sec_overlay = {
                 "timer": 1.6,
-                "text":  "TIME PENALTY",
-                "sub":   "−3 SECONDS",
+                "text":  t("hack.overlay.time_title"),
+                "sub":   t("hack.overlay.time_sub"),
                 "color": _NEON_RED,
             }
 
@@ -337,19 +350,19 @@ class HackScene(Scene):
                     nb = self._hack_map.nodes[nb_id]
                     if v.node_id in nb.neighbors:
                         nb.neighbors.remove(v.node_id)
-                self._status = "ICE TRIGGERED — Data cache destroyed!"
+                self._status = t("hack.status.cache_destroyed")
                 self._sec_overlay = {
                     "timer": 1.6,
-                    "text":  "DATA CORRUPTED",
-                    "sub":   "CACHE NODE DESTROYED",
+                    "text":  t("hack.overlay.cache_title"),
+                    "sub":   t("hack.overlay.cache_sub"),
                     "color": _NEON_ORANGE,
                 }
             else:
-                self._status = "ICE TRIGGERED — No targets."
+                self._status = t("hack.status.no_targets")
                 self._sec_overlay = {
                     "timer": 1.2,
-                    "text":  "ICE TRIGGERED",
-                    "sub":   "NO TARGETS",
+                    "text":  t("hack.overlay.notgt_title"),
+                    "sub":   t("hack.overlay.notgt_sub"),
                     "color": _NEON_ORANGE,
                 }
             self._state = _State.IDLE
@@ -361,12 +374,12 @@ class HackScene(Scene):
         elif kind == SecurityKind.BLOCKED:
             self._player_node = self._prev_node
             node.flash_timer  = 0.55
-            self._status = "ICE TRIGGERED — Access denied!"
+            self._status = t("hack.status.access_denied")
             self._state  = _State.IDLE
             self._sec_overlay = {
                 "timer": 1.4,
-                "text":  "ACCESS DENIED",
-                "sub":   "NODE BLOCKED — REROUTED",
+                "text":  t("hack.overlay.denied_title"),
+                "sub":   t("hack.overlay.denied_sub"),
                 "color": _NEON_RED,
             }
 
@@ -377,24 +390,24 @@ class HackScene(Scene):
 
         if kind == LootKind.BONUS_TIME:
             self._time_remaining += 3.0
-            self._status = "Bonus time  +3s"
+            self._status = t("hack.status.bonus_time")
             self._log    = "[+3s]"
             self._audio.play("bonus_time", volume=0.7)
             self._loot_overlay = {
                 "timer": 1.4,
-                "text":  "BONUS TIME",
-                "sub":   "+3 SECONDS",
+                "text":  t("hack.overlay.bonus_title"),
+                "sub":   t("hack.overlay.bonus_sub"),
                 "color": (80, 180, 255),
             }
         elif kind == LootKind.CREDITS:
             amount = random.randint(10, 40)
             self._result_credits += amount
-            self._status = f"Credits extracted  +¥{amount}"
+            self._status = t("hack.status.credits").format(n=amount)
             self._log    = f"[+¥{amount}]"
             self._audio.play("hack_complete", volume=0.7)
             self._loot_overlay = {
                 "timer": 1.4,
-                "text":  "CREDITS EXTRACTED",
+                "text":  t("hack.overlay.credits_title"),
                 "sub":   f"+¥{amount}",
                 "color": _NEON_GREEN,
             }
@@ -402,11 +415,11 @@ class HackScene(Scene):
             item = _make_loot_item(kind)
             if item is not None:
                 self._result_items.append(item)
-                self._status = f"Extracted: {item.name}"
+                self._status = t("hack.status.extracted").format(item=item.name)
                 self._log    = f"[{item.name}]"
                 self._loot_overlay = {
                     "timer": 1.4,
-                    "text":  "DATA EXTRACTED",
+                    "text":  t("hack.overlay.data_title"),
                     "sub":   item.name.upper(),
                     "color": _NEON_GREEN,
                 }
@@ -522,7 +535,7 @@ class HackScene(Scene):
         _draw_corner_bracket(screen, 8, 8, 40, 14, _NEON_CYAN, 1)
 
         # Title
-        title_surf = self._font_lg.render("INTRUSION PROTOCOL", True, _NEON_CYAN)
+        title_surf = self._font_lg.render(t("hack.header.title"), True, _NEON_CYAN)
         screen.blit(title_surf, (28, 20))
 
         # Blinking cursor after title
@@ -533,13 +546,13 @@ class HackScene(Scene):
 
         # ESC hint (center)
         if self._state == _State.HACKING:
-            esc_text  = "[ESC]  CANCEL EXTRACTION"
+            esc_text  = t("hack.header.esc_cancel")
             esc_color = _NEON_ORANGE
         elif not self._timer_started:
-            esc_text  = "— MOVE TO START TIMER —"
+            esc_text  = t("hack.header.move_start")
             esc_color = _NEON_YELLOW
         else:
-            esc_text  = "[ESC]  ABORT HACK"
+            esc_text  = t("hack.header.esc_abort")
             esc_color = _TEXT_DIM
         esc_surf = self._font_md.render(esc_text, True, esc_color)
         screen.blit(esc_surf, (sw // 2 - esc_surf.get_width() // 2, 22))
@@ -607,7 +620,7 @@ class HackScene(Scene):
             screen.blit(log_surf, (14, fy + 38))
 
         # Key layout hint (right)
-        hint = "W A S D / Arrows  +  Mouse  |  [F1] Help"
+        hint = t("hack.footer.hint")
         hint_surf = self._font_xs.render(hint, True, _TEXT_DIM)
         screen.blit(hint_surf, (sw - hint_surf.get_width() - 14, fy + _FOOTER_H - hint_surf.get_height() - 10))
 
@@ -615,7 +628,7 @@ class HackScene(Scene):
         n_hacked  = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.hacked)
         n_active  = sum(1 for n in self._hack_map.nodes if n.ntype == NodeType.LOOT and n.active)
         n_total   = n_hacked + n_active  # hacked + still-reachable; destroyed nodes excluded
-        counter = f"DATA: {n_hacked}/{n_total}"
+        counter = t("hack.footer.counter").format(n=n_hacked, total=n_total)
         c_surf = self._font_sm.render(counter, True, _NEON_GREEN if n_hacked > 0 else _TEXT_DIM)
         screen.blit(c_surf, (sw - c_surf.get_width() - 14, fy + 12))
 
@@ -758,7 +771,7 @@ class HackScene(Scene):
             r = 6
             pygame.draw.line(screen, (160, 30, 30), (nx - r, ny - r), (nx + r, ny + r), 2)
             pygame.draw.line(screen, (160, 30, 30), (nx + r, ny - r), (nx - r, ny + r), 2)
-            lsurf = self._font_xs.render("CORRUPT", True, (100, 30, 30))
+            lsurf = self._font_xs.render(t("hack.node.corrupt"), True, (100, 30, 30))
             screen.blit(lsurf, (nx - lsurf.get_width() // 2, ny + nr + 6))
 
         # --- Player pulse square + corner brackets ---
@@ -1045,7 +1058,7 @@ class HackScene(Scene):
         _draw_corner_bracket(screen, px + pw, py + ph, 50, 14, _NEON_CYAN, 1, flip_x=True, flip_y=True)
 
         # Title
-        title_surf = self._font_lg.render("// INTRUSION PROTOCOL — HELP //", True, _NEON_CYAN)
+        title_surf = self._font_lg.render(t("hack.help.title"), True, _NEON_CYAN)
         screen.blit(title_surf, (sw // 2 - title_surf.get_width() // 2, py + 14))
         sep_y = py + 14 + title_surf.get_height() + 6
         pygame.draw.line(screen, _NEON_CYAN, (px + 20, sep_y), (px + pw - 20, sep_y), 1)
@@ -1096,43 +1109,43 @@ class HackScene(Scene):
             return y
 
         # ── Left column ──────────────────────────────────────────────
-        y_l = _section(col_l, y_l, "NODE TYPES")
+        y_l = _section(col_l, y_l, t("hack.help.node_types"))
         y_l = _aligned(col_l, y_l, [
-            ("►  ENTRY     ", _NEON_CYAN,   "your starting position"),
-            ("▪  DATA CACHE", _NEON_GREEN,  "hack to extract loot"),
-            ("▪  EMPTY     ", _COL_EMPTY,   "traversal only"),
-            ("▪  ICE       ", _COL_SEC_HID, "hidden trap — looks like EMPTY!"),
+            (t("hack.help.node.entry.lbl"), _NEON_CYAN,   t("hack.help.node.entry.desc")),
+            (t("hack.help.node.cache.lbl"), _NEON_GREEN,  t("hack.help.node.cache.desc")),
+            (t("hack.help.node.empty.lbl"), _COL_EMPTY,   t("hack.help.node.empty.desc")),
+            (t("hack.help.node.ice.lbl"),   _COL_SEC_HID, t("hack.help.node.ice.desc")),
         ])
         y_l += 10
 
-        y_l = _section(col_l, y_l, "ICE EFFECTS  (triggered on entry)")
+        y_l = _section(col_l, y_l, t("hack.help.ice_section"))
         y_l = _two_line(col_l, y_l, [
-            ("✖  TIME PENALTY",   _NEON_RED,    "−3 seconds removed from the clock"),
-            ("✖  DATA CORRUPTED", _NEON_ORANGE, "destroys a random unhacked loot node"),
-            ("✖  ACCESS DENIED",  _NEON_RED,    "blocks entry — bounces you back"),
+            (t("hack.help.ice.time.lbl"),    _NEON_RED,    t("hack.help.ice.time.desc")),
+            (t("hack.help.ice.corrupt.lbl"), _NEON_ORANGE, t("hack.help.ice.corrupt.desc")),
+            (t("hack.help.ice.blocked.lbl"), _NEON_RED,    t("hack.help.ice.blocked.desc")),
         ])
 
         # ── Right column ─────────────────────────────────────────────
-        y_r = _section(col_r, y_r, "TIMER")
+        y_r = _section(col_r, y_r, t("hack.help.timer"))
         y_r = _bullets(col_r, y_r, [
-            (_TEXT_DIM,    "Starts on your first move"),
-            (_TEXT_DIM,    "Bar at top: green → orange → red"),
-            ((80,180,255), "BONUS TIME node: +3 seconds"),
-            (_TEXT_DIM,    "Collect all data caches to finish early"),
+            (_TEXT_DIM,    t("hack.help.timer.1")),
+            (_TEXT_DIM,    t("hack.help.timer.2")),
+            ((80,180,255), t("hack.help.timer.3")),
+            (_TEXT_DIM,    t("hack.help.timer.4")),
         ])
         y_r += 10
 
-        y_r = _section(col_r, y_r, "CONTROLS")
+        y_r = _section(col_r, y_r, t("hack.help.controls"))
         y_r = _aligned(col_r, y_r, [
-            ("W / A / S / D", _NEON_YELLOW, "move to adjacent node"),
-            ("Arrow keys",    _NEON_YELLOW, "same as W A S D"),
-            ("Mouse click",   _NEON_YELLOW, "click a neighbour to move"),
-            ("ESC",           _NEON_YELLOW, "cancel extraction / abort hack"),
-            ("F1",            _NEON_YELLOW, "toggle this help (timer paused)"),
+            (t("hack.help.ctrl.wasd.key"),   _NEON_YELLOW, t("hack.help.ctrl.wasd.desc")),
+            (t("hack.help.ctrl.arrows.key"), _NEON_YELLOW, t("hack.help.ctrl.arrows.desc")),
+            (t("hack.help.ctrl.mouse.key"),  _NEON_YELLOW, t("hack.help.ctrl.mouse.desc")),
+            (t("hack.help.ctrl.esc.key"),    _NEON_YELLOW, t("hack.help.ctrl.esc.desc")),
+            (t("hack.help.ctrl.f1.key"),     _NEON_YELLOW, t("hack.help.ctrl.f1.desc")),
         ])
 
         # Close hint
-        close_surf = font.render("[F1]  Close help", True, _TEXT_DIM)
+        close_surf = font.render(t("hack.help.close"), True, _TEXT_DIM)
         screen.blit(close_surf, (sw // 2 - close_surf.get_width() // 2, py + ph - 22))
 
     # ------------------------------------------------------------------
@@ -1147,17 +1160,17 @@ class HackScene(Scene):
         screen.blit(overlay, (0, 0))
 
         if self._done_success:
-            title  = "//  HACK COMPLETE  //"
+            title  = t("hack.result.success")
             color  = _NEON_CYAN
             lines  = [i.name for i in self._result_items]
             if self._result_credits:
                 lines.append(f"+¥{self._result_credits}")
             if not lines:
-                lines = ["No data extracted."]
+                lines = [t("hack.result.no_data")]
         else:
-            title  = "//  TRACE COMPLETE — ALARM  //"
+            title  = t("hack.result.fail")
             color  = _NEON_RED
-            lines  = ["Security drone dispatched!"]
+            lines  = [t("hack.result.drone")]
 
         # Title glow
         t_surf = self._font_lg.render(title, True, color)

@@ -37,10 +37,10 @@ class GameApp:
     # ------------------------------------------------------------------
 
     def run(self) -> None:
-        from dungeoneer.scenes.game_scene import GameScene  # avoid circular
+        from dungeoneer.scenes.main_menu_scene import MainMenuScene  # avoid circular
 
         log.info("Starting game loop")
-        self.scenes.push(GameScene(self))
+        self.scenes.push(MainMenuScene(self))
         self.running = True
         frame = 0
 
