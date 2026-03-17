@@ -52,9 +52,26 @@ Edit the difficulty in `dungeoneer/core/difficulty.py` or select at launch (if a
 | Player HP | 35 | 30 | 25 |
 | Starting ammo | 8× 9mm | — | — |
 
+## Hacking minigame
+
+When **Loot Mode: Hack Minigame** is selected in the main menu, opening a loot container launches the hacking minigame.
+
+Two variants are available (toggle with **[V]** in the main menu):
+
+| Variant | Description |
+|---------|-------------|
+| **Grid** *(default)* | Maze-grid corridor traversal. Press a direction to auto-move to the next node. |
+| Classic | Node-graph navigation with WASD / mouse click. |
+
+The standalone launcher is also available:
+
+```bash
+python main_hack.py [easy|normal|hard] [grid|classic]
+```
+
 ## Language
 
-Default language is English. To switch to Czech, set `LANGUAGE = "cs"` in `dungeoneer/core/settings.py`.
+Language is selected in the main menu (English / Czech / Spanish).
 
 ## Project structure
 

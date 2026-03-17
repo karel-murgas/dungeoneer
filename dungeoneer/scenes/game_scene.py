@@ -50,11 +50,16 @@ FLOORS_PER_RUN = 3
 
 class GameScene(Scene):
     def __init__(
-        self, app: "GameApp", difficulty: Difficulty = NORMAL, use_minigame: bool = True
+        self,
+        app: "GameApp",
+        difficulty: Difficulty = NORMAL,
+        use_minigame: bool = True,
+        hack_variant: str = "grid",
     ) -> None:
         super().__init__(app)
         self.difficulty     = difficulty
         self.use_minigame   = use_minigame
+        self.hack_variant   = hack_variant   # "classic" | "grid"
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -246,6 +251,7 @@ class GameScene(Scene):
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
+            hack_variant=self.hack_variant,
             credits_earned=credits, audio=self.audio,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
@@ -258,6 +264,7 @@ class GameScene(Scene):
                 self.app,
                 difficulty=self.difficulty,
                 use_minigame=self.use_minigame,
+                hack_variant=self.hack_variant,
                 language=get_language(),
             )
         )
@@ -618,16 +625,21 @@ class GameScene(Scene):
     # ------------------------------------------------------------------
 
     def _launch_hack(self, container: "ContainerEntity") -> None:
-        from dungeoneer.minigame.hack_scene import HackScene
-        from dungeoneer.minigame.hack_generator import HackParams
-
-        params = HackParams.for_difficulty(self.difficulty)
-
         def on_complete(success: bool, items, credits: int) -> None:
             self._on_hack_complete(success, items, credits, container)
 
         self.music.pause()
-        self.app.scenes.push(HackScene(self.app, params=params, on_complete=on_complete))
+
+        if self.hack_variant == "classic":
+            from dungeoneer.minigame.hack_scene import HackScene
+            from dungeoneer.minigame.hack_generator import HackParams
+            params = HackParams.for_difficulty(self.difficulty)
+            self.app.scenes.push(HackScene(self.app, params=params, on_complete=on_complete))
+        else:
+            from dungeoneer.minigame.hack_scene_grid import HackGridScene
+            from dungeoneer.minigame.hack_grid_generator import HackGridParams
+            params = HackGridParams.for_difficulty(self.difficulty)
+            self.app.scenes.push(HackGridScene(self.app, params=params, on_complete=on_complete))
 
     def _on_hack_complete(
         self, success: bool, items, credits: int, container: "ContainerEntity"

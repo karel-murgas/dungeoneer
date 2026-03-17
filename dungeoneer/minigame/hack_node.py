@@ -23,6 +23,7 @@ class LootKind(Enum):
     CREDITS      = auto()
     BONUS_TIME   = auto()
     ARMOR        = auto()
+    MYSTERY      = auto()   # resolves to a random non-mystery kind on collection
 
 
 class SecurityKind(Enum):

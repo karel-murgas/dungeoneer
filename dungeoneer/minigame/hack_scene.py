@@ -1121,7 +1121,7 @@ class HackScene(Scene):
         y_l = _section(col_l, y_l, t("hack.help.ice_section"))
         y_l = _two_line(col_l, y_l, [
             (t("hack.help.ice.time.lbl"),    _NEON_RED,    t("hack.help.ice.time.desc")),
-            (t("hack.help.ice.corrupt.lbl"), _NEON_ORANGE, t("hack.help.ice.corrupt.desc")),
+            (t("hack.help.ice.corrupt.lbl"), _NEON_RED,    t("hack.help.ice.corrupt.desc")),
             (t("hack.help.ice.blocked.lbl"), _NEON_RED,    t("hack.help.ice.blocked.desc")),
         ])
 

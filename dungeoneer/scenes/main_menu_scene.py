@@ -31,11 +31,6 @@ _COL_ACCENT   = (0, 220, 180)
 _COL_LABEL    = (90, 120, 110)
 _COL_HINT     = (45, 65, 58)
 
-_BTN_W_SM  = 130
-_BTN_W_MED = 170
-_BTN_W_LG  = 210
-_BTN_H     = 40
-
 _BTN_NRM       = (20, 40, 35)
 _BTN_SEL       = (10, 80, 65)
 _BTN_HOV       = (35, 90, 70)
@@ -47,7 +42,9 @@ _COL_BTN_NRM   = (140, 180, 160)
 _COL_BTN_SEL   = (220, 255, 240)
 _COL_BTN_HOV   = (200, 240, 220)
 
-_GAP_SECTION   = 80   # vertical space between option rows
+
+def _scale_to(value: int, scale: float, minimum: int) -> int:
+    return max(minimum, int(value * scale))
 
 
 class MainMenuScene(Scene):
@@ -57,19 +54,29 @@ class MainMenuScene(Scene):
         *,
         difficulty: Difficulty = NORMAL,
         use_minigame: bool = True,
+        hack_variant: str = "grid",
         language: str = "en",
     ) -> None:
         super().__init__(app)
         self._difficulty   = difficulty
         self._use_minigame = use_minigame
+        self._hack_variant = hack_variant   # "classic" | "grid"
         self._language     = language
 
-        self._font_title  = pygame.font.SysFont("consolas", 56, bold=True)
-        self._font_sub    = pygame.font.SysFont("consolas", 20)
-        self._font_label  = pygame.font.SysFont("consolas", 15, bold=True)
-        self._font_btn    = pygame.font.SysFont("consolas", 15, bold=True)
-        self._font_start  = pygame.font.SysFont("consolas", 18, bold=True)
-        self._font_hint   = pygame.font.SysFont("consolas", 14)
+        # Scale fonts and button sizes to screen height (baseline: 720 px)
+        _s = min(1.0, settings.SCREEN_HEIGHT / 720)
+        self._font_title  = pygame.font.SysFont("consolas", _scale_to(56, _s, 28), bold=True)
+        self._font_sub    = pygame.font.SysFont("consolas", _scale_to(20, _s, 13))
+        self._font_label  = pygame.font.SysFont("consolas", _scale_to(15, _s, 11), bold=True)
+        self._font_btn    = pygame.font.SysFont("consolas", _scale_to(15, _s, 11), bold=True)
+        self._font_start  = pygame.font.SysFont("consolas", _scale_to(18, _s, 12), bold=True)
+        self._font_hint   = pygame.font.SysFont("consolas", _scale_to(14, _s, 10))
+
+        # Scaled button geometry
+        self._btn_h     = _scale_to(40, _s, 28)
+        self._btn_w_sm  = _scale_to(130, _s, 90)
+        self._btn_w_med = _scale_to(170, _s, 120)
+        self._btn_w_lg  = _scale_to(210, _s, 150)
 
         # Button rects — populated in render(), used for hit-testing
         self._btn_easy:     pygame.Rect | None = None
@@ -77,6 +84,8 @@ class MainMenuScene(Scene):
         self._btn_hard:     pygame.Rect | None = None
         self._btn_minigame: pygame.Rect | None = None
         self._btn_random:   pygame.Rect | None = None
+        self._btn_classic:  pygame.Rect | None = None
+        self._btn_grid:     pygame.Rect | None = None
         self._btn_en:       pygame.Rect | None = None
         self._btn_cs:       pygame.Rect | None = None
         self._btn_es:       pygame.Rect | None = None
@@ -117,57 +126,31 @@ class MainMenuScene(Scene):
         screen.fill(_BG)
         sw, sh = settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT
         cx = sw // 2
+        bh = self._btn_h
 
-        # --- Title ---
+        # --- Title block (positions derived from font metrics) ---
         title_surf = self._font_title.render(t("menu.title"), True, _COL_ACCENT)
-        screen.blit(title_surf, (cx - title_surf.get_width() // 2, 55))
+        title_y = max(10, sh // 13)
+        screen.blit(title_surf, (cx - title_surf.get_width() // 2, title_y))
 
         sub_surf = self._font_sub.render(t("menu.subtitle"), True, _COL_LABEL)
-        screen.blit(sub_surf, (cx - sub_surf.get_width() // 2, 124))
+        sub_y = title_y + title_surf.get_height() + 4
+        screen.blit(sub_surf, (cx - sub_surf.get_width() // 2, sub_y))
 
-        pygame.draw.line(screen, (25, 55, 50), (cx - 290, 158), (cx + 290, 158), 1)
+        line_y = sub_y + sub_surf.get_height() + 10
+        line_hw = min(290, sw // 2 - 20)
+        pygame.draw.line(screen, (25, 55, 50), (cx - line_hw, line_y), (cx + line_hw, line_y), 1)
 
-        # --- Option rows ---
-        row_y = 182
+        content_top = line_y + 14
 
-        # Difficulty
-        row_y = self._draw_option_row(
-            screen, cx, row_y, t("menu.difficulty"),
-            [
-                ("easy",   t("menu.easy"),   self._difficulty is EASY),
-                ("normal", t("menu.normal"), self._difficulty is NORMAL),
-                ("hard",   t("menu.hard"),   self._difficulty is HARD),
-            ],
-            btn_w=_BTN_W_SM,
-        )
-        row_y += _GAP_SECTION
+        # --- Bottom bar: hints then Start/Quit above them ---
+        hint_surf = self._font_hint.render(t("menu.hints"), True, _COL_HINT)
+        hint_y = sh - hint_surf.get_height() - 6
+        screen.blit(hint_surf, (cx - hint_surf.get_width() // 2, hint_y))
 
-        # Loot mode
-        row_y = self._draw_option_row(
-            screen, cx, row_y, t("menu.loot_mode"),
-            [
-                ("minigame", t("menu.loot.minigame"), self._use_minigame),
-                ("random",   t("menu.loot.random"),   not self._use_minigame),
-            ],
-            btn_w=_BTN_W_MED,
-        )
-        row_y += _GAP_SECTION
-
-        # Language — labels always shown in the native language
-        row_y = self._draw_option_row(
-            screen, cx, row_y, t("menu.language"),
-            [
-                ("en", "English", self._language == "en"),
-                ("cs", "Česky",   self._language == "cs"),
-                ("es", "Español", self._language == "es"),
-            ],
-            btn_w=_BTN_W_SM,
-        )
-
-        # --- Start / Quit ---
-        btn_y = sh - 115
-        self._btn_start = pygame.Rect(cx - _BTN_W_LG - 14, btn_y, _BTN_W_LG, _BTN_H + 8)
-        self._btn_quit  = pygame.Rect(cx + 14,              btn_y, _BTN_W_LG, _BTN_H + 8)
+        start_quit_y = hint_y - 10 - (bh + 8)
+        self._btn_start = pygame.Rect(cx - self._btn_w_lg - 14, start_quit_y, self._btn_w_lg, bh + 8)
+        self._btn_quit  = pygame.Rect(cx + 14,                   start_quit_y, self._btn_w_lg, bh + 8)
 
         for rect, key, label in (
             (self._btn_start, "start", t("menu.start")),
@@ -184,9 +167,61 @@ class MainMenuScene(Scene):
             screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
                                rect.centery - lbl.get_height() // 2))
 
-        # --- Keyboard hints ---
-        hint_surf = self._font_hint.render(t("menu.hints"), True, _COL_HINT)
-        screen.blit(hint_surf, (cx - hint_surf.get_width() // 2, sh - 38))
+        content_bottom = start_quit_y - 8
+
+        # --- Compute adaptive gap between option rows ---
+        n_sections = 4 if self._use_minigame else 3
+        label_h = self._font_label.get_height()
+        section_row_h = label_h + 6 + bh           # label + small gap + button
+        total_sections_h = n_sections * section_row_h
+        available = max(0, content_bottom - content_top - total_sections_h)
+        # (n_sections+1) gaps: before first row, between rows, after last row
+        gap = max(8, available // (n_sections + 1))
+
+        # --- Option rows ---
+        row_y = content_top + gap
+
+        row_y = self._draw_option_row(
+            screen, cx, row_y, t("menu.difficulty"),
+            [
+                ("easy",   t("menu.easy"),   self._difficulty is EASY),
+                ("normal", t("menu.normal"), self._difficulty is NORMAL),
+                ("hard",   t("menu.hard"),   self._difficulty is HARD),
+            ],
+            btn_w=self._btn_w_sm,
+        )
+        row_y += gap
+
+        row_y = self._draw_option_row(
+            screen, cx, row_y, t("menu.loot_mode"),
+            [
+                ("minigame", t("menu.loot.minigame"), self._use_minigame),
+                ("random",   t("menu.loot.random"),   not self._use_minigame),
+            ],
+            btn_w=self._btn_w_med,
+        )
+        row_y += gap
+
+        if self._use_minigame:
+            row_y = self._draw_option_row(
+                screen, cx, row_y, t("menu.hack_variant"),
+                [
+                    ("grid",    t("menu.hack.grid"),    self._hack_variant == "grid"),
+                    ("classic", t("menu.hack.classic"), self._hack_variant == "classic"),
+                ],
+                btn_w=self._btn_w_med,
+            )
+            row_y += gap
+
+        self._draw_option_row(
+            screen, cx, row_y, t("menu.language"),
+            [
+                ("en", "English", self._language == "en"),
+                ("cs", "Česky",   self._language == "cs"),
+                ("es", "Español", self._language == "es"),
+            ],
+            btn_w=self._btn_w_sm,
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -202,17 +237,18 @@ class MainMenuScene(Scene):
         screen.blit(lbl_surf, (cx - lbl_surf.get_width() // 2, y))
 
         gap   = 10
+        bh    = self._btn_h
         total = len(buttons) * btn_w + (len(buttons) - 1) * gap
         bx    = cx - total // 2
-        by    = y + 22
+        by    = y + lbl_surf.get_height() + 6
 
         for key, text, selected in buttons:
-            rect = pygame.Rect(bx, by, btn_w, _BTN_H)
+            rect = pygame.Rect(bx, by, btn_w, bh)
             self._draw_toggle_btn(screen, rect, text, selected, self._hovered == key)
             setattr(self, f"_btn_{key}", rect)
             bx += btn_w + gap
 
-        return by + _BTN_H
+        return by + bh
 
     def _draw_toggle_btn(
         self, screen, rect: pygame.Rect, label: str, selected: bool, hovered: bool
@@ -236,6 +272,8 @@ class MainMenuScene(Scene):
             ("hard",     self._btn_hard),
             ("minigame", self._btn_minigame),
             ("random",   self._btn_random),
+            ("grid",     self._btn_grid),
+            ("classic",  self._btn_classic),
             ("en",       self._btn_en),
             ("cs",       self._btn_cs),
             ("es",       self._btn_es),
@@ -260,6 +298,8 @@ class MainMenuScene(Scene):
             self._set_difficulty(HARD)
         elif key == pygame.K_m:
             self._use_minigame = not self._use_minigame
+        elif key == pygame.K_v and self._use_minigame:
+            self._hack_variant = "classic" if self._hack_variant == "grid" else "grid"
         elif key == pygame.K_l:
             langs = ["en", "cs", "es"]
             idx = langs.index(self._language) if self._language in langs else 0
@@ -271,6 +311,8 @@ class MainMenuScene(Scene):
         elif hit == "hard":     self._set_difficulty(HARD)
         elif hit == "minigame": self._use_minigame = True
         elif hit == "random":   self._use_minigame = False
+        elif hit == "grid":     self._hack_variant = "grid"
+        elif hit == "classic":  self._hack_variant = "classic"
         elif hit == "en":       self._set_language("en")
         elif hit == "cs":       self._set_language("cs")
         elif hit == "es":       self._set_language("es")
@@ -291,5 +333,6 @@ class MainMenuScene(Scene):
                 self.app,
                 difficulty=self._difficulty,
                 use_minigame=self._use_minigame,
+                hack_variant=self._hack_variant,
             )
         )

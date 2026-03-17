@@ -60,7 +60,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "LANGUAGE",
         "menu.start":                   "Start Run",
         "menu.quit":                    "Quit",
-        "menu.hints":                   "[1/2/3] Difficulty   [M] Loot mode   [L] Language   [Enter] Start   [Esc] Quit",
+        "menu.hack_variant":            "HACK VARIANT",
+        "menu.hack.grid":               "Grid",
+        "menu.hack.classic":            "Classic",
+        "menu.hints":                   "[1/2/3] Difficulty   [M] Loot   [V] Variant   [L] Language   [Enter] Start   [Esc] Quit",
 
         # --- Game over ---
         "gameover.victory":             "EXTRACTION COMPLETE",
@@ -257,6 +260,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.loot.credits":            "Credits",
         "hack.loot.bonus_time":         "Bonus Time",
         "hack.loot.armor":              "Armor",
+        "hack.loot.mystery":            "Unknown",
 
         # --- Hack help overlay ---
         "hack.help.title":              "// INTRUSION PROTOCOL \u2014 HELP //",
@@ -270,11 +274,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.node.ice.lbl":       "\u25aa  ICE       ",
         "hack.help.node.ice.desc":      "hidden trap \u2014 looks like EMPTY!",
         "hack.help.ice_section":        "ICE EFFECTS  (triggered on entry)",
-        "hack.help.ice.time.lbl":       "\u2716  TIME PENALTY",
+        "hack.help.ice.time.lbl":       "TIME PENALTY",
         "hack.help.ice.time.desc":      "\u22123 seconds removed from the clock",
-        "hack.help.ice.corrupt.lbl":    "\u2716  DATA CORRUPTED",
+        "hack.help.ice.corrupt.lbl":    "DATA CORRUPTED",
         "hack.help.ice.corrupt.desc":   "destroys a random unhacked loot node",
-        "hack.help.ice.blocked.lbl":    "\u2716  ACCESS DENIED",
+        "hack.help.ice.blocked.lbl":    "ACCESS DENIED",
         "hack.help.ice.blocked.desc":   "blocks entry \u2014 bounces you back",
         "hack.help.timer":              "TIMER",
         "hack.help.timer.1":            "Starts on your first move",
@@ -293,6 +297,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "toggle this help (timer paused)",
         "hack.help.close":              "[F1]  Close help",
+        "hack.help.grid_section":       "GRID",
+        "hack.help.grid.automove":      "Auto-move: press a direction",
+        "hack.help.grid.stop":          "Stops at node or direction change",
+        "hack.help.grid.lit":           "Lit paths = reachable nodes",
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] Help",
@@ -312,7 +320,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "JAZYK",
         "menu.start":                   "Spustit b\u011bh",
         "menu.quit":                    "Ukon\u010dit",
-        "menu.hints":                   "[1/2/3] Obt\u00ed\u017enost   [M] Loot   [L] Jazyk   [Enter] Spustit   [Esc] Ukon\u010dit",
+        "menu.hack_variant":            "VARIANTA HACKU",
+        "menu.hack.grid":               "M\u0159\u00ed\u017eka",
+        "menu.hack.classic":            "Klasick\u00fd",
+        "menu.hints":                   "[1/2/3] Obt\u00ed\u017enost   [M] Loot   [V] Varianta   [L] Jazyk   [Enter] Spustit   [Esc] Ukon\u010dit",
 
         # --- Game over ---
         "gameover.victory":             "EXTRAKCE DOKON\u010cENA",
@@ -509,6 +520,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.loot.credits":            "Kredity",
         "hack.loot.bonus_time":         "Bonusov\u00fd \u010das",
         "hack.loot.armor":              "Zbroj",
+        "hack.loot.mystery":            "Nezn\u00e1m\u00e9",
 
         # --- Hack help overlay ---
         "hack.help.title":              "// INFILTRA\u010cN\u00cd PROTOKOL \u2014 N\u00c1POV\u011aDA //",
@@ -522,11 +534,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.node.ice.lbl":       "\u25aa  ICE       ",
         "hack.help.node.ice.desc":      "skryt\u00e1 past \u2014 vypad\u00e1 jako PR\u00c1ZDN\u00dd!",
         "hack.help.ice_section":        "EFEKTY ICE  (spu\u0161t\u011bno vstupem)",
-        "hack.help.ice.time.lbl":       "\u2716  \u010cASOV\u00c1 PENALTA",
+        "hack.help.ice.time.lbl":       "\u010cASOV\u00c1 PENALTA",
         "hack.help.ice.time.desc":      "\u22123 sekundy z \u010dasova\u010de",
-        "hack.help.ice.corrupt.lbl":    "\u2716  DATA PO\u0160KOZENA",
+        "hack.help.ice.corrupt.lbl":    "DATA PO\u0160KOZENA",
         "hack.help.ice.corrupt.desc":   "zni\u010d\u00ed n\u00e1hodn\u00fd nehacknut\u00fd uzel",
-        "hack.help.ice.blocked.lbl":    "\u2716  P\u0158\u00cdSTUP ODEP\u0158EN",
+        "hack.help.ice.blocked.lbl":    "P\u0158\u00cdSTUP ODEP\u0158EN",
         "hack.help.ice.blocked.desc":   "blokuje vstup \u2014 odraz\u00ed t\u011b zp\u011bt",
         "hack.help.timer":              "\u010cASOVA\u010c",
         "hack.help.timer.1":            "Spust\u00ed se p\u0159i prvn\u00edm pohybu",
@@ -545,6 +557,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "p\u0159epnout n\u00e1pov\u011bdu (\u010dasova\u010d zastaven)",
         "hack.help.close":              "[F1]  Zav\u0159\u00edt n\u00e1pov\u011bdu",
+        "hack.help.grid_section":       "GRID",
+        "hack.help.grid.automove":      "Auto-pohyb: stiskni sm\u011br",
+        "hack.help.grid.stop":          "Zastav\u00ed u uzlu nebo zm\u011bnou sm\u011bru",
+        "hack.help.grid.lit":           "Osv\u00edtit cesty = dosa\u017eiteln\u00e9 uzly",
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] N\u00e1pov\u011bda",
@@ -564,7 +580,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "IDIOMA",
         "menu.start":                   "Iniciar partida",
         "menu.quit":                    "Salir",
-        "menu.hints":                   "[1/2/3] Dificultad   [M] Saqueo   [L] Idioma   [Enter] Iniciar   [Esc] Salir",
+        "menu.hack_variant":            "VARIANTE HACK",
+        "menu.hack.grid":               "Cuadr\u00edcula",
+        "menu.hack.classic":            "Cl\u00e1sico",
+        "menu.hints":                   "[1/2/3] Dificultad   [M] Saqueo   [V] Variante   [L] Idioma   [Enter] Iniciar   [Esc] Salir",
 
         # --- Game over ---
         "gameover.victory":             "EXTRACCI\u00d3N COMPLETA",
@@ -761,6 +780,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.loot.credits":            "Cr\u00e9ditos",
         "hack.loot.bonus_time":         "Tiempo extra",
         "hack.loot.armor":              "Armadura",
+        "hack.loot.mystery":            "Desconocido",
 
         # --- Hack help overlay ---
         "hack.help.title":              "// PROTOCOLO DE INTRUSI\u00d3N \u2014 AYUDA //",
@@ -774,11 +794,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.node.ice.lbl":       "\u25aa  ICE       ",
         "hack.help.node.ice.desc":      "trampa oculta \u2014 \u00a1parece VAC\u00cdO!",
         "hack.help.ice_section":        "EFECTOS ICE  (activados al entrar)",
-        "hack.help.ice.time.lbl":       "\u2716  PENALIZACI\u00d3N",
+        "hack.help.ice.time.lbl":       "PENALIZACI\u00d3N",
         "hack.help.ice.time.desc":      "\u22123 segundos del reloj",
-        "hack.help.ice.corrupt.lbl":    "\u2716  DATOS CORRUPTOS",
+        "hack.help.ice.corrupt.lbl":    "DATOS CORRUPTOS",
         "hack.help.ice.corrupt.desc":   "destruye un nodo no hackeado",
-        "hack.help.ice.blocked.lbl":    "\u2716  ACCESO DENEGADO",
+        "hack.help.ice.blocked.lbl":    "ACCESO DENEGADO",
         "hack.help.ice.blocked.desc":   "bloquea la entrada \u2014 te devuelve",
         "hack.help.timer":              "TEMPORIZADOR",
         "hack.help.timer.1":            "Empieza con tu primer movimiento",
@@ -797,6 +817,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "alternar esta ayuda (temporizador pausado)",
         "hack.help.close":              "[F1]  Cerrar ayuda",
+        "hack.help.grid_section":       "GRID",
+        "hack.help.grid.automove":      "Auto-mover: pulsa una direcci\u00f3n",
+        "hack.help.grid.stop":          "Para en nodo o al cambiar direcci\u00f3n",
+        "hack.help.grid.lit":           "Rutas iluminadas = nodos alcanzables",
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] Ayuda",

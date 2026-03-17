@@ -26,6 +26,7 @@ class GameOverScene(Scene):
         self, app: "GameApp", *, victory: bool, floor_depth: int,
         difficulty: Difficulty | None = None,
         use_minigame: bool = True,
+        hack_variant: str = "grid",
         credits_earned: int = 0,
         audio=None,
     ) -> None:
@@ -34,6 +35,7 @@ class GameOverScene(Scene):
         self.floor_depth      = floor_depth
         self._difficulty      = difficulty
         self._use_minigame    = use_minigame
+        self._hack_variant    = hack_variant
         self._credits_earned  = credits_earned
         self._audio           = audio
         self._font_big   = pygame.font.SysFont("consolas", 52, bold=True)
@@ -136,6 +138,7 @@ class GameOverScene(Scene):
                 self.app,
                 difficulty=self._difficulty if self._difficulty is not None else NORMAL,
                 use_minigame=self._use_minigame,
+                hack_variant=self._hack_variant,
                 language=get_language(),
             )
         )
