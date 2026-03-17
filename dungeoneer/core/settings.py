@@ -15,6 +15,9 @@ TILE_SIZE = 32          # pixels per tile
 MAP_WIDTH = 60          # tiles wide
 MAP_HEIGHT = 40         # tiles tall
 
+# Dungeon generation
+STAIR_FARTHEST_CANDIDATES = 5   # stairs/vault placed in one of N farthest rooms from start
+
 # Colours (fallback placeholder rendering)
 COL_BLACK       = (0,   0,   0)
 COL_WHITE       = (255, 255, 255)

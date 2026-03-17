@@ -4,6 +4,7 @@ import copy
 from dataclasses import dataclass, field
 
 from dungeoneer.items.item import Item, ItemType, RangeType
+from dungeoneer.core.i18n import t
 
 
 @dataclass
@@ -15,6 +16,7 @@ class Weapon(Item):
     ammo_capacity: int       = 0    # 0 = unlimited/melee
     ammo_current:  int       = 0
     range_tiles:   int       = 1    # max attack range in tiles
+    diagonal:      bool      = False  # True = also reaches diagonal neighbours
     ammo_type:     str       = ""   # "9mm", "rifle", "shell", "" = melee
     shots:         int       = 1    # rounds fired per attack action (burst fire)
 
@@ -22,7 +24,8 @@ class Weapon(Item):
         if self.range_type == RangeType.RANGED:
             burst = f"  ×{self.shots}" if self.shots > 1 else ""
             return f"{self.damage_min}–{self.damage_max} dmg{burst}  {self.ammo_current}/{self.ammo_capacity}  ~{self.range_tiles}t"
-        return f"{self.damage_min}–{self.damage_max} dmg"
+        reach = self.range_tiles + 0.5 if self.diagonal else self.range_tiles
+        return f"{self.damage_min}–{self.damage_max} dmg  ~{reach:g}t"
 
 
 # ---------------------------------------------------------------------------
@@ -31,8 +34,8 @@ class Weapon(Item):
 
 def make_pistol() -> Weapon:
     return Weapon(
-        id="pistol", name="Pistol",
-        description="Standard 9mm sidearm. Reliable backup.",
+        id="pistol", name=t("item.pistol.name"),
+        description=t("item.pistol.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=3, damage_max=6,
@@ -44,8 +47,8 @@ def make_pistol() -> Weapon:
 
 def make_combat_knife() -> Weapon:
     return Weapon(
-        id="combat_knife", name="Combat Knife",
-        description="Lightweight blade. Fast and silent.",
+        id="combat_knife", name=t("item.combat_knife.name"),
+        description=t("item.combat_knife.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.MELEE,
         damage_min=2, damage_max=5,
@@ -56,8 +59,8 @@ def make_combat_knife() -> Weapon:
 
 def make_shotgun() -> Weapon:
     return Weapon(
-        id="shotgun", name="Shotgun",
-        description="Devastating up close. Useless at range. 4 shells.",
+        id="shotgun", name=t("item.shotgun.name"),
+        description=t("item.shotgun.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=9, damage_max=16,
@@ -69,8 +72,8 @@ def make_shotgun() -> Weapon:
 
 def make_smg() -> Weapon:
     return Weapon(
-        id="smg", name="SMG",
-        description="Burst fire — 3 rounds per shot. Shreds at close range.",
+        id="smg", name=t("item.smg.name"),
+        description=t("item.smg.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=2, damage_max=4,
@@ -83,20 +86,21 @@ def make_smg() -> Weapon:
 
 def make_energy_sword() -> Weapon:
     return Weapon(
-        id="energy_sword", name="Energy Sword",
-        description="Military-grade energy blade. Cuts through armour.",
+        id="energy_sword", name=t("item.energy_sword.name"),
+        description=t("item.energy_sword.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.MELEE,
         damage_min=5, damage_max=10,
         attack_bonus=2,
         ammo_capacity=0, ammo_current=0,
         range_tiles=1,
+        diagonal=True,
     )
 
 def make_rifle() -> Weapon:
     return Weapon(
-        id="rifle", name="Rifle",
-        description="Long-range precision. Lower burst than shotgun. 6 rounds.",
+        id="rifle", name=t("item.rifle.name"),
+        description=t("item.rifle.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=5, damage_max=10,

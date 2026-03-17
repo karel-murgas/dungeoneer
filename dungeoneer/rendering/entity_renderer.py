@@ -24,6 +24,8 @@ def _loot_sprite_key(item: "Item") -> str:  # type: ignore[name-defined]
         return "item_loot_ammo"
     if item.item_type == ItemType.CONSUMABLE:
         return "item_loot_consumable"
+    if item.item_type == ItemType.ARMOR:
+        return "item_loot_armor"
     if item.item_type == ItemType.WEAPON:
         if isinstance(item, Weapon) and item.range_type == RangeType.RANGED:
             return "item_loot_ranged"

@@ -296,6 +296,38 @@ def _make_vault_open() -> pygame.Surface:
     return surf
 
 
+def _make_item_loot_armor() -> pygame.Surface:
+    """Armor on the floor — top-down tactical vest, olive-green with plate detail."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Subtle green glow
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (80, 160, 60, 38), (cx, cy), 11)
+    surf.blit(glow, (0, 0))
+
+    # Main vest body (trapezoid-ish, top-down view)
+    body_pts = [(cx - 7, cy - 5), (cx + 7, cy - 5),
+                (cx + 9, cy + 6), (cx - 9, cy + 6)]
+    pygame.draw.polygon(surf, (52, 72, 38), body_pts)
+    pygame.draw.polygon(surf, (90, 120, 60), body_pts, 1)
+
+    # Chest plate (central rectangle — slightly lighter)
+    pygame.draw.rect(surf, (68, 95, 48), (cx - 4, cy - 3, 8, 7))
+    pygame.draw.rect(surf, (105, 145, 70), (cx - 4, cy - 3, 8, 7), 1)
+
+    # Shoulder straps
+    pygame.draw.rect(surf, (42, 60, 28), (cx - 9, cy - 7, 4, 4))
+    pygame.draw.rect(surf, (42, 60, 28), (cx + 5, cy - 7, 4, 4))
+    pygame.draw.rect(surf, (75, 105, 50), (cx - 9, cy - 7, 4, 4), 1)
+    pygame.draw.rect(surf, (75, 105, 50), (cx + 5, cy - 7, 4, 4), 1)
+
+    # Central clasp dot
+    pygame.draw.circle(surf, (140, 190, 90), (cx, cy + 1), 2)
+
+    return surf
+
+
 def _make_item_loot_consumable() -> pygame.Surface:
     """Consumable on the floor — green medkit cross with glow."""
     surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
@@ -320,6 +352,66 @@ def _make_item_loot_consumable() -> pygame.Surface:
 
 
 # ---------------------------------------------------------------------------
+def _make_item_hack_credits() -> pygame.Surface:
+    """Hack loot: credits — gold glow disc with ¥ character centered."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (220, 180, 20, 45), (cx, cy), 12)
+    surf.blit(glow, (0, 0))
+
+    pygame.draw.circle(surf, (35, 28, 6), (cx, cy), 9)
+    pygame.draw.circle(surf, (200, 160, 25), (cx, cy), 9, 2)
+
+    font = pygame.font.SysFont("consolas", 13, bold=True)
+    sym = font.render("\u00a5", True, (255, 215, 50))
+    surf.blit(sym, (cx - sym.get_width() // 2, cy - sym.get_height() // 2 + 2))
+
+    return surf
+
+
+def _make_item_hack_bonus_time() -> pygame.Surface:
+    """Hack loot: bonus time — cyan clock face with hour and minute hands."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (50, 170, 255, 45), (cx, cy), 12)
+    surf.blit(glow, (0, 0))
+
+    pygame.draw.circle(surf, (8, 20, 40), (cx, cy), 8)
+    pygame.draw.circle(surf, (60, 155, 255), (cx, cy), 8, 2)
+
+    col = (140, 210, 255)
+    # Hour hand pointing toward 12 (straight up)
+    pygame.draw.line(surf, col, (cx, cy), (cx, cy - 5), 2)
+    # Minute hand pointing toward 3 (right)
+    pygame.draw.line(surf, col, (cx, cy), (cx + 5, cy), 1)
+    pygame.draw.circle(surf, (255, 255, 255), (cx, cy), 1)
+
+    return surf
+
+
+def _make_item_hack_mystery() -> pygame.Surface:
+    """Hack loot: mystery — purple glow disc with ? character centered."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (160, 80, 220, 45), (cx, cy), 12)
+    surf.blit(glow, (0, 0))
+
+    pygame.draw.circle(surf, (18, 8, 35), (cx, cy), 9)
+    pygame.draw.circle(surf, (160, 80, 220), (cx, cy), 9, 2)
+
+    font = pygame.font.SysFont("consolas", 13, bold=True)
+    sym = font.render("?", True, (210, 155, 255))
+    surf.blit(sym, (cx - sym.get_width() // 2, cy - sym.get_height() // 2 + 2))
+
+    return surf
+
+
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -336,7 +428,11 @@ _BUILDERS: dict[str, object] = {
     "item_loot_melee":       _make_item_loot_melee,
     "item_loot_ranged":      _make_item_loot_ranged,
     "item_loot_ammo":        _make_item_loot_ammo,
+    "item_loot_armor":       _make_item_loot_armor,
     "item_loot_consumable":  _make_item_loot_consumable,
+    "item_hack_credits":     _make_item_hack_credits,
+    "item_hack_bonus_time":  _make_item_hack_bonus_time,
+    "item_hack_mystery":     _make_item_hack_mystery,
 }
 
 

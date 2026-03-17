@@ -12,6 +12,7 @@ from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
 from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, LogMessageEvent, ObjectiveEvent, DamageEvent
 from dungeoneer.core.difficulty import Difficulty, NORMAL
+from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
 from dungeoneer.world.floor import Floor
 from dungeoneer.world.fov import compute_fov
@@ -37,7 +38,9 @@ from dungeoneer.rendering.ui.inventory_ui import InventoryUI
 from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
 from dungeoneer.rendering.ui.help_screen import HelpScreen
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
+from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.audio.audio_manager import AudioManager
+from dungeoneer.audio.music_manager import MusicManager
 
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
@@ -46,9 +49,17 @@ FLOORS_PER_RUN = 3
 
 
 class GameScene(Scene):
-    def __init__(self, app: "GameApp", difficulty: Difficulty = NORMAL) -> None:
+    def __init__(
+        self,
+        app: "GameApp",
+        difficulty: Difficulty = NORMAL,
+        use_minigame: bool = True,
+        hack_variant: str = "grid",
+    ) -> None:
         super().__init__(app)
         self.difficulty     = difficulty
+        self.use_minigame   = use_minigame
+        self.hack_variant   = hack_variant   # "classic" | "grid"
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -57,8 +68,10 @@ class GameScene(Scene):
         self.inventory_ui   = InventoryUI()
         self.weapon_picker  = WeaponPickerUI()
         self.help_screen    = HelpScreen()
+        self.quit_confirm   = QuitConfirmDialog()
         self.alert_banner   = AlertBanner()
         self.audio          = AudioManager()
+        self.music          = MusicManager()
         self.floating_nums  = FloatingNumbers()
         self.player: Player | None = None
         self.floor:  Floor  | None = None
@@ -67,23 +80,43 @@ class GameScene(Scene):
         self._inventory_open     = False
         self._weapon_picker_open = False
         self._help_open          = False
+        self._quit_confirm_open  = False
         self._heal_confirm: UseItemAction | None = None  # overheal waiting for confirmation
         self._had_visible_enemies = False  # for alert-banner trigger detection
         self._pending_advance    = False   # waiting for enemy-turn delay
         self._advance_timer      = 0.0     # seconds remaining before advance fires
         self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
+        self._hack_just_completed = False  # advance enemy turns once hack scene pops
 
     def on_enter(self) -> None:
         log.info("GameScene.on_enter")
         self._subscribe_events()
         self.audio.attach()
         self._load_floor(depth=1)
+        self.music.start()
 
     def on_exit(self) -> None:
         log.info("GameScene.on_exit  game_over=%s", self._game_over)
         self._unsubscribe_events()
         self.audio.detach()
+        self.music.stop()
         self.combat_log.close()
+
+    def on_resume(self) -> None:
+        """Called when a scene pushed on top of this one (e.g. HackScene) pops."""
+        self.music.resume()
+        if self._hack_just_completed and not self._game_over:
+            self._hack_just_completed = False
+            # Recompute FOV so a freshly spawned drone's visibility is up-to-date,
+            # then trigger the alert banner immediately (before the player can act).
+            if self.player and self.floor:
+                compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+                now_visible = self._any_enemy_visible()
+                if now_visible and not self._had_visible_enemies:
+                    self.alert_banner.trigger()
+                    self.music.to_action(fast=True)
+                self._had_visible_enemies = now_visible
+            self._schedule_advance()
 
     # ------------------------------------------------------------------
     # Event subscriptions
@@ -157,7 +190,7 @@ class GameScene(Scene):
             "Floor %d loaded  actors=%s  stair=%s",
             depth, [a.name for a in self.floor.actors], result.stair_pos,
         )
-        self.combat_log.add(f"Floor {depth} — infiltrating facility.", (80, 200, 180))
+        self.combat_log.add(t("log.floor_enter").format(n=depth), (80, 200, 180))
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -189,9 +222,9 @@ class GameScene(Scene):
     def _on_damage(self, event: DamageEvent) -> None:
         if self.floor is None:
             return
-        t = event.target
-        if self.floor.dungeon_map.visible[t.y, t.x]:
-            self.floating_nums.add(t.x, t.y, event.amount, is_crit=event.is_crit)
+        tgt = event.target
+        if self.floor.dungeon_map.visible[tgt.y, tgt.x]:
+            self.floating_nums.add(tgt.x, tgt.y, event.amount, is_crit=event.is_crit)
 
     def _on_objective(self, event: ObjectiveEvent) -> None:
         self._trigger_game_over(victory=True)
@@ -205,6 +238,7 @@ class GameScene(Scene):
         else:
             self._load_floor(next_depth, existing_player=self.player)
             self.turn_manager.build_queue(self.floor)
+            self.music.to_calm()
 
     def _trigger_game_over(self, *, victory: bool) -> None:
         log.info("_trigger_game_over  victory=%s  already=%s", victory, self._game_over)
@@ -216,10 +250,24 @@ class GameScene(Scene):
         credits = self.player.credits if self.player else 0
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
-            difficulty=self.difficulty, credits_earned=credits,
-            audio=self.audio,
+            difficulty=self.difficulty, use_minigame=self.use_minigame,
+            hack_variant=self.hack_variant,
+            credits_earned=credits, audio=self.audio,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
+
+    def _go_to_menu(self) -> None:
+        from dungeoneer.scenes.main_menu_scene import MainMenuScene
+        from dungeoneer.core.i18n import get_language
+        self.app.scenes.replace(
+            MainMenuScene(
+                self.app,
+                difficulty=self.difficulty,
+                use_minigame=self.use_minigame,
+                hack_variant=self.hack_variant,
+                language=get_language(),
+            )
+        )
 
     # ------------------------------------------------------------------
     # Input
@@ -228,6 +276,13 @@ class GameScene(Scene):
     def handle_events(self, events: List[pygame.event.Event]) -> None:
         for event in events:
             if event.type == pygame.KEYDOWN:
+                if self._quit_confirm_open:
+                    result = self.quit_confirm.handle_key(event.key)
+                    if result == "confirm":
+                        self._go_to_menu()
+                    elif result == "cancel":
+                        self._quit_confirm_open = False
+                    return
                 if event.key == pygame.K_F1:
                     self._help_open = not self._help_open
                     return
@@ -241,7 +296,7 @@ class GameScene(Scene):
                     elif self._weapon_picker_open:
                         self._weapon_picker_open = False
                     else:
-                        self.app.quit()
+                        self._quit_confirm_open = True
                     return
                 if event.key == pygame.K_i:
                     self._inventory_open = not self._inventory_open
@@ -364,7 +419,7 @@ class GameScene(Scene):
                 if key in (pygame.K_h, pygame.K_RETURN, pygame.K_KP_ENTER):
                     action = pending
                 else:
-                    bus.post(LogMessageEvent("Heal cancelled.", (120, 120, 140)))
+                    bus.post(LogMessageEvent(t("log.heal_cancel"), (120, 120, 140)))
                     action = self._key_to_action(key)
                     if action is None:
                         continue
@@ -385,10 +440,19 @@ class GameScene(Scene):
 
             if not action.validate(self.player, self.floor):
                 if isinstance(action, StairAction):
-                    bus.post(LogMessageEvent("No exit here.", (180, 80, 80)))
+                    bus.post(LogMessageEvent(t("log.no_exit"), (180, 80, 80)))
                 elif isinstance(action, ReloadAction):
                     self.audio.play("no_ammo")
                 continue
+
+            # Non-objective containers trigger the hack minigame (when enabled).
+            if (
+                isinstance(action, OpenContainerAction)
+                and not action.container.is_objective
+                and self.use_minigame
+            ):
+                self._launch_hack(action.container)
+                break
 
             result = action.execute(self.player, self.floor, self.resolver)
             if result.message:
@@ -414,10 +478,12 @@ class GameScene(Scene):
             else:
                 self._schedule_advance()
 
-            # Alert banner: trigger when first enemy becomes visible this encounter
+            # Alert banner: trigger when first enemy becomes visible this encounter.
+            # fast=True so the action track is audible within the banner animation.
             now_visible = self._any_enemy_visible()
             if now_visible and not self._had_visible_enemies:
                 self.alert_banner.trigger()
+                self.music.to_action(fast=True)
             self._had_visible_enemies = now_visible
             break
 
@@ -444,6 +510,31 @@ class GameScene(Scene):
             self._advance_timer   = self._COMBAT_DELAY + extra_delay
         else:
             self.turn_manager.advance(self.floor, self.resolver)
+            self._update_music_state()
+
+    def _is_any_enemy_alert(self) -> bool:
+        """True if any living enemy is actively hunting the player (CombatState / SearchState)."""
+        from dungeoneer.ai.states import CombatState, SearchState
+        if self.floor is None:
+            return False
+        for actor in self.floor.actors:
+            if isinstance(actor, Enemy) and actor.alive:
+                state = getattr(actor.ai_brain, "current_state", None)
+                if isinstance(state, (CombatState, SearchState)):
+                    return True
+        return False
+
+    def _update_music_state(self) -> None:
+        """Switch music to action or calm.
+
+        Action continues as long as EITHER:
+          - any enemy is visible to the player, OR
+          - any enemy knows about the player (CombatState / SearchState).
+        """
+        if self._is_any_enemy_alert() or self._any_enemy_visible():
+            self.music.to_action()
+        else:
+            self.music.to_calm()
 
     def _key_to_action(self, key: int):
         assert self.player is not None
@@ -493,12 +584,12 @@ class GameScene(Scene):
             if isinstance(i, Consumable) and i.heal_amount > 0
         ]
         if not healables:
-            bus.post(LogMessageEvent("No healing items.", (180, 80, 80)))
+            bus.post(LogMessageEvent(t("log.no_heals"), (180, 80, 80)))
             return None
 
         missing = self.player.max_hp - self.player.hp
         if missing <= 0:
-            bus.post(LogMessageEvent("Already at full health.", (120, 120, 140)))
+            bus.post(LogMessageEvent(t("log.full_hp"), (120, 120, 140)))
             return None
 
         exact = [i for i in healables if i.heal_amount <= missing]
@@ -511,8 +602,10 @@ class GameScene(Scene):
         overheal = chosen.heal_amount - missing
         count_str = f" x{chosen.count}" if chosen.count > 1 else ""
         bus.post(LogMessageEvent(
-            f"{chosen.name}{count_str}: +{chosen.heal_amount} HP (overheal +{overheal})."
-            f"  [H/Enter] Confirm",
+            t("log.heal_confirm").format(
+                item=chosen.name, count=count_str,
+                hp=chosen.heal_amount, overheal=overheal,
+            ),
             (200, 160, 60),
         ))
         return None
@@ -527,20 +620,106 @@ class GameScene(Scene):
                 return c
         return None
 
+    # ------------------------------------------------------------------
+    # Hack minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_hack(self, container: "ContainerEntity") -> None:
+        def on_complete(success: bool, items, credits: int) -> None:
+            self._on_hack_complete(success, items, credits, container)
+
+        self.music.pause()
+
+        if self.hack_variant == "classic":
+            from dungeoneer.minigame.hack_scene import HackScene
+            from dungeoneer.minigame.hack_generator import HackParams
+            params = HackParams.for_difficulty(self.difficulty)
+            self.app.scenes.push(HackScene(self.app, params=params, on_complete=on_complete))
+        else:
+            from dungeoneer.minigame.hack_scene_grid import HackGridScene
+            from dungeoneer.minigame.hack_grid_generator import HackGridParams
+            params = HackGridParams.for_difficulty(self.difficulty)
+            self.app.scenes.push(HackGridScene(self.app, params=params, on_complete=on_complete))
+
+    def _on_hack_complete(
+        self, success: bool, items, credits: int, container: "ContainerEntity"
+    ) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        container.opened = True
+
+        if success:
+            credits_str = ""
+            if credits > 0:
+                self.player.credits += credits
+                credits_str = f"  +¥{credits}"
+            bus.post(LogMessageEvent(t("log.hack_success").format(container=container.name, credits=credits_str), (200, 180, 80)))
+            for item in items:
+                self.floor.add_item_entity(ItemEntity(self.player.x, self.player.y, item))
+            self.resolver._auto_pickup(self.player, self.floor)
+        else:
+            from dungeoneer.ai.states import CombatState
+            bus.post(LogMessageEvent(t("log.hack_fail"), (220, 60, 60)))
+            sx, sy = self._find_drone_spawn(container)
+            drone = make_drone(sx, sy)
+            drone.ai_brain.set_state(CombatState())
+            self.floor.add_actor(drone)
+            log.info("Spawned alert drone at (%d,%d) after failed hack", sx, sy)
+
+        self._hack_just_completed = True
+
+    def _find_drone_spawn(self, container: "ContainerEntity") -> tuple[int, int]:
+        """Find the best tile to spawn a drone near a container: walkable, LOS to player,
+        closest to DRONE_PREFERRED_DIST away from the player."""
+        from dungeoneer.combat.line_of_sight import has_los
+        from dungeoneer.core.settings import DRONE_PREFERRED_DIST
+
+        assert self.player is not None
+        assert self.floor  is not None
+
+        cx, cy = container.x, container.y
+        px, py = self.player.x, self.player.y
+        dm = self.floor.dungeon_map
+
+        candidates: list[tuple[int, int]] = []
+        for dy in range(-8, 9):
+            for dx in range(-8, 9):
+                tx, ty = cx + dx, cy + dy
+                if not dm.in_bounds(tx, ty) or not dm.is_walkable(tx, ty):
+                    continue
+                if (tx, ty) == (px, py):
+                    continue
+                if self.floor.get_actor_at(tx, ty) is not None:
+                    continue
+                candidates.append((tx, ty))
+
+        if not candidates:
+            return cx, cy
+
+        los_candidates = [
+            (x, y) for x, y in candidates
+            if has_los(x, y, px, py, dm)
+        ]
+        pool = los_candidates if los_candidates else candidates
+        return min(pool, key=lambda p: abs(abs(p[0] - px) + abs(p[1] - py) - DRONE_PREFERRED_DIST))
+
     @staticmethod
     def _make_container(x: int, y: int) -> ContainerEntity:
         import random
         from dungeoneer.items.consumable import make_stim_pack, make_medkit
         from dungeoneer.items.ammo import make_9mm_ammo, make_rifle_ammo
         from dungeoneer.items.weapon import make_rifle, make_shotgun
+        from dungeoneer.items.armor import make_basic_armor
 
         pool = [
-            (0.30, lambda: make_stim_pack()),
-            (0.15, lambda: make_medkit()),
-            (0.25, lambda: make_9mm_ammo(8)),
-            (0.12, lambda: make_rifle_ammo(3)),
+            (0.27, lambda: make_stim_pack()),
+            (0.13, lambda: make_medkit()),
+            (0.22, lambda: make_9mm_ammo(8)),
+            (0.11, lambda: make_rifle_ammo(3)),
             (0.10, lambda: make_shotgun()),
             (0.08, lambda: make_rifle()),
+            (0.09, lambda: make_basic_armor()),
         ]
         items = []
         count = random.randint(1, 2)
@@ -561,7 +740,7 @@ class GameScene(Scene):
 
         w = self.player.equipped_weapon
         if w is None or w.range_type != RangeType.RANGED:
-            bus.post(LogMessageEvent("No ranged weapon equipped.", (180, 80, 80)))
+            bus.post(LogMessageEvent(t("log.no_ranged"), (180, 80, 80)))
             return WaitAction()
 
         visible_enemies = [
@@ -570,7 +749,7 @@ class GameScene(Scene):
             and self.floor.dungeon_map.visible[a.y, a.x]
         ]
         if not visible_enemies:
-            bus.post(LogMessageEvent("No target in sight.", (180, 80, 80)))
+            bus.post(LogMessageEvent(t("log.no_target"), (180, 80, 80)))
             return WaitAction()
 
         nearest = min(
@@ -585,23 +764,24 @@ class GameScene(Scene):
 
         w = self.player.equipped_weapon
         reach = w.range_tiles if w else 1
+        diag  = w.diagonal    if w else False
 
-        # Chebyshev distance — same metric used by MeleeAttackAction.validate
+        def dist(e):
+            dx = abs(e.x - self.player.x)
+            dy = abs(e.y - self.player.y)
+            return max(dx, dy) if diag else (dx + dy)
+
         in_reach = [
             a for a in self.floor.actors
             if isinstance(a, Enemy) and a.alive
             and self.floor.dungeon_map.visible[a.y, a.x]
-            and max(abs(a.x - self.player.x), abs(a.y - self.player.y)) <= reach
+            and dist(a) <= reach
         ]
         if not in_reach:
-            bus.post(LogMessageEvent("No enemy in melee range.", (180, 80, 80)))
+            bus.post(LogMessageEvent(t("log.no_melee"), (180, 80, 80)))
             return WaitAction()
 
-        nearest = min(
-            in_reach,
-            key=lambda e: max(abs(e.x - self.player.x), abs(e.y - self.player.y)),
-        )
-        return MeleeAttackAction(nearest, range_tiles=reach)
+        return MeleeAttackAction(min(in_reach, key=dist), range_tiles=reach, diagonal=diag)
 
     # ------------------------------------------------------------------
     # Scene interface
@@ -610,16 +790,17 @@ class GameScene(Scene):
     def update(self, dt: float) -> None:
         self.alert_banner.update(dt)
         self.floating_nums.update(dt)
+        self.music.update(dt)
 
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
             remaining = []
-            for t, ev in self._burst_queue:
-                t -= dt
-                if t <= 0.0:
+            for timer, ev in self._burst_queue:
+                timer -= dt
+                if timer <= 0.0:
                     bus.post(ev)
                 else:
-                    remaining.append((t, ev))
+                    remaining.append((timer, ev))
             self._burst_queue = remaining
 
         if self._pending_advance and not self._game_over:
@@ -627,6 +808,7 @@ class GameScene(Scene):
             if self._advance_timer <= 0.0:
                 self._pending_advance = False
                 self.turn_manager.advance(self.floor, self.resolver)
+                self._update_music_state()
 
     def render(self, screen: pygame.Surface) -> None:
         if self.floor and self.player:
@@ -643,3 +825,5 @@ class GameScene(Scene):
                 self.weapon_picker.draw(screen, self.player)
             if self._help_open:
                 self.help_screen.draw(screen)
+            if self._quit_confirm_open:
+                self.quit_confirm.draw(screen)

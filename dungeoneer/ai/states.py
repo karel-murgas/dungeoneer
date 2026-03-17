@@ -64,7 +64,7 @@ class CombatState(BehaviorState):
         from dungeoneer.combat.action import MoveAction, MeleeAttackAction, WaitAction
 
         # Adjacent — attack
-        if dist == 1 or (abs(owner.x - player.x) <= 1 and abs(owner.y - player.y) <= 1 and dist > 0):
+        if dist == 1:
             return MeleeAttackAction(player)
 
         # Path toward player
@@ -124,7 +124,7 @@ class CombatState(BehaviorState):
         # Normalise
         sdx = (1 if dx > 0 else -1) if dx != 0 else 0
         sdy = (1 if dy > 0 else -1) if dy != 0 else 0
-        for ddx, ddy in [(sdx, sdy), (sdx, 0), (0, sdy)]:
+        for ddx, ddy in [(sdx, 0), (0, sdy)]:
             if ddx == 0 and ddy == 0:
                 continue
             nx, ny = owner.x + ddx, owner.y + ddy

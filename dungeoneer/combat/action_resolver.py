@@ -5,6 +5,7 @@ import logging
 
 from dungeoneer.combat.action import ActionResult, MoveAction, MeleeAttackAction, RangedAttackAction
 from dungeoneer.combat.damage import calc_melee, calc_ranged
+from dungeoneer.core.i18n import t
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class ActionResolver:
     def _auto_pickup(self, player: "Player", floor: "Floor") -> None:  # type: ignore[name-defined]
         from dungeoneer.core.event_bus import bus, LogMessageEvent
         from dungeoneer.items.ammo import AmmoPickup
+        from dungeoneer.items.armor import Armor
         from dungeoneer.items.weapon import Weapon
         from dungeoneer.items.item import RangeType
 
@@ -50,7 +52,20 @@ class ActionResolver:
                 )
                 floor.remove_item_entity(item_e)
                 log.info("Ammo pickup: %s at (%d,%d)", item.name, player.x, player.y)
-                bus.post(LogMessageEvent(f"Picked up {item.name}.", (200, 220, 100)))
+                bus.post(LogMessageEvent(t("log.pickup_ammo").format(item=item.name), (200, 220, 100)))
+                continue
+
+            # --- Armor → auto-equip if slot empty, else discard ---
+            if isinstance(item, Armor):
+                if player.equipped_armor is not None:
+                    floor.remove_item_entity(item_e)
+                    log.info("Discarded duplicate armor: %s at (%d,%d)", item.name, player.x, player.y)
+                    bus.post(LogMessageEvent(t("log.armor_duplicate").format(item=player.equipped_armor.name), (120, 100, 80)))
+                else:
+                    player.equipped_armor = item
+                    floor.remove_item_entity(item_e)
+                    log.info("Auto-equipped armor: %s at (%d,%d)", item.name, player.x, player.y)
+                    bus.post(LogMessageEvent(t("log.armor_equip").format(item=item.name, bonus=item.defense_bonus), (180, 220, 140)))
                 continue
 
             # --- Melee weapon duplicate → discard (already have one of this type) ---
@@ -62,7 +77,7 @@ class ActionResolver:
                 if already_have:
                     floor.remove_item_entity(item_e)
                     log.info("Discarded duplicate melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
-                    bus.post(LogMessageEvent(f"Already have {item.name}, left it.", (120, 100, 80)))
+                    bus.post(LogMessageEvent(t("log.item_duplicate").format(item=item.name), (120, 100, 80)))
                     continue
 
             # --- Ranged weapon duplicate → strip for ammo instead ---
@@ -78,7 +93,7 @@ class ActionResolver:
                     )
                     floor.remove_item_entity(item_e)
                     log.info("Stripped %s for %d ammo at (%d,%d)", item.name, gained, player.x, player.y)
-                    bus.post(LogMessageEvent(f"Stripped {item.name}: +{gained} {item.ammo_type}.", (180, 200, 120)))
+                    bus.post(LogMessageEvent(t("log.ammo_strip").format(item=item.name, n=gained, ammo=item.ammo_type), (180, 200, 120)))
                     continue
 
             # --- Default: add to inventory (Inventory.add handles consumable stacking) ---
@@ -88,10 +103,10 @@ class ActionResolver:
                 from dungeoneer.items.consumable import Consumable
                 existing = next((i for i in player.inventory if isinstance(i, Consumable) and i.id == item.id), None)
                 count_str = f" ×{existing.count}" if existing and existing.count > 1 else ""
-                bus.post(LogMessageEvent(f"Picked up {item.name}{count_str}.", (240, 220, 80)))
+                bus.post(LogMessageEvent(t("log.pickup_item").format(item=item.name, count=count_str), (240, 220, 80)))
             elif not inventory_full_warned:
                 inventory_full_warned = True
-                bus.post(LogMessageEvent("Inventory full — can't pick up item.", (180, 80, 80)))
+                bus.post(LogMessageEvent(t("log.inv_full"), (180, 80, 80)))
 
     def resolve_melee(
         self, actor: "Actor", action: MeleeAttackAction, floor: "Floor"  # type: ignore[name-defined]
@@ -101,9 +116,9 @@ class ActionResolver:
         target = action.target
         result = calc_melee(actor, target)
 
-        crit_str = " CRITICAL!" if result.is_crit else ""
+        crit_str = t("log.crit") if result.is_crit else ""
         colour   = (255, 100, 100) if result.is_crit else (220, 120, 80)
-        msg = f"{actor.name} hits {target.name} for {result.actual} dmg.{crit_str}"
+        msg = t("log.melee_hit").format(attacker=actor.name, target=target.name, dmg=result.actual, crit=crit_str)
         log.debug("melee  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
         bus.post(DamageEvent(actor, target, result.actual, is_ranged=False, is_crit=result.is_crit))
 
@@ -114,7 +129,7 @@ class ActionResolver:
 
         if not target.alive:
             bus.post(DeathEvent(target))
-            msg += f" {target.name} is down!"
+            msg += t("log.is_down").format(name=target.name)
             floor.remove_dead()
 
         return ActionResult(True, msg, colour)
@@ -130,9 +145,9 @@ class ActionResolver:
         if isinstance(actor, Player):
             w = actor.equipped_weapon
             if w is None or w.range_type != RangeType.RANGED:
-                return ActionResult(False, "No ranged weapon equipped.", (180, 80, 80))
+                return ActionResult(False, t("log.no_ranged"), (180, 80, 80))
             if w.ammo_current <= 0:
-                return ActionResult(False, "Out of ammo! Press R to reload.", (255, 80, 80))
+                return ActionResult(False, t("log.no_ammo"), (255, 80, 80))
 
         target = action.target
         weapon = getattr(actor, "equipped_weapon", None)
@@ -172,13 +187,13 @@ class ActionResolver:
                 bus.post(dmg_event)
 
         if total_actual == 0:
-            return ActionResult(False, "Out of ammo! Press R to reload.", (255, 80, 80))
+            return ActionResult(False, t("log.no_ammo"), (255, 80, 80))
 
         shots_fired = len(burst_events) if is_player_burst else shots
-        crit_str  = " CRITICAL!" if any_crit else ""
+        crit_str  = t("log.crit") if any_crit else ""
         colour    = (255, 200, 80) if any_crit else (220, 180, 60)
         burst_str = f" ({shots_fired}×)" if shots_fired > 1 else ""
-        msg = f"{actor.name} shoots {target.name}{burst_str} for {total_actual} dmg.{crit_str}"
+        msg = t("log.ranged_hit").format(attacker=actor.name, target=target.name, burst=burst_str, dmg=total_actual, crit=crit_str)
 
         if target.alive:
             brain = getattr(target, "ai_brain", None)
@@ -187,7 +202,7 @@ class ActionResolver:
 
         if not target.alive:
             bus.post(DeathEvent(target))
-            msg += f" {target.name} is down!"
+            msg += t("log.is_down").format(name=target.name)
             floor.remove_dead()
 
         return ActionResult(True, msg, colour, burst_events=burst_events)
@@ -216,16 +231,15 @@ class ActionResolver:
             bus.post(ObjectiveEvent(credits_gained=container.credits))
             return ActionResult(
                 True,
-                f"Data Core secured!{credits_str} — EXTRACTING.",
+                t("log.container_secured").format(credits=credits_str),
                 (0, 240, 180),
             )
 
         # Normal container
         if not container.items:
-            msg = f"The {container.name} is empty.{credits_str}"
-            return ActionResult(True, msg.strip(), (120, 100, 80))
+            return ActionResult(True, t("log.container_empty").format(name=container.name, credits=credits_str), (120, 100, 80))
 
         for item in container.items:
             floor.add_item_entity(ItemEntity(container.x, container.y, item))
         names = ", ".join(i.name for i in container.items)
-        return ActionResult(True, f"Opened {container.name}: {names}.{credits_str}", (200, 180, 80))
+        return ActionResult(True, t("log.container_open").format(name=container.name, items=names, credits=credits_str), (200, 180, 80))

@@ -7,11 +7,13 @@ import pygame
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
+from dungeoneer.core.i18n import t, get_language
+from dungeoneer.core.difficulty import Difficulty
 
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
 
-_BTN_W  = 200
+_BTN_W  = 230
 _BTN_H  = 44
 _BTN_NRM = (20, 40, 35)
 _BTN_HOV = (35, 90, 70)
@@ -22,22 +24,28 @@ _COL_BORDER_HOV = (100, 240, 200)
 class GameOverScene(Scene):
     def __init__(
         self, app: "GameApp", *, victory: bool, floor_depth: int,
-        difficulty=None, credits_earned: int = 0, audio=None,
+        difficulty: Difficulty | None = None,
+        use_minigame: bool = True,
+        hack_variant: str = "grid",
+        credits_earned: int = 0,
+        audio=None,
     ) -> None:
         super().__init__(app)
-        self.victory         = victory
-        self.floor_depth     = floor_depth
-        self._difficulty     = difficulty
-        self._credits_earned = credits_earned
-        self._audio          = audio
+        self.victory          = victory
+        self.floor_depth      = floor_depth
+        self._difficulty      = difficulty
+        self._use_minigame    = use_minigame
+        self._hack_variant    = hack_variant
+        self._credits_earned  = credits_earned
+        self._audio           = audio
         self._font_big   = pygame.font.SysFont("consolas", 52, bold=True)
         self._font_med   = pygame.font.SysFont("consolas", 26)
         self._font_small = pygame.font.SysFont("consolas", 18)
         self._font_btn   = pygame.font.SysFont("consolas", 18, bold=True)
         # Button rects populated in render(); used for mouse hit-testing
-        self._btn_restart: pygame.Rect | None = None
-        self._btn_quit:    pygame.Rect | None = None
-        self._hovered: str | None = None   # "restart" | "quit" | None
+        self._btn_menu: pygame.Rect | None = None
+        self._btn_quit: pygame.Rect | None = None
+        self._hovered: str | None = None   # "menu" | "quit" | None
 
     def on_enter(self) -> None:
         if self._audio:
@@ -47,21 +55,21 @@ class GameOverScene(Scene):
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_r, pygame.K_RETURN, pygame.K_SPACE):
-                    self._restart()
+                    self._go_to_menu()
                 elif event.key == pygame.K_ESCAPE:
                     self.app.quit()
 
             elif event.type == pygame.MOUSEMOTION:
                 hov = None
-                if self._btn_restart and self._btn_restart.collidepoint(event.pos):
-                    hov = "restart"
+                if self._btn_menu and self._btn_menu.collidepoint(event.pos):
+                    hov = "menu"
                 elif self._btn_quit and self._btn_quit.collidepoint(event.pos):
                     hov = "quit"
                 self._hovered = hov
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self._btn_restart and self._btn_restart.collidepoint(event.pos):
-                    self._restart()
+                if self._btn_menu and self._btn_menu.collidepoint(event.pos):
+                    self._go_to_menu()
                 elif self._btn_quit and self._btn_quit.collidepoint(event.pos):
                     self.app.quit()
 
@@ -73,13 +81,13 @@ class GameOverScene(Scene):
         sw, sh = settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT
 
         if self.victory:
-            title  = "EXTRACTION COMPLETE"
+            title  = t("gameover.victory")
             colour = (0, 220, 180)
-            sub    = "You made it out alive."
+            sub    = t("gameover.victory_sub")
         else:
-            title  = "KILLED IN ACTION"
+            title  = t("gameover.defeat")
             colour = (220, 60, 60)
-            sub    = "Your signal has gone dark."
+            sub    = t("gameover.defeat_sub")
 
         t_surf = self._font_big.render(title, True, colour)
         screen.blit(t_surf, (sw // 2 - t_surf.get_width() // 2, sh // 3))
@@ -88,13 +96,13 @@ class GameOverScene(Scene):
         screen.blit(s_surf, (sw // 2 - s_surf.get_width() // 2, sh // 3 + 70))
 
         depth_surf = self._font_small.render(
-            f"Floors cleared: {self.floor_depth - 1}", True, (120, 120, 140)
+            t("gameover.floors").format(n=self.floor_depth - 1), True, (120, 120, 140)
         )
         screen.blit(depth_surf, (sw // 2 - depth_surf.get_width() // 2, sh // 3 + 110))
 
         cr_colour = (80, 220, 120) if self._credits_earned > 0 else (100, 100, 120)
         cr_surf = self._font_med.render(
-            f"Credits earned: ¥ {self._credits_earned}", True, cr_colour
+            t("gameover.credits").format(n=self._credits_earned), True, cr_colour
         )
         screen.blit(cr_surf, (sw // 2 - cr_surf.get_width() // 2, sh // 3 + 148))
 
@@ -102,7 +110,7 @@ class GameOverScene(Scene):
         btn_y = sh * 2 // 3
         gap   = 24
 
-        self._btn_restart = pygame.Rect(
+        self._btn_menu = pygame.Rect(
             sw // 2 - _BTN_W - gap // 2, btn_y, _BTN_W, _BTN_H
         )
         self._btn_quit = pygame.Rect(
@@ -110,8 +118,8 @@ class GameOverScene(Scene):
         )
 
         for btn, key, label in (
-            (self._btn_restart, "restart", "Run Again  [R]"),
-            (self._btn_quit,    "quit",    "Quit  [Esc]"),
+            (self._btn_menu, "menu", t("gameover.menu")),
+            (self._btn_quit, "quit", t("gameover.quit")),
         ):
             is_hov = self._hovered == key
             pygame.draw.rect(screen, _BTN_HOV if is_hov else _BTN_NRM, btn, border_radius=4)
@@ -122,9 +130,15 @@ class GameOverScene(Scene):
             screen.blit(lbl, (btn.centerx - lbl.get_width() // 2,
                                btn.centery - lbl.get_height() // 2))
 
-    def _restart(self) -> None:
-        from dungeoneer.scenes.game_scene import GameScene
+    def _go_to_menu(self) -> None:
+        from dungeoneer.scenes.main_menu_scene import MainMenuScene
+        from dungeoneer.core.difficulty import NORMAL
         self.app.scenes.replace(
-            GameScene(self.app, difficulty=self._difficulty)
-            if self._difficulty else GameScene(self.app)
+            MainMenuScene(
+                self.app,
+                difficulty=self._difficulty if self._difficulty is not None else NORMAL,
+                use_minigame=self._use_minigame,
+                hack_variant=self._hack_variant,
+                language=get_language(),
+            )
         )

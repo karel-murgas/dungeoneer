@@ -14,7 +14,7 @@ class Pathfinder:
         goal: tuple[int, int],
         dungeon_map: DungeonMap,
         *,
-        diagonal: bool = True,
+        diagonal: bool = False,
     ) -> list[tuple[int, int]]:
         """Return list of (x,y) tiles from start (exclusive) to goal (inclusive).
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 import pygame
 
 from dungeoneer.core import settings
+from dungeoneer.core.i18n import t
 from dungeoneer.items.item import ItemType, RangeType
 from dungeoneer.items.weapon import Weapon
 from dungeoneer.items.consumable import Consumable
@@ -150,30 +151,40 @@ class InventoryUI:
         self.clamp_selection(player)
 
         # --- Header ---
-        hdr = self._font_hdr.render(f"INVENTORY  {n}/8", True, _BORDER)
+        hdr = self._font_hdr.render(t("inv.title").format(n=n), True, _BORDER)
         screen.blit(hdr, (ox + _PAD, oy + _PAD))
 
         # --- Equipped weapon line ---
         eq_y = oy + _PAD + 28
-        screen.blit(self._font.render("EQUIPPED:", True, _COL_DIM), (ox + _PAD, eq_y))
+        screen.blit(self._font.render(t("inv.weapon_label"), True, _COL_DIM), (ox + _PAD, eq_y))
         if player.equipped_weapon:
             w = player.equipped_weapon
             eq_surf = self._font_bold.render(f"{w.name}   {w.stat_line()}", True, _COL_EQ)
-            screen.blit(eq_surf, (ox + _PAD + 90, eq_y))
+            screen.blit(eq_surf, (ox + _PAD + 75, eq_y))
         else:
-            screen.blit(self._font.render("— none —", True, _COL_DIM), (ox + _PAD + 90, eq_y))
+            screen.blit(self._font.render(t("inv.none"), True, _COL_DIM), (ox + _PAD + 75, eq_y))
 
-        pygame.draw.line(screen, (40, 60, 55), (ox + _PAD, eq_y + 22), (ox + _W - _PAD, eq_y + 22))
+        # --- Equipped armor line ---
+        ar_y = eq_y + 20
+        screen.blit(self._font.render(t("inv.armor_label"), True, _COL_DIM), (ox + _PAD, ar_y))
+        armor = getattr(player, "equipped_armor", None)
+        if armor is not None:
+            ar_surf = self._font_bold.render(f"{armor.name}   {armor.stat_line()}", True, (140, 200, 100))
+            screen.blit(ar_surf, (ox + _PAD + 75, ar_y))
+        else:
+            screen.blit(self._font.render(t("inv.none"), True, _COL_DIM), (ox + _PAD + 75, ar_y))
+
+        pygame.draw.line(screen, (40, 60, 55), (ox + _PAD, ar_y + 22), (ox + _W - _PAD, ar_y + 22))
 
         # --- Item list ---
-        list_y    = eq_y + 30
+        list_y    = ar_y + 30
         footer_y  = oy + _H - _PAD - 26
         list_max_y = footer_y - 14
 
         self._item_rects = {}
 
         if n == 0:
-            screen.blit(self._font.render("(empty)", True, _COL_DIM), (ox + _PAD, list_y))
+            screen.blit(self._font.render(t("inv.empty"), True, _COL_DIM), (ox + _PAD, list_y))
         else:
             scroll_top = max(0, self._selected - _VISIBLE_ROWS + 1)
             scroll_top = min(scroll_top, max(0, n - _VISIBLE_ROWS))
@@ -218,10 +229,10 @@ class InventoryUI:
 
         self._btn_rects = {}
         btn_defs = [
-            ("equip", "[E] Equip"),
-            ("use",   "[U] Use"),
-            ("drop",  "[D] Drop"),
-            ("close", "[I] Close"),
+            ("equip", t("inv.btn_equip")),
+            ("use",   t("inv.btn_use")),
+            ("drop",  t("inv.btn_drop")),
+            ("close", t("inv.btn_close")),
         ]
         bx = ox + _PAD
         for key, label in btn_defs:

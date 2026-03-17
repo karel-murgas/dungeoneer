@@ -5,6 +5,7 @@ import random
 from typing import Optional
 
 from dungeoneer.core import settings
+from dungeoneer.core.i18n import t
 from dungeoneer.entities.actor import Actor
 from dungeoneer.ai.brain import AIBrain
 from dungeoneer.items.item import Item
@@ -66,7 +67,7 @@ class Enemy(Actor):
 def make_guard(x: int, y: int) -> Enemy:
     return Enemy(
         x, y,
-        name="Corp Guard",
+        name=t("entity.guard.name"),
         render_colour=settings.COL_GUARD,
         max_hp=12, attack=3, defence=1,
         is_drone=False,
@@ -81,7 +82,7 @@ def make_guard(x: int, y: int) -> Enemy:
 def make_drone(x: int, y: int) -> Enemy:
     return Enemy(
         x, y,
-        name="Sec Drone",
+        name=t("entity.drone.name"),
         render_colour=settings.COL_DRONE,
         max_hp=8, attack=2, defence=0,
         is_drone=True,
