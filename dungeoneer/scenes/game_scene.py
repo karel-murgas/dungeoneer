@@ -298,20 +298,39 @@ class GameScene(Scene):
             return
 
         for event in events:
-            if event.type == pygame.KEYDOWN:
-                if self._quit_confirm_open:
+            if self._quit_confirm_open:
+                if event.type == pygame.MOUSEMOTION:
+                    self.quit_confirm.handle_mouse_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    result = self.quit_confirm.handle_mouse_button(event)
+                    if result == "confirm":
+                        self._go_to_menu()
+                        return
+                    elif result == "cancel":
+                        self._quit_confirm_open = False
+                elif event.type == pygame.KEYDOWN:
                     result = self.quit_confirm.handle_key(event.key)
                     if result == "confirm":
                         self._go_to_menu()
+                        return
                     elif result == "cancel":
                         self._quit_confirm_open = False
-                    return
-                if event.key == pygame.K_F1:
-                    self._help_open = not self._help_open
-                    return
-                if self._help_open:
-                    if self.help_screen.handle_key(event.key):
+                continue  # absorb all input while quit dialog is open
+
+            if self._help_open:
+                if event.type == pygame.MOUSEMOTION:
+                    self.help_screen.handle_mouse_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.help_screen.handle_mouse_button(event):
                         self._help_open = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1 or self.help_screen.handle_key(event.key):
+                        self._help_open = False
+                continue
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F1:
+                    self._help_open = True
                     return
                 if event.key == pygame.K_ESCAPE:
                     if self._inventory_open:
@@ -336,6 +355,9 @@ class GameScene(Scene):
                         self._inventory_open = False
                         self.weapon_picker.open(self.player)
                     return
+
+        if self._quit_confirm_open:
+            return
 
         if self._inventory_open:
             self._handle_inventory_input(events)
@@ -433,7 +455,7 @@ class GameScene(Scene):
             return
 
         for event in events:
-            # LMB on a visible enemy → aim at that target
+            # LMB on a visible enemy or adjacent container
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 enemy = self._enemy_at_screen_pos(*event.pos)
                 if enemy is not None:
@@ -441,6 +463,19 @@ class GameScene(Scene):
                     if w and w.range_type == RangeType.RANGED:
                         self._aim_target = enemy
                         self._launch_aim(enemy)
+                        break
+                container = self._container_at_screen_pos(*event.pos)
+                if container is not None:
+                    action = OpenContainerAction(container)
+                    if action.validate(self.player, self.floor):
+                        if not container.is_objective and self.use_minigame:
+                            self._launch_hack(container)
+                        else:
+                            result = action.execute(self.player, self.floor, self.resolver)
+                            if result.message:
+                                bus.post(LogMessageEvent(result.message, result.msg_colour))
+                            if result.success:
+                                self._schedule_advance()
                         break
                 continue
 
@@ -891,6 +926,22 @@ class GameScene(Scene):
                 and self.floor.dungeon_map.visible[actor.y, actor.x]
             ):
                 return actor
+        return None
+
+    def _container_at_screen_pos(self, mx: int, my: int):
+        """Return an unopened adjacent container whose tile is under the given screen pixel, or None."""
+        if self.player is None or self.floor is None:
+            return None
+        cam = self.renderer.camera
+        tile_x = (mx + cam.offset_x) // settings.TILE_SIZE
+        tile_y = (my + cam.offset_y) // settings.TILE_SIZE
+        for container in self.floor.containers:
+            if (
+                not container.opened
+                and container.x == tile_x and container.y == tile_y
+                and abs(self.player.x - tile_x) <= 1 and abs(self.player.y - tile_y) <= 1
+            ):
+                return container
         return None
 
     def _nearest_ranged_target(self):

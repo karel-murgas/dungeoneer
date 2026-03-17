@@ -36,6 +36,8 @@ class ActionResolver:
         from dungeoneer.items.weapon import Weapon
         from dungeoneer.items.item import RangeType
 
+        from dungeoneer.items.consumable import Consumable
+
         items_here = floor.get_items_at(player.x, player.y)
         if not items_here:
             return
@@ -68,39 +70,33 @@ class ActionResolver:
                     bus.post(LogMessageEvent(t("log.armor_equip").format(item=item.name, bonus=item.defense_bonus), (180, 220, 140)))
                 continue
 
-            # --- Melee weapon duplicate → discard (already have one of this type) ---
-            if isinstance(item, Weapon) and item.range_type == RangeType.MELEE:
+            # --- Weapon duplicates ---
+            if isinstance(item, Weapon):
                 already_have = (
                     (player.equipped_weapon is not None and player.equipped_weapon.id == item.id)
                     or any(isinstance(i, Weapon) and i.id == item.id for i in player.inventory)
                 )
                 if already_have:
-                    floor.remove_item_entity(item_e)
-                    log.info("Discarded duplicate melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
-                    bus.post(LogMessageEvent(t("log.item_duplicate").format(item=item.name), (120, 100, 80)))
-                    continue
-
-            # --- Ranged weapon duplicate → strip for ammo instead ---
-            if isinstance(item, Weapon) and item.range_type == RangeType.RANGED:
-                already_have = (
-                    (player.equipped_weapon is not None and player.equipped_weapon.id == item.id)
-                    or any(isinstance(i, Weapon) and i.id == item.id for i in player.inventory)
-                )
-                if already_have and item.ammo_type:
-                    gained = item.ammo_capacity
-                    player.ammo_reserves[item.ammo_type] = (
-                        player.ammo_reserves.get(item.ammo_type, 0) + gained
-                    )
-                    floor.remove_item_entity(item_e)
-                    log.info("Stripped %s for %d ammo at (%d,%d)", item.name, gained, player.x, player.y)
-                    bus.post(LogMessageEvent(t("log.ammo_strip").format(item=item.name, n=gained, ammo=item.ammo_type), (180, 200, 120)))
+                    if item.range_type == RangeType.RANGED and item.ammo_type:
+                        # Ranged duplicate → strip for ammo
+                        gained = item.ammo_capacity
+                        player.ammo_reserves[item.ammo_type] = (
+                            player.ammo_reserves.get(item.ammo_type, 0) + gained
+                        )
+                        floor.remove_item_entity(item_e)
+                        log.info("Stripped %s for %d ammo at (%d,%d)", item.name, gained, player.x, player.y)
+                        bus.post(LogMessageEvent(t("log.ammo_strip").format(item=item.name, n=gained, ammo=item.ammo_type), (180, 200, 120)))
+                    else:
+                        # Melee duplicate → discard
+                        floor.remove_item_entity(item_e)
+                        log.info("Discarded duplicate melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
+                        bus.post(LogMessageEvent(t("log.item_duplicate").format(item=item.name), (120, 100, 80)))
                     continue
 
             # --- Default: add to inventory (Inventory.add handles consumable stacking) ---
             if player.inventory.add(item):
                 floor.remove_item_entity(item_e)
                 log.info("Auto-pickup: %s at (%d,%d)", item.name, player.x, player.y)
-                from dungeoneer.items.consumable import Consumable
                 existing = next((i for i in player.inventory if isinstance(i, Consumable) and i.id == item.id), None)
                 count_str = f" ×{existing.count}" if existing and existing.count > 1 else ""
                 bus.post(LogMessageEvent(t("log.pickup_item").format(item=item.name, count=count_str), (240, 220, 80)))
@@ -208,6 +204,10 @@ class ActionResolver:
 
         if shots_fired == 0:
             return ActionResult(False, t("log.no_ammo"), (255, 80, 80))
+
+        # Mark target so drone AI knows to return fire rather than flee.
+        if isinstance(actor, Player):
+            target.was_shot_at = True
 
         if total_actual == 0:
             # All shots fired but all missed

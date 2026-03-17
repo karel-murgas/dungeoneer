@@ -61,6 +61,7 @@ class SettingsOverlay:
 
         self._hovered: str | None = None
         self._btn_rects: dict[str, pygame.Rect] = {}
+        self._panel_rect: pygame.Rect | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -75,6 +76,8 @@ class SettingsOverlay:
 
     def handle_click(self, pos: tuple) -> bool:
         """Return True to close overlay."""
+        if self._panel_rect and not self._panel_rect.collidepoint(pos):
+            return True
         hit = self._hit_test(pos)
         if hit is None:
             return False
@@ -115,8 +118,21 @@ class SettingsOverlay:
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
         pygame.draw.rect(screen, _BORDER, (ox, oy, pw, ph), 2, border_radius=6)
+        self._panel_rect = pygame.Rect(ox, oy, pw, ph)
 
         cy = oy + _PAD
+
+        # Close button ✕ — top-right corner
+        close_size = 20
+        close_rect = pygame.Rect(ox + pw - _PAD - close_size, oy + _PAD // 2, close_size, close_size)
+        self._btn_rects["close"] = close_rect
+        is_hov_close = self._hovered == "close"
+        if is_hov_close:
+            pygame.draw.rect(screen, (60, 30, 30), close_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 60, 60), close_rect, 1, border_radius=3)
+        x_surf = self._font_btn.render("x", True, (180, 60, 60) if is_hov_close else _COL_LBL)
+        screen.blit(x_surf, (close_rect.centerx - x_surf.get_width() // 2,
+                              close_rect.centery - x_surf.get_height() // 2))
 
         # Title
         title = self._font_title.render(t("settings.title"), True, _COL_ACCENT)

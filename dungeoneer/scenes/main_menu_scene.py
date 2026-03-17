@@ -159,16 +159,22 @@ class MainMenuScene(Scene):
                     self._handle_key(event.key)
 
             elif event.type == pygame.MOUSEMOTION:
-                if self._settings_open:
+                if self._exit_confirm_open:
+                    self._exit_confirm.handle_mouse_motion(event.pos)
+                elif self._settings_open:
                     self._settings_overlay.handle_motion(event.pos)
                 elif self._help_open:
                     self._help_overlay.handle_motion(event.pos)
-                elif not self._exit_confirm_open:
+                else:
                     self._hovered = self._hit_test(event.pos)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self._exit_confirm_open:
-                    pass
+                    result = self._exit_confirm.handle_mouse_button(event)
+                    if result == "confirm":
+                        self.app.quit()
+                    elif result == "cancel":
+                        self._exit_confirm_open = False
                 elif self._settings_open:
                     if self._settings_overlay.handle_click(event.pos):
                         self._settings_open = False

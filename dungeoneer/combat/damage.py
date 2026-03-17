@@ -25,7 +25,7 @@ def calc_melee(attacker: "Actor", target: "Actor") -> DamageResult:  # type: ign
     weapon = getattr(attacker, "equipped_weapon", None)
     if weapon and weapon.range_type == RangeType.MELEE:
         roll, is_crit = _weapon_roll(weapon)
-        raw = weapon.attack_bonus + roll
+        raw = roll
     else:
         roll = random.randint(1, 4)
         is_crit = roll == 4
@@ -49,7 +49,7 @@ def calc_ranged_aimed(
     weapon = getattr(attacker, "equipped_weapon", None)
     if weapon is not None:
         dmg_range = weapon.damage_max - weapon.damage_min
-        raw = weapon.damage_min + round(accuracy * dmg_range) + weapon.attack_bonus
+        raw = weapon.damage_min + round(accuracy * dmg_range)
     else:
         from dungeoneer.core.settings import BASE_RANGED_DAMAGE
         raw = round(BASE_RANGED_DAMAGE * (0.5 + accuracy * 0.5))
@@ -102,7 +102,7 @@ def calc_ranged(attacker: "Actor", target: "Actor") -> DamageResult:  # type: ig
     weapon = getattr(attacker, "equipped_weapon", None)
     if weapon and weapon.range_type == RangeType.RANGED:
         roll, is_crit = _weapon_roll(weapon)
-        raw = weapon.attack_bonus + roll
+        raw = roll
     else:
         roll = random.randint(1, 6)
         is_crit = roll == 6

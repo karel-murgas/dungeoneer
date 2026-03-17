@@ -69,6 +69,9 @@ class HelpScreen:
         self._font_key   = pygame.font.SysFont("consolas", 15, bold=True)
         self._font_desc  = pygame.font.SysFont("consolas", 15)
         self._font_title = pygame.font.SysFont("consolas", 18, bold=True)
+        self._panel_rect: pygame.Rect | None = None
+        self._close_rect: pygame.Rect | None = None
+        self._close_hovered = False
 
     # ------------------------------------------------------------------
 
@@ -76,6 +79,19 @@ class HelpScreen:
         """Returns True if the help screen should close."""
         return key in (pygame.K_F1, pygame.K_ESCAPE, pygame.K_RETURN,
                        pygame.K_SPACE, pygame.K_KP_ENTER)
+
+    def handle_mouse_motion(self, pos: tuple[int, int]) -> None:
+        self._close_hovered = bool(self._close_rect and self._close_rect.collidepoint(pos))
+
+    def handle_mouse_button(self, event: pygame.event.Event) -> bool:
+        """Returns True if the help screen should close."""
+        if event.button != 1:
+            return False
+        if self._close_rect and self._close_rect.collidepoint(event.pos):
+            return True
+        if self._panel_rect and not self._panel_rect.collidepoint(event.pos):
+            return True
+        return False
 
     # ------------------------------------------------------------------
 
@@ -182,11 +198,23 @@ class HelpScreen:
         ox = (sw - w) // 2
         oy = (sh - total_h) // 2
 
+        self._panel_rect = pygame.Rect(ox, oy, w, total_h)
+
         # Background panel
         panel = pygame.Surface((w, total_h), pygame.SRCALPHA)
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
         pygame.draw.rect(screen, _BORDER, (ox, oy, w, total_h), 2)
+
+        # Close button [x] — top-right corner
+        close_size = 20
+        self._close_rect = pygame.Rect(ox + w - _PAD - close_size, oy + _PAD // 2, close_size, close_size)
+        if self._close_hovered:
+            pygame.draw.rect(screen, (60, 30, 30), self._close_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
+        x_surf = self._font_key.render("x", True, (180, 60, 60) if self._close_hovered else _COL_DIM)
+        screen.blit(x_surf, (self._close_rect.centerx - x_surf.get_width() // 2,
+                              self._close_rect.centery - x_surf.get_height() // 2))
 
         # Title
         title = self._font_title.render(t("help.title"), True, _COL_HDR)

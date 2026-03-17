@@ -49,16 +49,16 @@ BASE_RANGED_DAMAGE  = 5
 DRONE_PREFERRED_DIST = 4    # tiles drone tries to stay away
 
 # Aiming minigame
-AIM_ARC_DEGREES:    float = 90.0   # rozsah arcu v stupních — uprav pro jiný "feel"
-AIM_MIN_ZONE:       float = 5.0    # minimální hit zóna (floor) ve stupních
-AIM_START_SPEED:       float = 78.4   # °/s na začátku
-AIM_BOUNCE_SPEED_BOOST: float = 0.50  # násobek start_speed přidaný při každém odražení od konce oblouku
-AIM_CRIT_THRESHOLD: float = 0.95   # accuracy >= tato hodnota = critical hit
-AIM_RESULT_PAUSE:   float = 0.3    # sekund zobrazení výsledku výstřelu
-AIM_RADIUS_PX:      int   = 64     # poloměr arcu v pixelech (cca 2 dlaždice)
+AIM_ARC_DEGREES:    float = 90.0   # arc span in degrees — adjust for different "feel"
+AIM_MIN_ZONE:       float = 5.0    # minimum hit zone size (floor) in degrees
+AIM_START_SPEED:       float = 78.4   # °/s at start
+AIM_BOUNCE_SPEED_BOOST: float = 0.50  # fraction of start_speed added on each bounce off arc end
+AIM_CRIT_THRESHOLD: float = 0.95   # accuracy >= this value = critical hit
+AIM_RESULT_PAUSE:   float = 0.3    # seconds to display shot result
+AIM_RADIUS_PX:      int   = 64     # arc radius in pixels (~2 tiles)
 
 # Enemy aim simulation — normal distribution model
 # mean = max(0, AIM_SIM_MEAN_BASE - distance * AIM_SIM_MEAN_SLOPE)
 # sigma = 1.0 / enemy.aim_skill   (higher skill = lower sigma = tighter grouping)
-AIM_SIM_MEAN_BASE:  float = 0.70   # střední přesnost při vzdálenosti 0
-AIM_SIM_MEAN_SLOPE: float = 0.05   # pokles střední přesnosti za každý tile
+AIM_SIM_MEAN_BASE:  float = 0.70   # mean accuracy at distance 0
+AIM_SIM_MEAN_SLOPE: float = 0.05   # mean accuracy reduction per tile of distance

@@ -76,11 +76,20 @@ class CombatState(BehaviorState):
         )
         from dungeoneer.combat.line_of_sight import has_los
 
+        # Read and clear the "was shot at" flag set by ActionResolver.
+        was_shot_at = getattr(owner, 'was_shot_at', False)
+        owner.was_shot_at = False
+
+        # Only flee when the player is actively closing in.
+        prev_dist = getattr(self, '_prev_dist', dist)
+        self._prev_dist = dist
+        player_approaching = dist < prev_dist
+
         has_line = has_los(owner.x, owner.y, player.x, player.y, floor.dungeon_map)
 
         if has_line and dist <= 8:
-            if dist < preferred_dist:
-                # Too close — try to back away
+            if dist < preferred_dist and not was_shot_at and player_approaching:
+                # Too close, player is advancing, and not under fire — back away
                 step = self._step_away(owner, player, floor)
                 if step:
                     return step

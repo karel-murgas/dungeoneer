@@ -14,8 +14,8 @@ Karel builds from scratch iteratively with Claude as collaborator.
 - Turn order: player-first; each action resolves fully, then enemies go
 - 0.14s delay between turns when enemies are visible
 - Enemy types: Guard (melee, chase), Drone (ranged, maintain distance)
-- Damage ranged (aimed): `damage_min + accuracy*(damage_max-damage_min) + attack_bonus - defence`; accuracy ∈ [0,1], -1 = miss
-- Damage melee: `roll(weapon) + attack − defence`, min 1; crits supported
+- Damage ranged (aimed): `damage_min + round(accuracy*(damage_max-damage_min)) - defence`; accuracy ∈ [0,1], -1 = miss
+- Damage melee: `roll(damage_min..damage_max) - defence`, min 1; crits on max roll
 - SMG burst fire: 3 shots via AimScene (3× F), then staggered DamageEvents at 0.09s intervals via `_burst_queue`
 - **Aim minigame**: rotating needle, static hit zone; F or LMB stops needle; Tab cycles targets; LMB on enemy = direct aim; menu toggle `use_aim_minigame`; enemies use `simulate_aim()` statistically
 

@@ -67,7 +67,8 @@ class Enemy(Actor):
 # ---------------------------------------------------------------------------
 
 def make_guard(x: int, y: int) -> Enemy:
-    return Enemy(
+    from dungeoneer.items.weapon import make_combat_knife
+    enemy = Enemy(
         x, y,
         name=t("entity.guard.name"),
         render_colour=settings.COL_GUARD,
@@ -81,9 +82,12 @@ def make_guard(x: int, y: int) -> Enemy:
             (0.05, "energy_sword"),
         ],
     )
+    enemy.equipped_weapon = make_combat_knife()
+    return enemy
 
 def make_drone(x: int, y: int) -> Enemy:
-    return Enemy(
+    from dungeoneer.items.weapon import make_pistol
+    enemy = Enemy(
         x, y,
         name=t("entity.drone.name"),
         render_colour=settings.COL_DRONE,
@@ -96,3 +100,5 @@ def make_drone(x: int, y: int) -> Enemy:
             (0.10, "medkit"),
         ],
     )
+    enemy.equipped_weapon = make_pistol()
+    return enemy

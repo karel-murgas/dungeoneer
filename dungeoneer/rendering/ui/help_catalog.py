@@ -220,6 +220,9 @@ class HelpCatalogOverlay:
         self._hovered_tab: int | None = None
         self._tab_rects: list[pygame.Rect] = []
         self._stair_tile: pygame.Surface | None = None   # lazy-loaded
+        self._panel_rect: pygame.Rect | None = None
+        self._close_rect: pygame.Rect | None = None
+        self._close_hovered = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -236,10 +239,15 @@ class HelpCatalogOverlay:
         return False
 
     def handle_motion(self, pos: tuple) -> None:
-        self._hovered_tab = self._tab_hit(pos)
+        self._hovered_tab   = self._tab_hit(pos)
+        self._close_hovered = bool(self._close_rect and self._close_rect.collidepoint(pos))
 
     def handle_click(self, pos: tuple) -> bool:
         """Return True to close."""
+        if self._close_rect and self._close_rect.collidepoint(pos):
+            return True
+        if self._panel_rect and not self._panel_rect.collidepoint(pos):
+            return True
         idx = self._tab_hit(pos)
         if idx is not None:
             self._tab_idx = idx
@@ -258,8 +266,19 @@ class HelpCatalogOverlay:
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
         pygame.draw.rect(screen, _BORDER, (ox, oy, pw, ph), 2, border_radius=6)
+        self._panel_rect = pygame.Rect(ox, oy, pw, ph)
 
         cy = oy + _PAD
+
+        # Close button ✕ — top-right corner
+        close_size = 20
+        self._close_rect = pygame.Rect(ox + pw - _PAD - close_size, oy + _PAD // 2, close_size, close_size)
+        if self._close_hovered:
+            pygame.draw.rect(screen, (60, 30, 30), self._close_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
+        x_surf = self._font_tab.render("x", True, (180, 60, 60) if self._close_hovered else _COL_DIM)
+        screen.blit(x_surf, (self._close_rect.centerx - x_surf.get_width() // 2,
+                              self._close_rect.centery - x_surf.get_height() // 2))
 
         # Title
         title = self._font_title.render(t("help_catalog.title"), True, _COL_HDR)

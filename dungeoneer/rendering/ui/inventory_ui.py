@@ -37,6 +37,10 @@ class InventoryUI:
         # Populated during draw(); used for mouse hit-testing
         self._item_rects: dict[int, pygame.Rect] = {}   # abs_index → row rect
         self._btn_rects:  dict[str, pygame.Rect] = {}   # "equip"|"use"|"drop"|"close" → rect
+        # Double-click tracking for item rows
+        self._last_click_idx:  int = -1
+        self._last_click_time: int = 0
+        self._DBLCLICK_MS = 400
 
     # ------------------------------------------------------------------
     # Keyboard input
@@ -111,10 +115,23 @@ class InventoryUI:
                     if name == "drop":
                         return DropItemAction(item)
                     return None
-            # Item row click — just selects, no action
+            # Item row click — first click selects; double-click equips/uses
             for idx, rect in self._item_rects.items():
                 if rect.collidepoint(event.pos):
+                    now = pygame.time.get_ticks()
+                    is_dbl = (
+                        idx == self._last_click_idx
+                        and (now - self._last_click_time) <= self._DBLCLICK_MS
+                    )
                     self._selected = idx
+                    self._last_click_idx  = idx
+                    self._last_click_time = now
+                    if is_dbl and idx < n:
+                        item = items[idx]
+                        if isinstance(item, Weapon):
+                            return EquipAction(item)
+                        if isinstance(item, Consumable):
+                            return UseItemAction(item)
                     return None
 
         elif event.button == 3:  # right click on item row → drop
