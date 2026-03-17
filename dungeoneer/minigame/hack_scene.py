@@ -176,7 +176,7 @@ class HackScene(Scene):
                 self._show_help = not self._show_help
                 continue
 
-            if key == pygame.K_ESCAPE:
+            if key in (pygame.K_q, pygame.K_ESCAPE):
                 if self._state == _State.HACKING:
                     self._state  = _State.IDLE
                     self._status = t("hack.status.cancelled")
@@ -609,7 +609,7 @@ class HackScene(Scene):
         pygame.draw.line(screen, (*_NEON_CYAN, 40), (0, fy + 2), (sw, fy + 2), 1)
 
         # Status
-        prefix_surf = self._font_md.render("▶ ", True, _NEON_CYAN)
+        prefix_surf = self._font_md.render(">> ", True, _NEON_CYAN)
         screen.blit(prefix_surf, (14, fy + 12))
         status_surf = self._font_md.render(self._status, True, _TEXT)
         screen.blit(status_surf, (14 + prefix_surf.get_width(), fy + 12))

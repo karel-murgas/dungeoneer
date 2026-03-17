@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from dungeoneer.combat.action import ActionResult, MoveAction, MeleeAttackAction, RangedAttackAction
-from dungeoneer.combat.damage import calc_melee, calc_ranged
+from dungeoneer.combat.damage import calc_melee, calc_ranged, calc_ranged_aimed, simulate_aim, simulate_aim_enemy
 from dungeoneer.core.i18n import t
 
 log = logging.getLogger(__name__)
@@ -137,7 +137,7 @@ class ActionResolver:
     def resolve_ranged(
         self, actor: "Actor", action: RangedAttackAction, floor: "Floor"  # type: ignore[name-defined]
     ) -> ActionResult:
-        from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent
+        from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent, MissEvent
         from dungeoneer.entities.player import Player
         from dungeoneer.items.item import RangeType
 
@@ -153,6 +153,16 @@ class ActionResolver:
         weapon = getattr(actor, "equipped_weapon", None)
         shots = getattr(weapon, "shots", 1) if weapon else 1
 
+        # Resolve accuracy values for this attack:
+        #   - action.accuracy_values set  → use them (from AimScene or simulate_aim in GameScene)
+        #   - None + enemy                → simulate statistically
+        #   - None + player               → legacy random roll (fallback only)
+        accuracy_values = action.accuracy_values
+        if accuracy_values is None and not isinstance(actor, Player):
+            dist      = abs(actor.x - target.x) + abs(actor.y - target.y)
+            aim_skill = getattr(actor, "aim_skill", 2.5)
+            accuracy_values = [simulate_aim_enemy(dist, aim_skill) for _ in range(shots)]
+
         # For player burst weapons (shots > 1), DamageEvents are collected and returned
         # so GameScene can post them with staggered delays for visual/audio effect.
         # For single-shot and enemy actions, post immediately as usual.
@@ -161,11 +171,12 @@ class ActionResolver:
         total_actual = 0
         any_crit = False
         burst_events = []
+        shots_fired = 0
 
-        for _ in range(shots):
+        for i in range(shots):
             if not target.alive:
                 break
-            # Consume ammo for each shot
+            # Consume ammo for each shot (even misses — the shot was fired)
             if isinstance(actor, Player):
                 w = actor.equipped_weapon
                 if w is None or w.range_type != RangeType.RANGED:
@@ -173,26 +184,40 @@ class ActionResolver:
                 if w.ammo_current <= 0:
                     break
                 w.ammo_current -= 1
+            shots_fired += 1
 
-            result = calc_ranged(actor, target)
-            total_actual += result.actual
-            if result.is_crit:
-                any_crit = True
-            log.debug("ranged  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
-
-            dmg_event = DamageEvent(actor, target, result.actual, is_ranged=True, is_crit=result.is_crit)
-            if is_player_burst:
-                burst_events.append(dmg_event)
+            if accuracy_values is not None:
+                acc = accuracy_values[i] if i < len(accuracy_values) else -1.0
+                result = calc_ranged_aimed(actor, target, acc)
             else:
-                bus.post(dmg_event)
+                result = calc_ranged(actor, target)
 
-        if total_actual == 0:
+            if result.actual > 0:
+                total_actual += result.actual
+                if result.is_crit:
+                    any_crit = True
+                log.debug("ranged  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
+                dmg_event = DamageEvent(actor, target, result.actual, is_ranged=True, is_crit=result.is_crit)
+                if is_player_burst:
+                    burst_events.append(dmg_event)
+                else:
+                    bus.post(dmg_event)
+            else:
+                log.debug("ranged  %s→%s  MISS (acc=%.2f)", actor.name, target.name, accuracy_values[i] if accuracy_values else -1)
+                bus.post(MissEvent(actor, target))
+
+        if shots_fired == 0:
             return ActionResult(False, t("log.no_ammo"), (255, 80, 80))
 
-        shots_fired = len(burst_events) if is_player_burst else shots
+        if total_actual == 0:
+            # All shots fired but all missed
+            msg = t("log.ranged_miss").format(attacker=actor.name, target=target.name)
+            return ActionResult(True, msg, (140, 140, 140))
+
+        hit_count = len(burst_events) if is_player_burst else (1 if total_actual > 0 else 0)
         crit_str  = t("log.crit") if any_crit else ""
         colour    = (255, 200, 80) if any_crit else (220, 180, 60)
-        burst_str = f" ({shots_fired}×)" if shots_fired > 1 else ""
+        burst_str = f" ({hit_count}×)" if hit_count > 1 else ""
         msg = t("log.ranged_hit").format(attacker=actor.name, target=target.name, burst=burst_str, dmg=total_actual, crit=crit_str)
 
         if target.alive:

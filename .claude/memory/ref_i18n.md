@@ -29,7 +29,7 @@ from dungeoneer.core.i18n import set_language
 set_language("cs")
 ```
 
-## Key namespaces (2026-03-17)
+## Key namespaces (2026-03-17, updated)
 | Prefix | Usage |
 |--------|-------|
 | `menu.*` | Main menu labels, toggles |
@@ -44,7 +44,10 @@ set_language("cs")
 | `entity.*` | Enemy names |
 | `log.*` | Combat log messages |
 | `gameover.*` | Game over screen |
-| `quit_confirm.*` | Quit confirmation dialog |
+| `quit_confirm.*` | In-game quit confirmation dialog (return to main menu) |
+| `exit_confirm.*` | Main menu exit confirmation dialog (quit the game) |
+| `settings.*` | SettingsOverlay: title, section headers, row labels, footer |
+| `help_catalog.*` | HelpCatalogOverlay: title, tab names, section headers, bullet content |
 
 ## Key naming convention
 `<screen>.<section>.<name>` — e.g. `help.title`, `help.key.reload`, `hud.help_hint`
@@ -70,6 +73,8 @@ set_language("cs")
 | `hack.loot.*` | HackScene loot kind display names |
 | `hack.help.*` | HackScene F1 help overlay |
 | `aim.help.*` | AimOverlay F1 help (mechanic, armor, crits, controls) |
+| `settings.*` | SettingsOverlay (title, sections, labels, footer) |
+| `help_catalog.*` | HelpCatalogOverlay (title, 5 tabs, section headers, bullets for each topic) |
 
 ## Rule (from CLAUDE.md)
 - Every user-visible string goes through `t("key")`

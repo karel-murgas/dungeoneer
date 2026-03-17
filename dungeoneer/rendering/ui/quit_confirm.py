@@ -19,7 +19,8 @@ _PAD = 20
 
 
 class QuitConfirmDialog:
-    def __init__(self) -> None:
+    def __init__(self, key_prefix: str = "quit_confirm") -> None:
+        self._prefix     = key_prefix
         self._font_title = pygame.font.SysFont("consolas", 18, bold=True)
         self._font_text  = pygame.font.SysFont("consolas", 15)
         self._font_key   = pygame.font.SysFont("consolas", 15, bold=True)
@@ -56,7 +57,7 @@ class QuitConfirmDialog:
         pygame.draw.rect(screen, _BORDER, (ox, oy, _W, h), 2)
 
         # Title
-        title_surf = self._font_title.render(t("quit_confirm.title"), True, _COL_HDR)
+        title_surf = self._font_title.render(t(f"{self._prefix}.title"), True, _COL_HDR)
         screen.blit(title_surf, (ox + (_W - title_surf.get_width()) // 2, oy + _PAD))
         pygame.draw.line(screen, (40, 70, 65),
                          (ox + _PAD, oy + _PAD + title_h - 2),
@@ -65,15 +66,15 @@ class QuitConfirmDialog:
         cy = oy + _PAD + title_h + gap + 4
 
         # Question
-        q_surf = self._font_text.render(t("quit_confirm.question"), True, _COL_TXT)
+        q_surf = self._font_text.render(t(f"{self._prefix}.question"), True, _COL_TXT)
         screen.blit(q_surf, (ox + (_W - q_surf.get_width()) // 2, cy))
         cy += row_h + gap
 
         # Confirm
-        yes_surf = self._font_key.render(t("quit_confirm.confirm"), True, _COL_YES)
+        yes_surf = self._font_key.render(t(f"{self._prefix}.confirm"), True, _COL_YES)
         screen.blit(yes_surf, (ox + (_W - yes_surf.get_width()) // 2, cy))
         cy += row_h
 
         # Cancel
-        no_surf = self._font_key.render(t("quit_confirm.cancel"), True, _COL_DIM)
+        no_surf = self._font_key.render(t(f"{self._prefix}.cancel"), True, _COL_DIM)
         screen.blit(no_surf, (ox + (_W - no_surf.get_width()) // 2, cy))

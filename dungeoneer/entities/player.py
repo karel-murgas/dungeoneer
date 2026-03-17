@@ -32,6 +32,7 @@ class Player(Actor):
         self.ammo_reserves:    dict[str, int] = dict(diff.starting_ammo)
         self.credits:          int            = 0
         self.floor_depth:      int            = 1
+        self.aim_skill:        float          = diff.player_aim_skill
         self.inventory.add(make_combat_knife())
 
     @property

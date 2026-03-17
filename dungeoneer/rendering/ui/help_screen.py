@@ -27,6 +27,8 @@ _SECTIONS = [
     ]),
     ("help.section.combat", [
         ("help.key.shoot",     "help.desc.shoot"),
+        ("help.key.target",    "help.desc.target"),
+        ("help.key.aim",       "help.desc.aim"),
         ("help.key.reload",    "help.desc.reload"),
     ]),
     ("help.section.items", [

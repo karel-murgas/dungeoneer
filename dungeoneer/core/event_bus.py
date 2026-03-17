@@ -64,6 +64,11 @@ class ObjectiveEvent(Event):
     credits_gained: int
 
 @dataclass
+class MissEvent(Event):
+    attacker: Any
+    target:   Any
+
+@dataclass
 class LogMessageEvent(Event):
     message: str
     colour: tuple = field(default_factory=lambda: (200, 200, 200))

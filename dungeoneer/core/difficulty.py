@@ -24,6 +24,12 @@ class Difficulty:
     # Credits reward for securing the mission objective (final floor)
     objective_credits:    int  = 150
 
+    # Aiming minigame — needle speed multiplier (applied to AIM_START_SPEED + AIM_ACCEL)
+    aim_needle_speed_mult: float = 1.0
+
+    # Player aim_skill used by simulate_aim_enemy when aim minigame is OFF
+    player_aim_skill: float = 2.5
+
 
 # ---------------------------------------------------------------------------
 # Presets
@@ -38,6 +44,8 @@ EASY = Difficulty(
     starting_ammo={"9mm": 8},   # one spare magazine
     # 3g×10 + 2d×15 + 4c×15 = 120/floor × 3 floors = 360
     objective_credits=360,
+    aim_needle_speed_mult=0.65,
+    player_aim_skill=4.0,   # mostly hits when minigame is OFF
 )
 
 NORMAL = Difficulty(
@@ -60,4 +68,6 @@ HARD = Difficulty(
     player_defence=0,
     # 7g×10 + 4d×15 + 2c×15 = 160/floor × 3 floors = 480
     objective_credits=480,
+    aim_needle_speed_mult=1.35,
+    player_aim_skill=1.5,   # more misses when minigame is OFF
 )

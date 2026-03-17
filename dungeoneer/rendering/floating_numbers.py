@@ -33,6 +33,9 @@ class FloatingNumbers:
             colour = (255, 110, 70)     # orange-red for normal hits
         self._entries.append(_Entry(wx, wy, text, colour))
 
+    def add_miss(self, wx: int, wy: int) -> None:
+        self._entries.append(_Entry(wx, wy, "MISS", (140, 140, 155)))
+
     def update(self, dt: float) -> None:
         for e in self._entries:
             e.age += dt

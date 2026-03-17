@@ -129,10 +129,18 @@ class DungeonGenerator:
             else:
                 spawns.append(SpawnDesc("drone", ex, ey))
 
+        # Pre-compute room-interior tile set for entrance detection
+        room_tile_set: set[tuple[int, int]] = set()
+        for r in rooms:
+            for ry in range(r.inner_y, r.inner_y + r.inner_h):
+                for rx in range(r.inner_x, r.inner_x + r.inner_w):
+                    room_tile_set.add((rx, ry))
+
         # Containers in random rooms (any room, including start/end)
+        # Avoid doorway tiles so the player can always pass through entrances.
         container_rooms = self._rng.choices(rooms, k=containers)
         for room in container_rooms:
-            cx, cy = room.random_inner_point()
+            cx, cy = self._safe_container_pos(room, room_tile_set, dungeon_map)
             spawns.append(SpawnDesc("container", cx, cy))
 
         return GenerationResult(dungeon_map, rooms, spawns, (sx, sy))
@@ -241,3 +249,39 @@ class DungeonGenerator:
     def _vline(self, y1: int, y2: int, x: int, dungeon_map: DungeonMap) -> None:
         for y in range(min(y1, y2), max(y1, y2) + 1):
             dungeon_map.carve_floor(x, y)
+
+    # ------------------------------------------------------------------
+    # Container placement helpers
+    # ------------------------------------------------------------------
+
+    def _safe_container_pos(
+        self,
+        room: Room,
+        room_tile_set: set[tuple[int, int]],
+        dungeon_map: DungeonMap,
+        max_tries: int = 30,
+    ) -> tuple[int, int]:
+        """Return an inner tile not adjacent to a corridor entrance.
+
+        Falls back to the room centre if every sampled tile is an entrance tile
+        (can happen in very small rooms with multiple corridors).
+        """
+        for _ in range(max_tries):
+            x, y = room.random_inner_point()
+            if not self._adjacent_to_corridor(x, y, room_tile_set, dungeon_map):
+                return x, y
+        return room.cx, room.cy
+
+    def _adjacent_to_corridor(
+        self,
+        x: int,
+        y: int,
+        room_tile_set: set[tuple[int, int]],
+        dungeon_map: DungeonMap,
+    ) -> bool:
+        """True if (x, y) has a cardinal walkable neighbour outside any room interior."""
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nx, ny = x + dx, y + dy
+            if dungeon_map.is_walkable(nx, ny) and (nx, ny) not in room_tile_set:
+                return True
+        return False

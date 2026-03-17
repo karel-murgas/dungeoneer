@@ -13,8 +13,9 @@ import os
 
 import pygame
 
+from dungeoneer.core import settings
+
 # Blend goes 0.0 (full calm) → 1.0 (full action).
-_MUSIC_VOLUME        = 0.30   # max volume for music (kept below SFX level)
 _FADE_TO_ACTION      = 1.5    # seconds for calm → action crossfade (ongoing combat)
 _FADE_TO_ACTION_FAST = 0.15   # seconds for instant-alert fade (banner trigger)
 _FADE_TO_CALM        = 3.0    # seconds for action → calm crossfade
@@ -127,8 +128,14 @@ class MusicManager:
     # Internal
     # ------------------------------------------------------------------
 
+    def refresh_volume(self) -> None:
+        """Re-apply volumes after settings change. Safe to call any time."""
+        if self._running:
+            self._apply_volumes()
+
     def _apply_volumes(self) -> None:
         """Equal-power crossfade: cos/sin curve keeps perceived loudness constant."""
+        vol = settings.MASTER_VOLUME * settings.MUSIC_VOLUME
         angle = self._blend * math.pi / 2.0
-        self._ch_calm.set_volume(_MUSIC_VOLUME * math.cos(angle))
-        self._ch_action.set_volume(_MUSIC_VOLUME * math.sin(angle))
+        self._ch_calm.set_volume(vol * math.cos(angle))
+        self._ch_action.set_volume(vol * math.sin(angle))

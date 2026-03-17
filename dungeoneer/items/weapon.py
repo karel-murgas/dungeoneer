@@ -19,6 +19,8 @@ class Weapon(Item):
     diagonal:      bool      = False  # True = also reaches diagonal neighbours
     ammo_type:     str       = ""   # "9mm", "rifle", "shell", "" = melee
     shots:         int       = 1    # rounds fired per attack action (burst fire)
+    aim_zone_base:    float  = 0.0  # hit zone size (degrees) at distance 0; 0 = melee, no minigame
+    aim_zone_penalty: float  = 0.0  # degrees lost per tile of distance
 
     def stat_line(self) -> str:
         if self.range_type == RangeType.RANGED:
@@ -43,6 +45,7 @@ def make_pistol() -> Weapon:
         ammo_capacity=10, ammo_current=10,
         range_tiles=8,
         ammo_type="9mm",
+        aim_zone_base=24.0, aim_zone_penalty=2.0,
     )
 
 def make_combat_knife() -> Weapon:
@@ -68,6 +71,7 @@ def make_shotgun() -> Weapon:
         ammo_capacity=4, ammo_current=4,
         range_tiles=4,
         ammo_type="shell",
+        aim_zone_base=45.0, aim_zone_penalty=5.5,
     )
 
 def make_smg() -> Weapon:
@@ -82,6 +86,7 @@ def make_smg() -> Weapon:
         range_tiles=7,
         ammo_type="9mm",
         shots=3,
+        aim_zone_base=30.0, aim_zone_penalty=2.5,
     )
 
 def make_energy_sword() -> Weapon:
@@ -108,4 +113,5 @@ def make_rifle() -> Weapon:
         ammo_capacity=6, ammo_current=6,
         range_tiles=14,
         ammo_type="rifle",
+        aim_zone_base=32.0, aim_zone_penalty=0.5,
     )

@@ -22,6 +22,7 @@ class Enemy(Actor):
         attack: int,
         defence: int,
         is_drone: bool = False,
+        aim_skill: float = 2.5,
         loot_table: list[tuple[float, str]] | None = None,
     ) -> None:
         super().__init__(
@@ -29,6 +30,7 @@ class Enemy(Actor):
             max_hp=max_hp, attack=attack, defence=defence,
         )
         self.is_drone     = is_drone
+        self.aim_skill    = aim_skill  # controls ranged accuracy sigma; higher = more consistent
         self.ai_brain     = AIBrain()
         self.ai_brain.attach(self)
         self.credits_drop = 15 if is_drone else 10
@@ -71,6 +73,7 @@ def make_guard(x: int, y: int) -> Enemy:
         render_colour=settings.COL_GUARD,
         max_hp=12, attack=3, defence=1,
         is_drone=False,
+        aim_skill=2.5,   # ~5% miss at d=1, ~23% miss at d=8
         loot_table=[
             (0.25, "ammo_9mm"),
             (0.20, "combat_knife"),
@@ -86,6 +89,7 @@ def make_drone(x: int, y: int) -> Enemy:
         render_colour=settings.COL_DRONE,
         max_hp=8, attack=2, defence=0,
         is_drone=True,
+        aim_skill=4.5,   # <1% miss at d=1, ~7% miss at d=8 (precision ranged unit)
         loot_table=[
             (0.30, "ammo_9mm"),
             (0.30, "stim_pack"),

@@ -1,0 +1,125 @@
+---
+name: Architecture quick-reference
+description: Module map, key classes, tech stack constants — fast navigation without reading source
+type: project
+---
+
+## Tech Stack Constants
+- Window: **1280×720**, 60 FPS, tile **32px**, map **60×40** tiles
+- Entry: `main.py` → `core/game.py` (`GameApp`) → `SceneManager` → scenes
+- Deps: `pygame-ce ≥2.5.0`, `python-tcod ≥16.0.0` (FOV), `numpy ≥1.26.0`, `pytest ≥8.0.0`
+
+## Module Map
+
+```
+dungeoneer/
+├── core/
+│   ├── game.py          — GameApp (main loop, window, clock)
+│   ├── scene.py         — Scene ABC (on_enter, handle_events, update, render)
+│   ├── scene_manager.py — SceneManager (push/pop/replace scenes)
+│   ├── event_bus.py     — EventBus (pub/sub, typed events)
+│   ├── settings.py      — Settings dataclass (LANGUAGE, difficulty, window)
+│   ├── difficulty.py    — Difficulty presets (Easy/Normal/Hard)
+│   ├── i18n.py          — t(key), set_language()
+│   └── logging_setup.py — logs → dungeoneer.log
+│
+├── entities/
+│   ├── entity.py        — Entity (x, y, char, color, name, blocks)
+│   ├── actor.py         — Actor(Entity): hp, max_hp, attack, defence, total_defence property; equipped_weapon, inventory
+│   ├── player.py        — Player(Actor): credits, ammo_reserves dict, equipped_armor (Armor|None)
+│   ├── enemy.py         — Enemy(Actor): ai_brain, xp_value, loot_table
+│   ├── item_entity.py   — ItemEntity (item on floor)
+│   └── container_entity.py — ContainerEntity (lootable chest)
+│
+├── items/
+│   ├── item.py          — Item dataclass (id, name, description, ItemType enum)
+│   ├── weapon.py        — Weapon(Item): damage_dice, ammo_type, clip_size, range_tiles
+│   ├── consumable.py    — Consumable(Item): heal_amount, overheal
+│   ├── ammo.py          — AmmoPickup(Item): ammo_type, ammo_count; make_9mm/rifle/shotgun_ammo()
+│   ├── armor.py         — Armor(Item): defense_bonus; make_basic_armor()
+│   └── inventory.py     — Inventory: 8 slots, add/remove/find methods
+│
+├── combat/
+│   ├── action.py        — Action ABC + all action subclasses (see API section)
+│   ├── action_resolver.py — ActionResolver: resolve_move/melee/ranged/open_container + _auto_pickup
+│   ├── turn_manager.py  — TurnManager: player turn → enemy turns, burst queue, delay logic
+│   ├── damage.py        — damage formula: roll(weapon) + atk − total_defence, min 1
+│   └── line_of_sight.py — raycast LOS check
+│
+├── ai/
+│   ├── brain.py         — Brain: tick(actor, floor) → Action; owns state machine
+│   ├── states.py        — BehaviorState: Idle (patrol) / Combat (chase+attack)
+│   ├── pathfinder.py    — A* pathfinding
+│   └── perception.py    — sight radius, LOS checks for enemies
+│
+├── world/
+│   ├── dungeon_generator.py — BSP tree generator → DungeonMap
+│   ├── map.py           — DungeonMap: tiles 2D array, entities list, items list
+│   ├── floor.py         — Floor: wraps map + entity lists for a single depth level
+│   ├── room.py          — Room dataclass
+│   ├── tile.py          — Tile: walkable, transparent, explored, visible
+│   └── fov.py           — FOV via python-tcod shadowcasting
+│
+├── rendering/
+│   ├── renderer.py      — Renderer: orchestrates all sub-renderers
+│   ├── camera.py        — Camera: world→screen offset
+│   ├── tile_renderer.py — TileRenderer: Dithart tileset + autotile wall mapping
+│   ├── entity_renderer.py — EntityRenderer: sprite or procedural fallback
+│   ├── spritesheet.py   — Spritesheet loader/slicer
+│   ├── procedural_sprites.py — coloured-square fallback sprites
+│   ├── floating_numbers.py   — floating damage number animations
+│   ├── range_overlay.py      — range highlight overlay
+│   └── ui/
+│       ├── hud.py         — HUD: HP, floor, weapon, ammo, credits
+│       ├── combat_log.py  — CombatLog: scrolling message log
+│       ├── inventory_ui.py— InventoryUI: 8-slot grid overlay
+│       ├── weapon_picker.py — WeaponPickerUI (key C): keyboard+mouse weapon swap
+│       ├── help_screen.py — HelpScreen (F1): localised key-binding overlay
+│       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
+│       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
+│       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
+│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking)
+│
+├── audio/
+│   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
+│   ├── music_manager.py — MusicManager: equal-power crossfade BGM (calm↔action); channels 0+1 reserved; pause()/resume(); refresh_volume() for live updates
+│   └── sound_events.py  — sound event types
+│
+├── assets/audio/music/  — calm.mp3, action.mp3, hacking.mp3, menu.mp3 (copied from sources/music/)
+│
+├── scenes/
+│   ├── main_menu_scene.py — MainMenuScene(Scene): hub with Start/Quit + ⚙ Settings + ? Help icons; all config in SettingsOverlay
+│   ├── game_scene.py    — GameScene(Scene): main game loop scene; params: difficulty, use_minigame
+│   └── game_over_scene.py — GameOverScene: victory/defeat screen; "Main Menu [R]" → MainMenuScene
+│
+├── minigame/
+│   ├── hack_scene.py        — HackScene(Scene): classic node-graph minigame
+│   ├── hack_generator.py    — generate_hack_map(params) → HackMap; HackParams.for_difficulty()
+│   ├── hack_node.py         — HackNode, HackMap, NodeType, LootKind (incl. ARMOR, MYSTERY), SecurityKind enums
+│   ├── hack_audio.py        — HackAudio: minigame-specific sound effects
+│   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) variant (~1232 lines)
+│   ├── hack_grid_generator.py — generate_grid_map(params) → HackGridMap; HackGridParams.for_difficulty()
+│   ├── hack_grid_map.py     — HackGridMap, GridCell, GridCellType; physical 2× grid model
+│   └── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
+│
+├── cyberware/           — (stub, not integrated)
+├── skills/              — (stub, empty)
+├── meta/                — (stub)
+│
+main.py                  — entry point
+main_hack.py             — standalone hack minigame entry point (dev/test)
+```
+
+## Key Action Subclasses (combat/action.py)
+`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
+
+## Key Events (core/event_bus.py)
+`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` | `ObjectiveEvent` | `LogMessageEvent`
+
+## Scene Lifecycle (core/scene.py)
+`on_enter()` → `handle_events(events)` → `update(dt)` → `render(screen)` → `on_exit()`
+
+## Tileset
+- File: `dungeoneer/assets/tileset_for_free.png` — 8 cols × 15 rows of 32×32 tiles, 0-indexed
+- Autotile: 8-bit neighbour mask (cardinal + diagonal bits) → wall tile index
+- Procedural fallback sprites when tileset unavailable

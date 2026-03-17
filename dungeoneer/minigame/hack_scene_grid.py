@@ -271,6 +271,11 @@ class HackGridScene(Scene):
             return
 
         for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self._state == _State.IDLE:
+                    self._handle_click(event.pos)
+                continue
+
             if event.type != pygame.KEYDOWN:
                 continue
             key = event.key
@@ -279,7 +284,7 @@ class HackGridScene(Scene):
                 self._show_help = not self._show_help
                 continue
 
-            if key == pygame.K_ESCAPE:
+            if key in (pygame.K_q, pygame.K_ESCAPE):
                 if self._state == _State.HACKING:
                     self._state  = _State.IDLE
                     self._status = t("hack.status.cancelled")
@@ -433,6 +438,47 @@ class HackGridScene(Scene):
             self._start_move(target)
         else:
             self._auto_dir = None
+
+    def _handle_click(self, screen_pos: Tuple[int, int]) -> None:
+        """Navigate to the adjacent node under the mouse cursor (if reachable)."""
+        panel   = self._panel_rect()
+        clicked = self._screen_to_cell(screen_pos[0], screen_pos[1], panel)
+        if clicked is None:
+            return
+        direction = self._reachable_node_dirs().get(clicked)
+        if direction is not None:
+            self._try_start_auto(direction)
+
+    def _screen_to_cell(self, mx: int, my: int, panel: pygame.Rect) -> Optional[Pos]:
+        """Convert screen pixel position to the nearest physical grid cell."""
+        gm = self._grid_map
+        pc = gm.phys_cols - 1
+        pr = gm.phys_rows - 1
+        if pc == 0 or pr == 0:
+            return None
+        col = round((mx - panel.x) * pc / panel.width)
+        row = round((my - panel.y) * pr / panel.height)
+        if 0 <= col < gm.phys_cols and 0 <= row < gm.phys_rows:
+            return (col, row)
+        return None
+
+    def _reachable_node_dirs(self) -> dict[Pos, Pos]:
+        """Return {node_pos: first_step_direction} for every adjacent reachable node."""
+        gm     = self._grid_map
+        player = self._player_pos
+        result: dict[Pos, Pos] = {}
+        for start_nb in gm.connections.get(player, set()):
+            direction: Pos = (start_nb[0] - player[0], start_nb[1] - player[1])
+            prev, cur = player, start_nb
+            while True:
+                if cur in gm.node_positions:
+                    result[cur] = direction
+                    break
+                nexts = [n for n in gm.connections.get(cur, set()) if n != prev]
+                if not nexts:
+                    break
+                prev, cur = cur, nexts[0]
+        return result
 
     def _start_move(self, target: Pos) -> None:
         self._timer_started = True
@@ -717,7 +763,7 @@ class HackGridScene(Scene):
         pygame.draw.line(screen, _NEON_CYAN,    (0, fy), (sw, fy), 1)
         pygame.draw.line(screen, (*_NEON_CYAN, 40), (0, fy + 2), (sw, fy + 2), 1)
 
-        prefix = self._font_md.render("▶ ", True, _NEON_CYAN)
+        prefix = self._font_md.render(">> ", True, _NEON_CYAN)
         screen.blit(prefix, (14, fy + 12))
         screen.blit(self._font_md.render(self._status, True, _TEXT),
                     (14 + prefix.get_width(), fy + 12))

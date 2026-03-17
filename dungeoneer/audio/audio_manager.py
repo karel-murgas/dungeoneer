@@ -8,6 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pygame
 
+from dungeoneer.core import settings
 from dungeoneer.core.event_bus import (
     bus, DamageEvent, DeathEvent, MoveEvent, StairEvent
 )
@@ -48,7 +49,8 @@ class AudioManager:
     def play(self, name: str, volume: float = 1.0) -> None:
         sound = self._sounds.get(name)
         if sound:
-            sound.set_volume(max(0.0, min(1.0, volume)))
+            actual = max(0.0, min(1.0, volume * settings.SFX_VOLUME * settings.MASTER_VOLUME))
+            sound.set_volume(actual)
             sound.play()
 
     # ------------------------------------------------------------------

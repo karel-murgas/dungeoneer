@@ -78,9 +78,17 @@ class MeleeAttackAction(Action):
 
 
 class RangedAttackAction(Action):
-    def __init__(self, target: "Actor", max_range: int = 8) -> None:
-        self.target    = target
-        self.max_range = max_range
+    def __init__(
+        self,
+        target: "Actor",
+        max_range: int = 8,
+        accuracy_values: "list[float] | None" = None,
+    ) -> None:
+        self.target          = target
+        self.max_range       = max_range
+        # None  → resolver uses legacy calc_ranged() (random roll)
+        # list  → resolver uses calc_ranged_aimed() per shot; -1.0 entries = miss
+        self.accuracy_values = accuracy_values
 
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         from dungeoneer.combat.line_of_sight import has_los

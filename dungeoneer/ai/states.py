@@ -93,13 +93,15 @@ class CombatState(BehaviorState):
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
 
+        blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
         path = Pathfinder().find_path(
-            (owner.x, owner.y), (player.x, player.y), floor.dungeon_map
+            (owner.x, owner.y), (player.x, player.y), floor.dungeon_map,
+            extra_blocked=blocked,
         )
         if not path:
             return None
         nx, ny = path[0]
-        if floor.get_actor_at(nx, ny) is None and floor.get_container_at(nx, ny) is None:
+        if floor.get_actor_at(nx, ny) is None:
             return MoveAction(nx - owner.x, ny - owner.y)
         return None
 
@@ -108,11 +110,15 @@ class CombatState(BehaviorState):
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
 
-        path = Pathfinder().find_path((owner.x, owner.y), (tx, ty), floor.dungeon_map)
+        blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
+        path = Pathfinder().find_path(
+            (owner.x, owner.y), (tx, ty), floor.dungeon_map,
+            extra_blocked=blocked,
+        )
         if not path:
             return None
         nx, ny = path[0]
-        if floor.get_actor_at(nx, ny) is None and floor.get_container_at(nx, ny) is None:
+        if floor.get_actor_at(nx, ny) is None:
             return MoveAction(nx - owner.x, ny - owner.y)
         return None
 

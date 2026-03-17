@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, LogMessageEvent, ObjectiveEvent, DamageEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -55,11 +55,13 @@ class GameScene(Scene):
         difficulty: Difficulty = NORMAL,
         use_minigame: bool = True,
         hack_variant: str = "grid",
+        use_aim_minigame: bool = True,
     ) -> None:
         super().__init__(app)
-        self.difficulty     = difficulty
-        self.use_minigame   = use_minigame
-        self.hack_variant   = hack_variant   # "classic" | "grid"
+        self.difficulty       = difficulty
+        self.use_minigame     = use_minigame
+        self.hack_variant     = hack_variant   # "classic" | "grid"
+        self.use_aim_minigame = use_aim_minigame
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -87,6 +89,8 @@ class GameScene(Scene):
         self._advance_timer      = 0.0     # seconds remaining before advance fires
         self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
         self._hack_just_completed = False  # advance enemy turns once hack scene pops
+        self._aim_target: Enemy | None = None   # currently highlighted ranged target
+        self._aim_overlay = None                # AimOverlay instance when aiming
 
     def on_enter(self) -> None:
         log.info("GameScene.on_enter")
@@ -105,6 +109,9 @@ class GameScene(Scene):
     def on_resume(self) -> None:
         """Called when a scene pushed on top of this one (e.g. HackScene) pops."""
         self.music.resume()
+        self._aim_target  = None  # clear targeting highlight whenever we resume
+        self._aim_overlay = None  # discard any stale overlay
+
         if self._hack_just_completed and not self._game_over:
             self._hack_just_completed = False
             # Recompute FOV so a freshly spawned drone's visibility is up-to-date,
@@ -128,6 +135,7 @@ class GameScene(Scene):
             bus.subscribe(StairEvent,   self._on_stair)
             bus.subscribe(ObjectiveEvent, self._on_objective)
             bus.subscribe(DamageEvent,  self._on_damage)
+            bus.subscribe(MissEvent,    self._on_miss)
             self._subscribed = True
 
     def _unsubscribe_events(self) -> None:
@@ -135,6 +143,7 @@ class GameScene(Scene):
         bus.unsubscribe(StairEvent,   self._on_stair)
         bus.unsubscribe(ObjectiveEvent, self._on_objective)
         bus.unsubscribe(DamageEvent,  self._on_damage)
+        bus.unsubscribe(MissEvent,    self._on_miss)
         self._subscribed = False
 
     # ------------------------------------------------------------------
@@ -226,6 +235,13 @@ class GameScene(Scene):
         if self.floor.dungeon_map.visible[tgt.y, tgt.x]:
             self.floating_nums.add(tgt.x, tgt.y, event.amount, is_crit=event.is_crit)
 
+    def _on_miss(self, event: MissEvent) -> None:
+        if self.floor is None:
+            return
+        tgt = event.target
+        if self.floor.dungeon_map.visible[tgt.y, tgt.x]:
+            self.floating_nums.add_miss(tgt.x, tgt.y)
+
     def _on_objective(self, event: ObjectiveEvent) -> None:
         self._trigger_game_over(victory=True)
 
@@ -251,7 +267,7 @@ class GameScene(Scene):
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
-            hack_variant=self.hack_variant,
+            hack_variant=self.hack_variant, use_aim_minigame=self.use_aim_minigame,
             credits_earned=credits, audio=self.audio,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
@@ -265,6 +281,7 @@ class GameScene(Scene):
                 difficulty=self.difficulty,
                 use_minigame=self.use_minigame,
                 hack_variant=self.hack_variant,
+                use_aim_minigame=self.use_aim_minigame,
                 language=get_language(),
             )
         )
@@ -274,6 +291,12 @@ class GameScene(Scene):
     # ------------------------------------------------------------------
 
     def handle_events(self, events: List[pygame.event.Event]) -> None:
+        # Aim overlay takes exclusive input while active
+        if self._aim_overlay is not None:
+            for event in events:
+                self._aim_overlay.handle_event(event)
+            return
+
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if self._quit_confirm_open:
@@ -297,6 +320,9 @@ class GameScene(Scene):
                         self._weapon_picker_open = False
                     else:
                         self._quit_confirm_open = True
+                    return
+                if event.key == pygame.K_TAB:
+                    self._cycle_aim_target()
                     return
                 if event.key == pygame.K_i:
                     self._inventory_open = not self._inventory_open
@@ -407,6 +433,17 @@ class GameScene(Scene):
             return
 
         for event in events:
+            # LMB on a visible enemy → aim at that target
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                enemy = self._enemy_at_screen_pos(*event.pos)
+                if enemy is not None:
+                    w = self.player.equipped_weapon
+                    if w and w.range_type == RangeType.RANGED:
+                        self._aim_target = enemy
+                        self._launch_aim(enemy)
+                        break
+                continue
+
             if event.type != pygame.KEYDOWN:
                 continue
 
@@ -453,6 +490,19 @@ class GameScene(Scene):
             ):
                 self._launch_hack(action.container)
                 break
+
+            # Ranged attack → intercept for aim minigame
+            if isinstance(action, RangedAttackAction):
+                if self.use_aim_minigame:
+                    self._launch_aim(action.target)
+                    break
+                else:
+                    # Minigame OFF: simulate using player's aim_skill from difficulty
+                    from dungeoneer.combat.damage import simulate_aim_enemy
+                    w = self.player.equipped_weapon
+                    dist = abs(self.player.x - action.target.x) + abs(self.player.y - action.target.y)
+                    shots = getattr(w, "shots", 1) if w else 1
+                    action.accuracy_values = [simulate_aim_enemy(dist, self.player.aim_skill) for _ in range(shots)]
 
             result = action.execute(self.player, self.floor, self.resolver)
             if result.message:
@@ -571,7 +621,11 @@ class GameScene(Scene):
             w = self.player.equipped_weapon
             if w and w.range_type == RangeType.MELEE:
                 return self._nearest_melee_target()
-            return self._nearest_ranged_target()
+            # For ranged: use _aim_target if set and still valid, else pick nearest
+            target = self._aim_target
+            if target is None or not target.alive or not self.floor.dungeon_map.visible[target.y, target.x]:
+                return self._nearest_ranged_target()
+            return RangedAttackAction(target, max_range=w.range_tiles if w else 8)
         return None
 
     def _try_quick_heal(self) -> UseItemAction | None:
@@ -669,6 +723,68 @@ class GameScene(Scene):
 
         self._hack_just_completed = True
 
+    # ------------------------------------------------------------------
+    # Aim minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_aim(self, target: Enemy) -> None:
+        from dungeoneer.minigame.aim_scene import AimOverlay
+
+        assert self.player is not None
+        w = self.player.equipped_weapon
+        if w is None or w.range_type != RangeType.RANGED:
+            return
+
+        if w.ammo_current <= 0:
+            bus.post(LogMessageEvent(t("log.no_ammo"), (180, 80, 80)))
+            return
+
+        shots = getattr(w, "shots", 1)
+
+        def on_complete(results: list) -> None:
+            self._on_aim_complete(target, results)
+
+        self._aim_overlay = AimOverlay(
+            weapon=w, player=self.player, target=target,
+            shots=shots, on_complete=on_complete,
+            needle_speed_mult=self.difficulty.aim_needle_speed_mult,
+        )
+
+    def _on_aim_complete(self, target: Enemy, results: list) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        w = self.player.equipped_weapon
+        if w is None or w.range_type != RangeType.RANGED:
+            return
+
+        action = RangedAttackAction(
+            target,
+            max_range=w.range_tiles,
+            accuracy_values=results,
+        )
+        if not action.validate(self.player, self.floor):
+            return
+
+        result = action.execute(self.player, self.floor, self.resolver)
+        if result.message:
+            bus.post(LogMessageEvent(result.message, result.msg_colour))
+
+        burst = result.burst_events
+        if burst:
+            bus.post(burst[0])
+            for i, ev in enumerate(burst[1:], start=1):
+                self._burst_queue.append((i * self._BURST_INTERVAL, ev))
+            self._schedule_advance(extra_delay=(len(burst) - 1) * self._BURST_INTERVAL)
+        else:
+            self._schedule_advance()
+
+        now_visible = self._any_enemy_visible()
+        if now_visible and not self._had_visible_enemies:
+            self.alert_banner.trigger()
+            self.music.to_action(fast=True)
+        self._had_visible_enemies = now_visible
+
     def _find_drone_spawn(self, container: "ContainerEntity") -> tuple[int, int]:
         """Find the best tile to spawn a drone near a container: walkable, LOS to player,
         closest to DRONE_PREFERRED_DIST away from the player."""
@@ -734,6 +850,49 @@ class GameScene(Scene):
         credits = random.randint(5, 25)
         return ContainerEntity(x=x, y=y, items=items, credits=credits)
 
+    def _visible_ranged_enemies(self) -> list:
+        """Return all visible living enemies, sorted by distance to player."""
+        if self.player is None or self.floor is None:
+            return []
+        return sorted(
+            [
+                a for a in self.floor.actors
+                if isinstance(a, Enemy) and a.alive
+                and self.floor.dungeon_map.visible[a.y, a.x]
+            ],
+            key=lambda e: abs(e.x - self.player.x) + abs(e.y - self.player.y),
+        )
+
+    def _cycle_aim_target(self) -> None:
+        """Cycle _aim_target through visible enemies (Tab key handler)."""
+        if self.player is None or self.floor is None:
+            return
+        enemies = self._visible_ranged_enemies()
+        if not enemies:
+            self._aim_target = None
+            return
+        if self._aim_target not in enemies:
+            self._aim_target = enemies[0]
+        else:
+            idx = enemies.index(self._aim_target)
+            self._aim_target = enemies[(idx + 1) % len(enemies)]
+
+    def _enemy_at_screen_pos(self, mx: int, my: int) -> "Enemy | None":
+        """Return a visible living enemy whose tile is under the given screen pixel, or None."""
+        if self.player is None or self.floor is None:
+            return None
+        cam = self.renderer.camera
+        tile_x = (mx + cam.offset_x) // settings.TILE_SIZE
+        tile_y = (my + cam.offset_y) // settings.TILE_SIZE
+        for actor in self.floor.actors:
+            if (
+                isinstance(actor, Enemy) and actor.alive
+                and actor.x == tile_x and actor.y == tile_y
+                and self.floor.dungeon_map.visible[actor.y, actor.x]
+            ):
+                return actor
+        return None
+
     def _nearest_ranged_target(self):
         assert self.player is not None
         assert self.floor  is not None
@@ -792,6 +951,12 @@ class GameScene(Scene):
         self.floating_nums.update(dt)
         self.music.update(dt)
 
+        if self._aim_overlay is not None:
+            self._aim_overlay.update(dt)
+            if not self._aim_overlay.is_active:
+                self._aim_overlay = None
+                self._aim_target  = None
+
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
             remaining = []
@@ -819,6 +984,16 @@ class GameScene(Scene):
             )
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
+            # Targeting highlight — yellow outline around selected aim target
+            if self._aim_target is not None and self._aim_target.alive:
+                cam = self.renderer.camera
+                sx = self._aim_target.x * settings.TILE_SIZE - cam.offset_x
+                sy = self._aim_target.y * settings.TILE_SIZE - cam.offset_y
+                pygame.draw.rect(screen, (240, 220, 0), (sx, sy, settings.TILE_SIZE, settings.TILE_SIZE), 2)
+            # Aim overlay (in-world arc, no scene push)
+            if self._aim_overlay is not None:
+                cam = self.renderer.camera
+                self._aim_overlay.render(screen, cam.offset_x, cam.offset_y)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:
