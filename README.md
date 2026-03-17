@@ -41,6 +41,29 @@ Requires Python 3.11+.
 Enemies only activate when they see you. Guards chase and fight in melee; Drones keep their distance and shoot.
 A `!` banner appears above your character when enemies first spot you.
 
+## Aiming minigame
+
+Every ranged attack launches an aiming overlay directly on the game world:
+
+1. A needle sweeps back and forth on a **90° arc** centred on the target direction.
+2. A **green hit zone** appears at a random position on the arc. Its size shrinks with target distance.
+3. Press **F** (or left-click) to stop the needle.
+   - **Inside the zone** → hit. The closer to the zone centre, the higher the damage (up to max weapon damage).
+   - **Outside the zone** → miss, no damage.
+4. The needle **speeds up** after each bounce off the arc edges — act fast.
+5. Press **Esc** to cancel; all remaining shots miss.
+6. Burst weapons (e.g. SMG) repeat the minigame once per shot.
+
+Press **F1** during the aiming overlay to open in-game help that explains the mechanic, armor, and critical hits.
+
+### Critical hits
+
+Stop the needle at **≥ 95% accuracy** (dead centre of the zone) to score a **CRITICAL HIT**, which deals maximum weapon damage.
+
+### Armor
+
+Picking up armor auto-equips it (a stronger piece always replaces a weaker one). Each point of **defense** reduces incoming damage by 1 per hit (melee and ranged). The equipped armor slot is shown in the HUD and inventory.
+
 ## Difficulty
 
 Edit the difficulty in `dungeoneer/core/difficulty.py` or select at launch (if a menu is present). Differences:
