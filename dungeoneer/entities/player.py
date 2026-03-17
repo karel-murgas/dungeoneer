@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dungeoneer.core import settings
+from dungeoneer.core.i18n import t
 from dungeoneer.entities.actor import Actor
 from dungeoneer.items.inventory import Inventory
 from dungeoneer.items.weapon import Weapon, make_pistol, make_combat_knife
@@ -19,7 +20,7 @@ class Player(Actor):
         diff = difficulty or NORMAL
         super().__init__(
             x, y,
-            name="Diver",
+            name=t("entity.player.name"),
             render_colour=settings.COL_PLAYER,
             max_hp=diff.player_max_hp,
             attack=diff.player_attack,

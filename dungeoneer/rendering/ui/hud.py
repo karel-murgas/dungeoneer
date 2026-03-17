@@ -69,7 +69,7 @@ class HUD:
         healables = [i for i in player.inventory if isinstance(i, Consumable) and i.heal_amount > 0]
         missing = player.max_hp - player.hp
         if missing <= 0:
-            heal_str = "[H] Full HP"
+            heal_str = t("hud.full_hp")
             heal_col = (70, 90, 75)
         elif healables:
             exact = [i for i in healables if i.heal_amount <= missing]
@@ -82,7 +82,7 @@ class HUD:
                 heal_str += "  !"
             heal_col = (200, 160, 60) if overheal else (90, 200, 110)
         else:
-            heal_str = "[H] --"
+            heal_str = t("hud.no_heal")
             heal_col = (80, 80, 90)
         ht_surf = self._font_small.render(heal_str, True, heal_col)
         screen.blit(ht_surf, (bar_x, bar_y + bar_h + 6 + 20))
@@ -90,17 +90,17 @@ class HUD:
         # --- Equipped armor (below heal line) ---
         armor = getattr(player, "equipped_armor", None)
         if armor is not None:
-            armor_str = f"[ARMOR] {armor.name}  -{armor.defense_bonus} dmg"
+            armor_str = f"{t('hud.armor_label')} {armor.name}  -{armor.defense_bonus} dmg"
             armor_col = (140, 200, 100)
         else:
-            armor_str = "[ARMOR] —"
+            armor_str = f"{t('hud.armor_label')} {t('hud.armor_none')}"
             armor_col = (60, 80, 55)
         ar_surf = self._font_small.render(armor_str, True, armor_col)
         screen.blit(ar_surf, (bar_x, bar_y + bar_h + 6 + 40))
 
         # --- Floor depth + credits (top-right) ---
         depth_text = self._font_large.render(
-            f"FLOOR {player.floor_depth}", True, (120, 200, 180)
+            t("hud.floor").format(n=player.floor_depth), True, (120, 200, 180)
         )
         screen.blit(depth_text, (sw - depth_text.get_width() - 12, 12))
 

@@ -14,6 +14,14 @@ pytest                                # tests (tests/ directory)
 - Production / stable: `main`
 - Always commit to `dev`, PRs go `dev → main`
 
+## Localisation rule
+
+- **Every user-visible string** must go through `t("key")` from `dungeoneer.core.i18n`
+- **Parameterised strings** (names, numbers) use `t("key").format(name=..., n=...)` — never f-strings with raw text
+- **Item / enemy names** are resolved at creation time via `t()` in factory functions (language is fixed for the whole run)
+- **Never** use raw string literals in: `LogMessageEvent`, `.render(…)`, button labels, status fields, overlay dicts
+- When adding a new string: add it to **all three language dicts** (`"en"`, `"cs"`, `"es"`) in `core/i18n.py` and update `memory/ref_i18n.md`
+
 ## Architecture rules
 
 - **Cross-module communication** → use `EventBus` (`core/event_bus.py`), not direct imports between unrelated modules (e.g. combat should not import from rendering)

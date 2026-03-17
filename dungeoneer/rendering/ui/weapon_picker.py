@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pygame
 
+from dungeoneer.core.i18n import t
 from dungeoneer.items.weapon import Weapon
 
 _PAD     = 10
@@ -127,7 +128,7 @@ class WeaponPickerUI:
         pygame.draw.rect(screen, _BORDER, (ox, oy, _W, h), 2)
 
         # Header
-        hdr = self._font_bold.render("SWAP WEAPON", True, _COL_HDR)
+        hdr = self._font_bold.render(t("weapon_picker.title"), True, _COL_HDR)
         screen.blit(hdr, (ox + _PAD, oy + _PAD))
         pygame.draw.line(screen, (40, 60, 55),
                          (ox + _PAD, oy + _PAD + 18), (ox + _W - _PAD, oy + _PAD + 18))
@@ -136,7 +137,7 @@ class WeaponPickerUI:
         self._weapon_rects = {}
 
         if n == 0:
-            screen.blit(self._font.render("(no weapons in inventory)", True, _COL_DIM),
+            screen.blit(self._font.render(t("weapon_picker.empty"), True, _COL_DIM),
                         (ox + _PAD, list_y + 4))
         else:
             self._selected = min(self._selected, n - 1)
@@ -181,7 +182,7 @@ class WeaponPickerUI:
                          (ox + _PAD, footer_y - 4), (ox + _W - _PAD, footer_y - 4))
 
         self._btn_rects = {}
-        close_label = "[C/Esc] Close"
+        close_label = t("weapon_picker.close")
         close_w = self._font.size(close_label)[0] + 14
         close_rect = pygame.Rect(ox + _PAD, footer_y, close_w, 20)
         self._btn_rects["close"] = close_rect
@@ -192,6 +193,6 @@ class WeaponPickerUI:
                                       (180, 220, 200) if is_hov else _COL_KEY),
                     (ox + _PAD + 7, footer_y + 2))
 
-        hint = "  [↑↓] Navigate   [E/Enter] Equip"
+        hint = t("weapon_picker.hint")
         hint_s = self._font.render(hint, True, _COL_KEY)
         screen.blit(hint_s, (ox + _PAD + close_w + 4, footer_y + 2))

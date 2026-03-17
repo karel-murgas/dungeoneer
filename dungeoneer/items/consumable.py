@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from dungeoneer.items.item import Item, ItemType
+from dungeoneer.core.i18n import t
 
 if TYPE_CHECKING:
     from dungeoneer.entities.actor import Actor
@@ -29,8 +30,8 @@ class Consumable(Item):
         msgs = []
         if self.heal_amount:
             actual = actor.heal(self.heal_amount)
-            msgs.append(f"Restored {actual} HP.")
-        return f"Used {self.name}. " + " ".join(msgs)
+            msgs.append(t("log.heal_restored").format(n=actual))
+        return t("log.item_used").format(name=self.name) + " " + " ".join(msgs)
 
 
 # ---------------------------------------------------------------------------
@@ -39,16 +40,16 @@ class Consumable(Item):
 
 def make_stim_pack() -> Consumable:
     return Consumable(
-        id="stim_pack", name="Stim Pack",
-        description="Combat stimulant. Restores 10 HP.",
+        id="stim_pack", name=t("item.stim_pack.name"),
+        description=t("item.stim_pack.desc"),
         item_type=ItemType.CONSUMABLE,
         heal_amount=10,
     )
 
 def make_medkit() -> Consumable:
     return Consumable(
-        id="medkit", name="Med Kit",
-        description="Full trauma kit. Restores 20 HP.",
+        id="medkit", name=t("item.medkit.name"),
+        description=t("item.medkit.desc"),
         item_type=ItemType.CONSUMABLE,
         heal_amount=20,
     )
