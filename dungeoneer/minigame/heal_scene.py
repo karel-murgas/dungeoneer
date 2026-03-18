@@ -138,7 +138,7 @@ class HealOverlay:
     @property
     def _player_phase_start(self) -> float:
         """Absolute time when the player input phase begins."""
-        return 2.0 * self._cycle
+        return self._beats[-1][0]
 
     # ------------------------------------------------------------------
     # Input
@@ -192,7 +192,7 @@ class HealOverlay:
 
     def _finalize(self) -> None:
         """Compute accuracy from timing, transition to RESULT."""
-        expected_press = self._player_phase_start
+        expected_press = 2.0 * self._cycle  # 3rd "du" beat
 
         if self._press_t is not None:
             press_off = self._press_t - expected_press
