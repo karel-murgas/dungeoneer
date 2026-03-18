@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python -c \"import pygame; import tcod; import numpy; print\\(''All imports OK''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(timeout 3 python main.py)",
+      "WebSearch",
+      "WebFetch(domain:cainos.itch.io)",
+      "WebFetch(domain:kaopxl.itch.io)",
+      "WebFetch(domain:0x72.itch.io)",
+      "WebFetch(domain:itch.io)",
+      "WebFetch(domain:yaninyunus.itch.io)",
+      "WebFetch(domain:penzilla.itch.io)",
+      "WebFetch(domain:dithart.itch.io)",
+      "WebFetch(domain:ansimuz.itch.io)",
+      "WebFetch(domain:sethbb.itch.io)",
+      "WebFetch(domain:free-game-assets.itch.io)"
+    ]
+  }
+}

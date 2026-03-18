@@ -164,6 +164,8 @@ class AudioManager:
             "heal":        self._to_sound(self._gen_heal()),
             "victory":     self._to_sound(self._gen_victory()),
             "defeat":      self._to_sound(self._gen_defeat()),
+            "heart_du":    self._to_sound(self._gen_heart_du()),
+            "heart_dum":   self._to_sound(self._gen_heart_dum()),
         }
 
     def _gen_footstep(self) -> np.ndarray:
@@ -278,3 +280,14 @@ class AudioManager:
         gap    = self._silence(20)
         shimmer = self._tone(280, 260, vol=0.55, freq_end=560, exp=1.4)
         return self._concat(self._mix(click, shimmer[:len(click)]), gap, shimmer)
+
+    def _gen_heart_du(self) -> np.ndarray:
+        # Deep short thump — first beat of du-dum (contraction)
+        thump = self._tone(55, 85, vol=0.75, freq_end=35, exp=0.5)
+        body  = self._tone(110, 65, vol=0.45, freq_end=55, exp=0.8)
+        return self._mix(thump, body[:len(thump)])
+
+    def _gen_heart_dum(self) -> np.ndarray:
+        # Softer secondary beat — second beat of du-dum (relaxation)
+        beat = self._tone(80, 65, vol=0.50, freq_end=50, exp=0.7)
+        return beat

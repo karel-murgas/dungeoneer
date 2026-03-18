@@ -176,6 +176,11 @@ class HackScene(Scene):
                 self._show_help = not self._show_help
                 continue
 
+            if self._show_help:
+                if key == pygame.K_ESCAPE:
+                    self._show_help = False
+                continue
+
             if key in (pygame.K_q, pygame.K_ESCAPE):
                 if self._state == _State.HACKING:
                     self._state  = _State.IDLE

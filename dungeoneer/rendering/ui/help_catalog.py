@@ -3,7 +3,7 @@
 Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 ◄ ► arrow keys or by clicking tab labels.  Close with Esc / Enter.
 
-Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING
+Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING | HEALING
 
 Each tab can have an illustration drawn at the top of the content area:
   - Exploration: sprite icons for container / ammo / stairs / vault
@@ -57,7 +57,7 @@ _LABEL_CRIT     = (240, 210, 0)
 _NODE_ENTRY  = (0,   190, 210)
 _NODE_CACHE  = (0,   160,  60)
 _NODE_EMPTY  = (38,   60,  76)
-_NODE_ICE    = (80,   58,  18)
+_NODE_ICE    = (200,  40,  40)
 _NODE_BORDER = (55,   90, 110)
 
 _PAD    = 20
@@ -121,6 +121,7 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.shoot.3.3",
             "help_catalog.shoot.3.4",
             "help_catalog.shoot.3.5",
+            "help_catalog.shoot.3.6",
         ]),
     ]),
     ("help_catalog.tab.aiming", [
@@ -165,11 +166,25 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.hack.4.3",
         ]),
     ]),
+    ("help_catalog.tab.healing", [
+        ("heal.help.h1", [
+            "heal.help.1",
+            "heal.help.2",
+            "heal.help.3",
+            "heal.help.4",
+        ]),
+        ("heal.help.h2", [
+            "heal.help.key1",
+            "heal.help.key2",
+            "heal.help.key3",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
 _TAB_AIMING      = 3
 _TAB_HACKING     = 4
+_TAB_HEALING     = 5
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -580,7 +595,7 @@ class HelpCatalogOverlay:
             (_NODE_ENTRY, (0, 80, 100),  "\u25ba", t("help_catalog.hack.node.entry")),
             (_NODE_CACHE, (0, 55, 22),   "\u25aa", t("help_catalog.hack.node.cache")),
             (_NODE_EMPTY, (28, 45, 58),  "",       t("help_catalog.hack.node.empty")),
-            (_NODE_ICE,   (38, 28, 8),   "?",      t("help_catalog.hack.node.ice")),
+            (_NODE_ICE,   (80, 10, 10),  "?",      t("help_catalog.hack.node.ice")),
         ]
         loot_items = [
             ("item_hack_credits",    t("hack.loot.credits")),

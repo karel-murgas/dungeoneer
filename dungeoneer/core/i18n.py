@@ -95,7 +95,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Stairs down / open container",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "Aim (ranged) / Attack nearest (melee)",
+        "help.desc.shoot":              "Attack nearest enemy (melee or ranged)",
         "help.key.target":              "Tab",
         "help.desc.target":             "Cycle aim target through visible enemies",
         "help.key.aim":                 "F / click",
@@ -126,7 +126,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Auto-equipped on pickup; only stronger replaces",
         "aim.help.crit":                "CRITICAL HITS",
         "aim.help.crit.1":              "Stop needle at \u226595% accuracy for CRITICAL",
-        "aim.help.crit.2":              "Critical = max weapon damage",
+        "aim.help.crit.2":              "Critical = max weapon damage (unlocks as you progress)",
         "aim.help.controls":            "CONTROLS",
         "aim.help.ctrl.f.key":          "F / click",
         "aim.help.ctrl.f.desc":         "stop needle / fire",
@@ -375,6 +375,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.tab.shooting":    "SHOOTING",
         "help_catalog.tab.aiming":      "AIMING",
         "help_catalog.tab.hacking":     "HACKING",
+        "help_catalog.tab.healing":     "HEALING",
         "help_catalog.footer":          "[\u25c4 \u25ba] Switch tab   [Esc] Close",
 
         # Exploration tab
@@ -388,7 +389,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h3":         "STAIRS & CONTAINERS",
         "help_catalog.expl.3.1":        "E \u2014 descend stairs or open a container",
         "help_catalog.expl.3.2":        "Containers may hold items, weapons, or credits",
-        "help_catalog.expl.3.3":        "Some containers trigger the hack minigame for bonus loot",
+        "help_catalog.expl.3.3":        "All containers trigger the hack minigame for bonus loot (if enabled)",
 
         # Combat tab
         "help_catalog.comb.h1":         "MELEE COMBAT",
@@ -421,6 +422,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.shoot.3.3":       "Shotgun \u2014 devastating close range, 4 shells",
         "help_catalog.shoot.3.4":       "Rifle \u2014 long range, precision shots",
         "help_catalog.shoot.3.5":       "Energy Sword \u2014 melee only, cuts through armor",
+        "help_catalog.shoot.3.6":       "Combat Knife \u2014 melee only, fast close-range attack",
 
         # Aiming tab
         "help_catalog.aim.h1":          "HOW AIMING WORKS",
@@ -432,7 +434,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.aim.h2":          "ACCURACY & CRITICAL HITS",
         "help_catalog.aim.2.1":         "Zone shrinks the farther the target",
         "help_catalog.aim.2.2":         "Stop needle at \u226595% accuracy for a CRITICAL HIT",
-        "help_catalog.aim.2.3":         "Critical = maximum weapon damage (no RNG)",
+        "help_catalog.aim.2.3":         "Critical = max weapon damage \u2014 effect unlocks as you progress",
         "help_catalog.aim.h3":          "CONTROLS",
         "help_catalog.aim.3.1":         "F / click \u2014 stop needle and fire",
         "help_catalog.aim.3.2":         "Tab \u2014 cycle target before firing",
@@ -469,6 +471,25 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.hack.4.1":        "WASD / Arrows \u2014 move to adjacent node",
         "help_catalog.hack.4.2":        "Mouse click \u2014 click a neighbour to move",
         "help_catalog.hack.4.3":        "Q / Esc \u2014 cancel extraction / abort hack",
+
+        # Healing tab
+        "heal.help.h1":                 "HOW HEALING WORKS",
+        "heal.help.1":                  "Watch two heartbeats \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Press H on the third beat, hold through the gap",
+        "heal.help.3":                  "Release H when the second thump should sound",
+        "heal.help.4":                  "Perfect timing \u2192 +20%   Miss \u2192 \u221220%",
+        "heal.help.h2":                 "CONTROLS",
+        "heal.help.key1":               "[H hold] \u2014 press on beat (contraction)",
+        "heal.help.key2":               "[H release] \u2014 release after gap (relaxation)",
+        "heal.help.key3":               "[Esc] \u2014 cancel heal",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Cardiac Rhythm",
+        "heal.overlay.watch":           "Watch...",
+        "heal.overlay.now":             "NOW!",
+        "heal.overlay.perfect":         "Perfect!",
+        "heal.overlay.good":            "Good",
+        "heal.overlay.poor":            "Weak",
     },
 
     "cs": {
@@ -520,7 +541,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Schody dol\u016f / otev\u0159\u00edt kontejner",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "M\u00ed\u0159en\u00ed (st\u0159eln\u00e9) / \u00datok na nejbli\u017e\u0161\u00edho (melee)",
+        "help.desc.shoot":              "\u00datok na nejbli\u017e\u0161\u00edho nep\u0159\u00edtele (melee nebo na d\u00e1lku)",
         "help.key.target":              "Tab",
         "help.desc.target":             "P\u0159epni c\u00edl m\u00ed\u0159en\u00ed mezi viditeln\u00fdmi nep\u0159\u00e1teli",
         "help.key.aim":                 "F / klik",
@@ -551,7 +572,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Auto-vybav\u00ed p\u0159i sb\u011bru; nahrad\u00ed jen siln\u011bj\u0161\u00ed",
         "aim.help.crit":                "KRITICK\u00c9 Z\u00c1SAHY",
         "aim.help.crit.1":              "Zastav ru\u010di\u010dku na \u226595\u00a0% pro KRITICK\u00dd Z\u00c1SAH",
-        "aim.help.crit.2":              "Kritick\u00fd = maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b",
+        "aim.help.crit.2":              "Kritick\u00fd = maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b (odemyk\u00e1 se b\u011bhem hry)",
         "aim.help.controls":            "OVL\u00c1D\u00c1N\u00cd",
         "aim.help.ctrl.f.key":          "F / klik",
         "aim.help.ctrl.f.desc":         "zastav ru\u010di\u010dku / v\u00fdst\u0159el",
@@ -800,6 +821,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.tab.shooting":    "ST\u0158ELBA",
         "help_catalog.tab.aiming":      "M\u00cd\u0158EN\u00cd",
         "help_catalog.tab.hacking":     "HACKING",
+        "help_catalog.tab.healing":     "L\u00c9\u010c\u00c9N\u00cd",
         "help_catalog.footer":          "[\u25c4 \u25ba] P\u0159epnout   [Esc] Zav\u0159\u00edt",
 
         # Exploration illustration labels
@@ -826,7 +848,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h3":         "SCHODY & KONTEJNERY",
         "help_catalog.expl.3.1":        "E \u2014 schody dol\u016f nebo otev\u0159\u00edt kontejner",
         "help_catalog.expl.3.2":        "Kontejnery mohou obsahovat p\u0159edm\u011bty, zbran\u011b nebo kredity",
-        "help_catalog.expl.3.3":        "N\u011bkter\u00e9 kontejnery spust\u00ed hackovan\u00ed pro bonus",
+        "help_catalog.expl.3.3":        "V\u0161echny kontejnery spust\u00ed hackov\u00e1n\u00ed pro bonus (pokud je povoleno)",
 
         # Combat tab
         "help_catalog.comb.h1":         "BOJ ZBLÍZKA",
@@ -859,6 +881,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.shoot.3.3":       "Brokovnice \u2014 devastující zbl\u00edzka, 4 broky",
         "help_catalog.shoot.3.4":       "Pu\u0161ka \u2014 velk\u00fd dosah, p\u0159esn\u00e9 st\u0159ely",
         "help_catalog.shoot.3.5":       "Energetick\u00fd me\u010d \u2014 jen zbl\u00edzka, pron\u00edk\u00e1 zbrojí",
+        "help_catalog.shoot.3.6":       "Bojov\u00fd n\u016f\u017e \u2014 jen zbl\u00edzka, rychl\u00fd \u00fatok na kr\u00e1tkou vzd\u00e1lenost",
 
         # Aiming tab
         "help_catalog.aim.h1":          "JAK FUNGUJE M\u00cd\u0158EN\u00cd",
@@ -870,7 +893,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.aim.h2":          "P\u0158ESNOST & KRITICK\u00c9 Z\u00c1SAHY",
         "help_catalog.aim.2.1":         "Z\u00f3na se zmen\u0161uje se vzd\u00e1lenost\u00ed c\u00edle",
         "help_catalog.aim.2.2":         "Zastav na \u226595\u00a0% pro KRITICK\u00dd Z\u00c1SAH",
-        "help_catalog.aim.2.3":         "Kritick\u00fd = maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b (bez RNG)",
+        "help_catalog.aim.2.3":         "Kritick\u00fd = max po\u0161kozen\u00ed \u2014 efekt se odemyk\u00e1 b\u011bhem hry",
         "help_catalog.aim.h3":          "OVL\u00c1D\u00c1N\u00cd",
         "help_catalog.aim.3.1":         "F / klik \u2014 zastav ru\u010di\u010dku a vystr\u011bl",
         "help_catalog.aim.3.2":         "Tab \u2014 p\u0159epni c\u00edl p\u0159ed v\u00fdst\u0159elem",
@@ -894,6 +917,25 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.hack.4.1":        "WASD / \u0161ipky \u2014 pohyb na sousedn\u00ed uzel",
         "help_catalog.hack.4.2":        "Klik my\u0161\u00ed \u2014 klikni na souseda pro pohyb",
         "help_catalog.hack.4.3":        "Q / Esc \u2014 zru\u0161it extrakci / p\u0159eru\u0161it hack",
+
+        # Healing tab
+        "heal.help.h1":                 "JAK FUNGUJE L\u00c9\u010cEN\u00cd",
+        "heal.help.1":                  "Sleduj dva tepy \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Stiskni H na t\u0159et\u00edm tepu, dr\u017e p\u0159es mezeru",
+        "heal.help.3":                  "Uvolni H kdy\u017e by m\u011bl zaznít druh\u00fd tep",
+        "heal.help.4":                  "Perfektn\u00ed \u2192 +20%   Mimo \u2192 \u221220%",
+        "heal.help.h2":                 "OVLÁD\u00c1N\u00cd",
+        "heal.help.key1":               "[H dr\u017e] \u2014 stisk na tep (stah)",
+        "heal.help.key2":               "[uvolni H] \u2014 uvolni po meze\u0159e (rozta\u017een\u00ed)",
+        "heal.help.key3":               "[Esc] \u2014 zru\u0161it l\u00e9\u010den\u00ed",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Srde\u010dn\u00ed rytmus",
+        "heal.overlay.watch":           "Sleduj...",
+        "heal.overlay.now":             "TE\u010e!",
+        "heal.overlay.perfect":         "Perfektn\u00ed!",
+        "heal.overlay.good":            "Dob\u0159e",
+        "heal.overlay.poor":            "Slab\u011b",
     },
 
     "es": {
@@ -945,7 +987,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Bajar escaleras / abrir contenedor",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "Apuntar (a distancia) / Atacar al m\u00e1s cercano (cuerpo a cuerpo)",
+        "help.desc.shoot":              "Atacar al enemigo m\u00e1s cercano (cuerpo a cuerpo o a distancia)",
         "help.key.target":              "Tab",
         "help.desc.target":             "Cambiar objetivo entre enemigos visibles",
         "help.key.aim":                 "F / clic",
@@ -976,7 +1018,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Se equipa sola; solo una m\u00e1s fuerte la reemplaza",
         "aim.help.crit":                "GOLPES CR\u00cdTICOS",
         "aim.help.crit.1":              "Para la aguja a \u226595% de precisi\u00f3n para CR\u00cdTICO",
-        "aim.help.crit.2":              "Cr\u00edtico = da\u00f1o m\u00e1ximo del arma",
+        "aim.help.crit.2":              "Cr\u00edtico = da\u00f1o m\u00e1ximo del arma (se desbloquea al progresar)",
         "aim.help.controls":            "CONTROLES",
         "aim.help.ctrl.f.key":          "F / clic",
         "aim.help.ctrl.f.desc":         "detener aguja / disparar",
@@ -1225,6 +1267,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.tab.shooting":    "DISPARO",
         "help_catalog.tab.aiming":      "APUNTADO",
         "help_catalog.tab.hacking":     "HACKEO",
+        "help_catalog.tab.healing":     "CURACI\u00d3N",
         "help_catalog.footer":          "[\u25c4 \u25ba] Cambiar tab   [Esc] Cerrar",
 
         # Exploration illustration labels
@@ -1251,7 +1294,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h3":         "ESCALERAS Y CONTENEDORES",
         "help_catalog.expl.3.1":        "E \u2014 bajar escaleras o abrir un contenedor",
         "help_catalog.expl.3.2":        "Los contenedores pueden tener objetos, armas o cr\u00e9ditos",
-        "help_catalog.expl.3.3":        "Algunos contenedores activan el minijuego de hackeo",
+        "help_catalog.expl.3.3":        "Todos los contenedores activan el minijuego de hackeo (si est\u00e1 habilitado)",
 
         # Combat tab
         "help_catalog.comb.h1":         "COMBATE CUERPO A CUERPO",
@@ -1284,6 +1327,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.shoot.3.3":       "Escopeta \u2014 devastadora de cerca, 4 cartuchos",
         "help_catalog.shoot.3.4":       "Fusil \u2014 largo alcance, disparos de precisi\u00f3n",
         "help_catalog.shoot.3.5":       "Espada de energ\u00eda \u2014 solo cuerpo a cuerpo, atraviesa armadura",
+        "help_catalog.shoot.3.6":       "Cuchillo de combate \u2014 solo cuerpo a cuerpo, ataque r\u00e1pido de corto alcance",
 
         # Aiming tab
         "help_catalog.aim.h1":          "C\u00d3MO FUNCIONA EL APUNTADO",
@@ -1295,7 +1339,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.aim.h2":          "PRECISI\u00d3N Y GOLPES CR\u00cdTICOS",
         "help_catalog.aim.2.1":         "La zona se reduce con la distancia al objetivo",
         "help_catalog.aim.2.2":         "Para la aguja a \u226595% de precisi\u00f3n para CR\u00cdTICO",
-        "help_catalog.aim.2.3":         "Cr\u00edtico = da\u00f1o m\u00e1ximo del arma (sin RNG)",
+        "help_catalog.aim.2.3":         "Cr\u00edtico = da\u00f1o m\u00e1ximo \u2014 el efecto se desbloquea al progresar",
         "help_catalog.aim.h3":          "CONTROLES",
         "help_catalog.aim.3.1":         "F / clic \u2014 detener aguja y disparar",
         "help_catalog.aim.3.2":         "Tab \u2014 cambiar objetivo antes de disparar",
@@ -1319,6 +1363,25 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.hack.4.1":        "WASD / Flechas \u2014 mover al nodo adyacente",
         "help_catalog.hack.4.2":        "Clic de rat\u00f3n \u2014 haz clic en un vecino para mover",
         "help_catalog.hack.4.3":        "Q / Esc \u2014 cancelar extracci\u00f3n / abortar hackeo",
+
+        # Healing tab
+        "heal.help.h1":                 "C\u00d3MO FUNCIONA LA CURACI\u00d3N",
+        "heal.help.1":                  "Observa dos latidos \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Pulsa H en el tercer latido, mant\u00e9n durante la pausa",
+        "heal.help.3":                  "Suelta H cuando deber\u00eda sonar el segundo golpe",
+        "heal.help.4":                  "Perfecto \u2192 +20%   Fallo \u2192 \u221220%",
+        "heal.help.h2":                 "CONTROLES",
+        "heal.help.key1":               "[H mant\u00e9n] \u2014 pulsar en el latido (contracci\u00f3n)",
+        "heal.help.key2":               "[soltar H] \u2014 soltar tras la pausa (relajaci\u00f3n)",
+        "heal.help.key3":               "[Esc] \u2014 cancelar curaci\u00f3n",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Ritmo card\u00edaco",
+        "heal.overlay.watch":           "Observa...",
+        "heal.overlay.now":             "\u00a1AHORA!",
+        "heal.overlay.perfect":         "\u00a1Perfecto!",
+        "heal.overlay.good":            "Bien",
+        "heal.overlay.poor":            "D\u00e9bil",
     },
 }
 

@@ -46,6 +46,14 @@ type: project
 - `rendering/procedural_sprites.py` — extended (63 lines added)
 - `rendering/ui/hud.py`, `help_screen.py`, `main_menu_scene.py` — significant rework
 
+### New (2026-03-18) — healing rhythm minigame
+- `minigame/heal_scene.py` — HealOverlay: centred panel overlay; watches 2 heartbeat cycles (du-dum, du-dum), player matches 3rd; ±20% heal based on timing accuracy
+- `audio/audio_manager.py` — added `heart_du`, `heart_dum` procedural sounds
+- `core/settings.py` — HEAL_MIN/MAX_CYCLE_MS, HEAL_MIN/MAX_DU_GAP_MS, HEAL_BEAT_FLASH_MS, HEAL_ACCURACY_WINDOW, HEAL_RESULT_PAUSE, HEAL_RANGE
+- `core/i18n.py` — heal.overlay.* and heal.help.* keys (3 languages)
+- `rendering/ui/help_catalog.py` — new HEALING tab (6th tab)
+- **GameScene**: H key now always launches HealOverlay; removed overheal confirm path; `_heal_overlay` state; `_launch_heal()` / `_on_heal_complete()` mirror aim overlay pattern
+
 ### New (post 2026-03-17) — aim minigame F1 help
 - `minigame/aim_scene.py` — AimOverlay: F1 toggles full-screen help overlay (needle frozen)
   - Left col: HOW AIMING WORKS (mechanic bullets) + ARMOR section

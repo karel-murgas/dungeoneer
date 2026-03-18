@@ -83,7 +83,7 @@ class GameScene(Scene):
         self._weapon_picker_open = False
         self._help_open          = False
         self._quit_confirm_open  = False
-        self._heal_confirm: UseItemAction | None = None  # overheal waiting for confirmation
+        self._heal_overlay       = None                 # HealOverlay instance when healing
         self._had_visible_enemies = False  # for alert-banner trigger detection
         self._pending_advance    = False   # waiting for enemy-turn delay
         self._advance_timer      = 0.0     # seconds remaining before advance fires
@@ -297,6 +297,12 @@ class GameScene(Scene):
                 self._aim_overlay.handle_event(event)
             return
 
+        # Heal overlay takes exclusive input while active
+        if self._heal_overlay is not None:
+            for event in events:
+                self._heal_overlay.handle_event(event)
+            return
+
         for event in events:
             if self._quit_confirm_open:
                 if event.type == pygame.MOUSEMOTION:
@@ -484,21 +490,9 @@ class GameScene(Scene):
 
             key = event.key
 
-            # --- Overheal confirmation ---
-            if self._heal_confirm is not None:
-                pending = self._heal_confirm
-                self._heal_confirm = None
-                if key in (pygame.K_h, pygame.K_RETURN, pygame.K_KP_ENTER):
-                    action = pending
-                else:
-                    bus.post(LogMessageEvent(t("log.heal_cancel"), (120, 120, 140)))
-                    action = self._key_to_action(key)
-                    if action is None:
-                        continue
-            elif key == pygame.K_h:
-                action = self._try_quick_heal()
-                if action is None:
-                    continue  # blocked or confirm pending — no turn advance
+            if key == pygame.K_h:
+                self._launch_heal()
+                continue   # no immediate turn advance
             else:
                 action = self._key_to_action(key)
                 if action is None:
@@ -663,8 +657,8 @@ class GameScene(Scene):
             return RangedAttackAction(target, max_range=w.range_tiles if w else 8)
         return None
 
-    def _try_quick_heal(self) -> UseItemAction | None:
-        """Returns a UseItemAction to execute immediately, or None (blocked / confirm pending)."""
+    def _launch_heal(self) -> None:
+        """Launch the healing rhythm overlay for the best available consumable."""
         assert self.player is not None
         from dungeoneer.items.consumable import Consumable
 
@@ -674,30 +668,46 @@ class GameScene(Scene):
         ]
         if not healables:
             bus.post(LogMessageEvent(t("log.no_heals"), (180, 80, 80)))
-            return None
+            return
 
-        missing = self.player.max_hp - self.player.hp
-        if missing <= 0:
+        if self.player.max_hp - self.player.hp <= 0:
             bus.post(LogMessageEvent(t("log.full_hp"), (120, 120, 140)))
-            return None
+            return
 
-        exact = [i for i in healables if i.heal_amount <= missing]
-        if exact:
-            return UseItemAction(max(exact, key=lambda c: c.heal_amount))
+        # Pick best fitting item; fall back to smallest overheal item
+        exact = [i for i in healables if i.heal_amount <= self.player.max_hp - self.player.hp]
+        consumable = max(exact, key=lambda c: c.heal_amount) if exact else min(healables, key=lambda c: c.heal_amount)
 
-        # All items would overheal — ask for confirmation
-        chosen = min(healables, key=lambda c: c.heal_amount)
-        self._heal_confirm = UseItemAction(chosen)
-        overheal = chosen.heal_amount - missing
-        count_str = f" x{chosen.count}" if chosen.count > 1 else ""
-        bus.post(LogMessageEvent(
-            t("log.heal_confirm").format(
-                item=chosen.name, count=count_str,
-                hp=chosen.heal_amount, overheal=overheal,
-            ),
-            (200, 160, 60),
-        ))
-        return None
+        from dungeoneer.minigame.heal_scene import HealOverlay
+
+        def on_complete(actual_heal: int) -> None:
+            self._on_heal_complete(consumable, actual_heal)
+
+        self._heal_overlay = HealOverlay(
+            consumable=consumable,
+            player=self.player,
+            on_complete=on_complete,
+            audio_manager=self.audio,
+        )
+
+    def _on_heal_complete(self, consumable, actual_heal: int) -> None:
+        """Called by HealOverlay when the rhythm minigame finishes."""
+        self._heal_overlay = None
+        if actual_heal < 0:   # cancelled
+            bus.post(LogMessageEvent(t("log.heal_cancel"), (120, 120, 140)))
+            return
+
+        assert self.player is not None
+        # Remove / decrement the item from inventory
+        if consumable.count > 1:
+            consumable.count -= 1
+        else:
+            self.player.inventory.remove(consumable)
+
+        real = self.player.heal(actual_heal)
+        self.audio.play("heal")
+        bus.post(LogMessageEvent(t("log.heal_restored").format(n=real), (80, 220, 140)))
+        self._schedule_advance()
 
     def _find_adjacent_container(self):
         assert self.player is not None
@@ -1008,6 +1018,12 @@ class GameScene(Scene):
                 self._aim_overlay = None
                 self._aim_target  = None
 
+        if self._heal_overlay is not None:
+            _ho = self._heal_overlay
+            _ho.update(dt)
+            if not _ho.is_active:
+                self._heal_overlay = None
+
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
             remaining = []
@@ -1045,6 +1061,9 @@ class GameScene(Scene):
             if self._aim_overlay is not None:
                 cam = self.renderer.camera
                 self._aim_overlay.render(screen, cam.offset_x, cam.offset_y)
+            # Heal overlay (centred panel, no scene push)
+            if self._heal_overlay is not None:
+                self._heal_overlay.render(screen)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:

@@ -78,7 +78,7 @@ dungeoneer/
 │       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking)
+│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
@@ -100,7 +100,8 @@ dungeoneer/
 │   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) variant (~1232 lines)
 │   ├── hack_grid_generator.py — generate_grid_map(params) → HackGridMap; HackGridParams.for_difficulty()
 │   ├── hack_grid_map.py     — HackGridMap, GridCell, GridCellType; physical 2× grid model
-│   └── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
+│   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
+│   └── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay owned by GameScene; heartbeat rhythm minigame; on_complete(int actual_heal)
 │
 ├── cyberware/           — (stub, not integrated)
 ├── skills/              — (stub, empty)

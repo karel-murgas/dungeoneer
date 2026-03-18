@@ -191,6 +191,8 @@ class AimOverlay:
             self._show_help = not self._show_help
             return
         if self._show_help:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self._show_help = False
             return  # eat all other input while help is open
         if self._state == _State.AIMING:
             fire = (
@@ -430,14 +432,6 @@ class AimOverlay:
             (_HELP_DIM, t("aim.help.mech.5")),
             (_HELP_DIM, t("aim.help.mech.zone")),
         ])
-        y_l += 10
-
-        y_l = _section(col_l, y_l, t("aim.help.armor"))
-        y_l = _bullets(col_l, y_l, [
-            (_TEXT,     t("aim.help.armor.1")),
-            (_HELP_DIM, t("aim.help.armor.2")),
-        ])
-
         # ── Right column ─────────────────────────────────────────────
         y_r = _section(col_r, y_r, t("aim.help.crit"))
         y_r = _bullets(col_r, y_r, [
