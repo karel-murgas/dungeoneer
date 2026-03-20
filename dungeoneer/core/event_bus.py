@@ -1,7 +1,8 @@
 """Simple synchronous publish/subscribe event bus."""
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Type
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -36,22 +37,8 @@ class DeathEvent(Event):
     entity: Any
 
 @dataclass
-class LootEvent(Event):
-    actor: Any
-    item: Any
-
-@dataclass
-class TurnStartEvent(Event):
-    actor: Any
-    round_number: int
-
-@dataclass
 class TurnEndEvent(Event):
     round_number: int
-
-@dataclass
-class FloorClearEvent(Event):
-    pass
 
 @dataclass
 class StairEvent(Event):
@@ -62,6 +49,11 @@ class StairEvent(Event):
 class ObjectiveEvent(Event):
     """Player secured the mission objective (Corp Vault)."""
     credits_gained: int
+
+@dataclass
+class MissEvent(Event):
+    attacker: Any
+    target:   Any
 
 @dataclass
 class LogMessageEvent(Event):
@@ -75,12 +67,12 @@ class LogMessageEvent(Event):
 
 class EventBus:
     def __init__(self) -> None:
-        self._subscribers: Dict[Type[Event], List[Callable]] = {}
+        self._subscribers: dict[type[Event], list[Callable]] = {}
 
-    def subscribe(self, event_type: Type[Event], callback: Callable) -> None:
+    def subscribe(self, event_type: type[Event], callback: Callable) -> None:
         self._subscribers.setdefault(event_type, []).append(callback)
 
-    def unsubscribe(self, event_type: Type[Event], callback: Callable) -> None:
+    def unsubscribe(self, event_type: type[Event], callback: Callable) -> None:
         if event_type in self._subscribers:
             self._subscribers[event_type].remove(callback)
 

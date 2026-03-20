@@ -14,15 +14,19 @@ _COL_YES = (80, 200, 160)
 _COL_NO  = (180, 80,  80)
 _COL_DIM = (70,  80,  95)
 
-_W   = 340
-_PAD = 20
+_W        = 340
+_PAD      = 20
+_ROW_HOV  = (25, 60, 50, 180)   # RGBA highlight stripe on hover
 
 
 class QuitConfirmDialog:
-    def __init__(self) -> None:
+    def __init__(self, key_prefix: str = "quit_confirm") -> None:
+        self._prefix     = key_prefix
         self._font_title = pygame.font.SysFont("consolas", 18, bold=True)
         self._font_text  = pygame.font.SysFont("consolas", 15)
         self._font_key   = pygame.font.SysFont("consolas", 15, bold=True)
+        self._btn_rects: dict[str, pygame.Rect] = {}
+        self._hovered_btn: str | None = None
 
     # ------------------------------------------------------------------
 
@@ -32,6 +36,20 @@ class QuitConfirmDialog:
             return "confirm"
         if key in (pygame.K_n, pygame.K_ESCAPE):
             return "cancel"
+        return None
+
+    def handle_mouse_motion(self, pos: tuple[int, int]) -> None:
+        self._hovered_btn = None
+        for name, rect in self._btn_rects.items():
+            if rect.collidepoint(pos):
+                self._hovered_btn = name
+                break
+
+    def handle_mouse_button(self, event: pygame.event.Event) -> str | None:
+        if event.button == 1:
+            for name, rect in self._btn_rects.items():
+                if rect.collidepoint(event.pos):
+                    return name
         return None
 
     # ------------------------------------------------------------------
@@ -56,7 +74,7 @@ class QuitConfirmDialog:
         pygame.draw.rect(screen, _BORDER, (ox, oy, _W, h), 2)
 
         # Title
-        title_surf = self._font_title.render(t("quit_confirm.title"), True, _COL_HDR)
+        title_surf = self._font_title.render(t(f"{self._prefix}.title"), True, _COL_HDR)
         screen.blit(title_surf, (ox + (_W - title_surf.get_width()) // 2, oy + _PAD))
         pygame.draw.line(screen, (40, 70, 65),
                          (ox + _PAD, oy + _PAD + title_h - 2),
@@ -65,15 +83,29 @@ class QuitConfirmDialog:
         cy = oy + _PAD + title_h + gap + 4
 
         # Question
-        q_surf = self._font_text.render(t("quit_confirm.question"), True, _COL_TXT)
+        q_surf = self._font_text.render(t(f"{self._prefix}.question"), True, _COL_TXT)
         screen.blit(q_surf, (ox + (_W - q_surf.get_width()) // 2, cy))
         cy += row_h + gap
 
-        # Confirm
-        yes_surf = self._font_key.render(t("quit_confirm.confirm"), True, _COL_YES)
+        self._btn_rects = {}
+
+        # Confirm row
+        yes_surf = self._font_key.render(t(f"{self._prefix}.confirm"), True, _COL_YES)
+        yes_row  = pygame.Rect(ox + 2, cy - 2, _W - 4, row_h + 2)
+        self._btn_rects["confirm"] = yes_row
+        if self._hovered_btn == "confirm":
+            hov = pygame.Surface((yes_row.width, yes_row.height), pygame.SRCALPHA)
+            hov.fill(_ROW_HOV)
+            screen.blit(hov, yes_row.topleft)
         screen.blit(yes_surf, (ox + (_W - yes_surf.get_width()) // 2, cy))
         cy += row_h
 
-        # Cancel
-        no_surf = self._font_key.render(t("quit_confirm.cancel"), True, _COL_DIM)
+        # Cancel row
+        no_surf  = self._font_key.render(t(f"{self._prefix}.cancel"), True, _COL_DIM)
+        no_row   = pygame.Rect(ox + 2, cy - 2, _W - 4, row_h + 2)
+        self._btn_rects["cancel"] = no_row
+        if self._hovered_btn == "cancel":
+            hov = pygame.Surface((no_row.width, no_row.height), pygame.SRCALPHA)
+            hov.fill(_ROW_HOV)
+            screen.blit(hov, no_row.topleft)
         screen.blit(no_surf, (ox + (_W - no_surf.get_width()) // 2, cy))

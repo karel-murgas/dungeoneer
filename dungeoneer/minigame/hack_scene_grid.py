@@ -35,6 +35,7 @@ from dungeoneer.minigame.hack_node import LootKind, SecurityKind
 from dungeoneer.minigame.hack_grid_map import GridCell, GridCellType, HackGridMap, Pos
 from dungeoneer.minigame.hack_grid_generator import HackGridParams, generate_grid_map
 from dungeoneer.minigame.hack_audio import HackAudio
+from dungeoneer.minigame import hack_common as _hc
 from dungeoneer.rendering import procedural_sprites
 
 if TYPE_CHECKING:
@@ -43,26 +44,26 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# Colours
+# Colours — local aliases from shared module
 # ---------------------------------------------------------------------------
-_BG            = (4,    8,  18)
-_GRID_DOT      = (14,  26,  42)
-_PANEL_BG      = (6,   12,  22)
+_BG            = _hc.BG
+_GRID_DOT      = _hc.GRID_DOT
+_PANEL_BG      = _hc.PANEL_BG
 
-_NEON_CYAN     = (0,   230, 220)
-_NEON_GREEN    = (0,   220,  80)
-_NEON_RED      = (220,  40,  80)
-_NEON_ORANGE   = (220, 140,   0)
-_NEON_YELLOW   = (200, 220,  60)
+_NEON_CYAN     = _hc.NEON_CYAN
+_NEON_GREEN    = _hc.NEON_GREEN
+_NEON_RED      = _hc.NEON_RED
+_NEON_ORANGE   = _hc.NEON_ORANGE
+_NEON_YELLOW   = _hc.NEON_YELLOW
 
-_TEXT          = (160, 220, 200)
-_TEXT_DIM      = (60,  100,  80)
+_TEXT          = _hc.TEXT
+_TEXT_DIM      = _hc.TEXT_DIM
 
-_COL_TIMER_HI  = _NEON_GREEN
-_COL_TIMER_MID = _NEON_ORANGE
-_COL_TIMER_LO  = _NEON_RED
+_COL_TIMER_HI  = _hc.COL_TIMER_HI
+_COL_TIMER_MID = _hc.COL_TIMER_MID
+_COL_TIMER_LO  = _hc.COL_TIMER_LO
 
-# Network colours
+# Network colours (scene-specific)
 _COL_WIRE      = (22,   55,  78)    # normal corridor line
 _COL_WIRE_LIT  = (0,   160, 180)    # corridor adjacent to player
 _COL_NODE_EMPTY = (38,  60,  76)    # empty / junction node fill
@@ -72,8 +73,8 @@ _COL_NODE_EMPTY_RIM = (55, 90, 110) # rim of empty node
 # ---------------------------------------------------------------------------
 # Layout
 # ---------------------------------------------------------------------------
-_HEADER_H = 64
-_FOOTER_H = 76
+_HEADER_H = _hc.HEADER_H
+_FOOTER_H = _hc.FOOTER_H
 
 
 # ---------------------------------------------------------------------------
@@ -106,56 +107,12 @@ _ARROW_CHARS: dict[Pos, str] = {
 
 
 # ---------------------------------------------------------------------------
-# Pure helpers
+# Pure helpers — delegated to shared module
 # ---------------------------------------------------------------------------
 
-def _make_loot_item(kind: LootKind) -> Optional["Item"]:
-    from dungeoneer.items.ammo import make_9mm_ammo, make_rifle_ammo, make_shotgun_ammo
-    from dungeoneer.items.consumable import make_stim_pack, make_medkit
-    from dungeoneer.items.weapon import make_shotgun, make_rifle, make_smg
-    from dungeoneer.items.armor import make_basic_armor
-
-    if kind == LootKind.AMMO:         return make_9mm_ammo(8)
-    if kind == LootKind.RIFLE_AMMO:   return make_rifle_ammo(3)
-    if kind == LootKind.SHOTGUN_AMMO: return make_shotgun_ammo(4)
-    if kind == LootKind.HEAL:         return make_stim_pack()
-    if kind == LootKind.MEDKIT:       return make_medkit()
-    if kind == LootKind.WEAPON:       return random.choice([make_shotgun, make_rifle, make_smg])()
-    if kind == LootKind.ARMOR:        return make_basic_armor()
-    return None
-
-
-def _draw_corner_bracket(
-    screen: pygame.Surface,
-    x: int, y: int,
-    arm: int, thickness: int,
-    color: tuple,
-    width: int,
-    flip_x: bool = False,
-    flip_y: bool = False,
-) -> None:
-    dx = -1 if flip_x else 1
-    dy = -1 if flip_y else 1
-    pygame.draw.line(screen, color, (x, y), (x + dx * arm, y), width)
-    pygame.draw.line(screen, color, (x, y), (x, y + dy * thickness), width)
-
-
-def _draw_glow_circle(
-    screen: pygame.Surface,
-    color: tuple,
-    cx: int, cy: int,
-    radius: int,
-    layers: int = 3,
-    max_alpha: int = 80,
-) -> None:
-    size   = (radius + layers * 8) * 2
-    surf   = pygame.Surface((size, size), pygame.SRCALPHA)
-    center = size // 2
-    for i in range(layers, 0, -1):
-        r     = radius + i * 8
-        alpha = max_alpha * i // layers
-        pygame.draw.circle(surf, (*color, alpha), (center, center), r)
-    screen.blit(surf, (cx - center, cy - center))
+_make_loot_item = _hc.make_loot_item
+_draw_corner_bracket = _hc.draw_corner_bracket
+_draw_glow_circle = _hc.draw_glow_circle
 
 
 # ---------------------------------------------------------------------------
@@ -271,6 +228,11 @@ class HackGridScene(Scene):
             return
 
         for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self._state == _State.IDLE:
+                    self._handle_click(event.pos)
+                continue
+
             if event.type != pygame.KEYDOWN:
                 continue
             key = event.key
@@ -279,7 +241,12 @@ class HackGridScene(Scene):
                 self._show_help = not self._show_help
                 continue
 
-            if key == pygame.K_ESCAPE:
+            if self._show_help:
+                if key == pygame.K_ESCAPE:
+                    self._show_help = False
+                continue
+
+            if key in (pygame.K_q, pygame.K_ESCAPE):
                 if self._state == _State.HACKING:
                     self._state  = _State.IDLE
                     self._status = t("hack.status.cancelled")
@@ -433,6 +400,47 @@ class HackGridScene(Scene):
             self._start_move(target)
         else:
             self._auto_dir = None
+
+    def _handle_click(self, screen_pos: Tuple[int, int]) -> None:
+        """Navigate to the adjacent node under the mouse cursor (if reachable)."""
+        panel   = self._panel_rect()
+        clicked = self._screen_to_cell(screen_pos[0], screen_pos[1], panel)
+        if clicked is None:
+            return
+        direction = self._reachable_node_dirs().get(clicked)
+        if direction is not None:
+            self._try_start_auto(direction)
+
+    def _screen_to_cell(self, mx: int, my: int, panel: pygame.Rect) -> Optional[Pos]:
+        """Convert screen pixel position to the nearest physical grid cell."""
+        gm = self._grid_map
+        pc = gm.phys_cols - 1
+        pr = gm.phys_rows - 1
+        if pc == 0 or pr == 0:
+            return None
+        col = round((mx - panel.x) * pc / panel.width)
+        row = round((my - panel.y) * pr / panel.height)
+        if 0 <= col < gm.phys_cols and 0 <= row < gm.phys_rows:
+            return (col, row)
+        return None
+
+    def _reachable_node_dirs(self) -> dict[Pos, Pos]:
+        """Return {node_pos: first_step_direction} for every adjacent reachable node."""
+        gm     = self._grid_map
+        player = self._player_pos
+        result: dict[Pos, Pos] = {}
+        for start_nb in gm.connections.get(player, set()):
+            direction: Pos = (start_nb[0] - player[0], start_nb[1] - player[1])
+            prev, cur = player, start_nb
+            while True:
+                if cur in gm.node_positions:
+                    result[cur] = direction
+                    break
+                nexts = [n for n in gm.connections.get(cur, set()) if n != prev]
+                if not nexts:
+                    break
+                prev, cur = cur, nexts[0]
+        return result
 
     def _start_move(self, target: Pos) -> None:
         self._timer_started = True
@@ -627,8 +635,8 @@ class HackGridScene(Scene):
         # Spread node positions evenly across the panel
         pc = gm.phys_cols - 1  # max physical column index
         pr = gm.phys_rows - 1
-        x = panel.x + int(col * panel.width  / pc)
-        y = panel.y + int(row * panel.height / pr)
+        x = panel.x + round(col * panel.width  / pc)
+        y = panel.y + round(row * panel.height / pr)
         return x, y
 
     def _node_radius(self, panel: pygame.Rect) -> int:
@@ -637,11 +645,11 @@ class HackGridScene(Scene):
         # Spacing between adjacent nodes = 2 physical units
         spacing_x = panel.width  / (gm.logical_cols - 1)
         spacing_y = panel.height / (gm.logical_rows - 1)
-        return max(10, int(min(spacing_x, spacing_y) * 0.30))
+        return max(10, round(min(spacing_x, spacing_y) * 0.30))
 
     def _lerp_color(self, a: tuple, b: tuple, t: float) -> tuple:
         t = max(0.0, min(1.0, t))
-        return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3))
+        return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
     def _timer_color(self) -> tuple:
         ratio = self._time_remaining / self._params.time_limit
@@ -695,13 +703,13 @@ class HackGridScene(Scene):
         bar_x, bar_w, bar_h = 6, sw - 12, 5
         bar_y = _HEADER_H - bar_h - 2
         if not self._timer_started:
-            alpha = int(120 + 80 * math.sin(self._anim_time * 3.0))
+            alpha = round(120 + 80 * math.sin(self._anim_time * 3.0))
             bsurf = pygame.Surface((bar_w, bar_h), pygame.SRCALPHA)
             bsurf.fill((*_TEXT_DIM, alpha))
             screen.blit(bsurf, (bar_x, bar_y))
         else:
             ratio  = self._time_remaining / self._params.time_limit
-            fill_w = int(bar_w * ratio)
+            fill_w = round(bar_w * ratio)
             pygame.draw.rect(screen, (14, 22, 32), (bar_x, bar_y, bar_w, bar_h))
             if fill_w > 0:
                 pygame.draw.rect(screen, t_color, (bar_x, bar_y, fill_w, bar_h))
@@ -717,7 +725,7 @@ class HackGridScene(Scene):
         pygame.draw.line(screen, _NEON_CYAN,    (0, fy), (sw, fy), 1)
         pygame.draw.line(screen, (*_NEON_CYAN, 40), (0, fy + 2), (sw, fy + 2), 1)
 
-        prefix = self._font_md.render("▶ ", True, _NEON_CYAN)
+        prefix = self._font_md.render(">> ", True, _NEON_CYAN)
         screen.blit(prefix, (14, fy + 12))
         screen.blit(self._font_md.render(self._status, True, _TEXT),
                     (14 + prefix.get_width(), fy + 12))
@@ -760,7 +768,7 @@ class HackGridScene(Scene):
         _draw_corner_bracket(screen, panel.right,  panel.bottom, 50, 16, _NEON_CYAN, 1, flip_x=True, flip_y=True)
 
         # Scan line animation
-        scan_y = int(panel.y + (self._anim_time * 60) % panel.height)
+        scan_y = round(panel.y + (self._anim_time * 60) % panel.height)
         ssurf = pygame.Surface((panel.width, 2), pygame.SRCALPHA)
         ssurf.fill((*_NEON_CYAN, 16))
         screen.blit(ssurf, (panel.x, scan_y))
@@ -793,8 +801,8 @@ class HackGridScene(Scene):
                 if db < da:
                     ax, ay, bx, by = bx, by, ax, ay
                 t_packet = (self._anim_time * 1.8) % 1.0
-                px = int(ax + (bx - ax) * t_packet)
-                py = int(ay + (by - ay) * t_packet)
+                px = round(ax + (bx - ax) * t_packet)
+                py = round(ay + (by - ay) * t_packet)
                 pygame.draw.circle(screen, _NEON_CYAN, (px, py), 2)
 
         # ------------------------------------------------------------------
@@ -819,8 +827,8 @@ class HackGridScene(Scene):
                 if nb in player_neighbors:
                     # Position arrow halfway between player cell and neighbor
                     nbx, nby = self._cell_center(nb[0], nb[1], panel)
-                    hx = int((px + nbx) / 2)
-                    hy = int((py + nby) / 2)
+                    hx = round((px + nbx) / 2)
+                    hy = round((py + nby) / 2)
                     asurf = self._font_xs.render(char, True, _NEON_YELLOW)
                     screen.blit(asurf, (hx - asurf.get_width() // 2,
                                         hy - asurf.get_height() // 2))
@@ -832,8 +840,8 @@ class HackGridScene(Scene):
             progress = 1.0 - self._move_timer / self._params.step_time
             sx, sy = self._cell_center(self._prev_pos[0],    self._prev_pos[1],    panel)
             ex, ey = self._cell_center(self._pending_pos[0], self._pending_pos[1], panel)
-            mx = int(sx + (ex - sx) * progress)
-            my = int(sy + (ey - sy) * progress)
+            mx = round(sx + (ex - sx) * progress)
+            my = round(sy + (ey - sy) * progress)
             _draw_glow_circle(screen, _NEON_YELLOW, mx, my, 5, layers=2, max_alpha=100)
             pygame.draw.circle(screen, _NEON_YELLOW, (mx, my), 4)
 
@@ -854,7 +862,7 @@ class HackGridScene(Scene):
                 bx = hcx - bw // 2
                 by = hcy + node_r + 6
                 pygame.draw.rect(screen, (16, 28, 38), (bx, by, bw, bh))
-                fw = int(bw * ratio)
+                fw = round(bw * ratio)
                 if fw > 0:
                     pygame.draw.rect(screen, _NEON_GREEN, (bx, by, fw, bh))
                 pygame.draw.rect(screen, _NEON_GREEN, (bx, by, bw, bh), 1)
@@ -916,7 +924,7 @@ class HackGridScene(Scene):
 
         elif visual == "loot":
             fill = (14, 72, 28) if is_adjacent else (10, 55, 20)
-            rim_w = max(2, int(2 + math.sin(self._anim_time * 8))) \
+            rim_w = max(2, round(2 + math.sin(self._anim_time * 8))) \
                 if (is_player and self._state == _State.HACKING) else 2
             pygame.draw.rect(screen, fill, rect)
             pygame.draw.rect(screen, _NEON_GREEN, rect, rim_w)
@@ -974,7 +982,7 @@ class HackGridScene(Scene):
 
         # Flash override (BLOCKED)
         if cell.flash_timer > 0:
-            alpha = min(220, int(cell.flash_timer * 400))
+            alpha = min(220, round(cell.flash_timer * 400))
             pad   = nr + 4
             fsurf = pygame.Surface((pad * 2, pad * 2), pygame.SRCALPHA)
             pygame.draw.rect(fsurf, (*_NEON_RED, alpha), (0, 0, pad * 2, pad * 2))
@@ -988,7 +996,7 @@ class HackGridScene(Scene):
         node_r: int,
     ) -> None:
         kind = cell.loot_kind
-        icon_size = max(12, int(node_r * 1.7))
+        icon_size = max(12, round(node_r * 1.7))
 
         sprite_key = {
             LootKind.AMMO:         "item_loot_ammo",
@@ -1019,13 +1027,13 @@ class HackGridScene(Scene):
             progress = 1.0 - self._move_timer / self._params.step_time
             sx, sy = self._cell_center(self._prev_pos[0],    self._prev_pos[1],    panel)
             ex, ey = self._cell_center(self._pending_pos[0], self._pending_pos[1], panel)
-            px = int(sx + (ex - sx) * progress)
-            py = int(sy + (ey - sy) * progress)
+            px = round(sx + (ex - sx) * progress)
+            py = round(sy + (ey - sy) * progress)
         else:
             px, py = self._cell_center(self._player_pos[0], self._player_pos[1], panel)
 
         base  = node_r + 6
-        pulse = base + int(3 * math.sin(self._anim_time * 4.5))
+        pulse = base + round(3 * math.sin(self._anim_time * 4.5))
         p_rect = pygame.Rect(px - pulse, py - pulse, pulse * 2, pulse * 2)
         pygame.draw.rect(screen, _NEON_YELLOW, p_rect, 2)
 
@@ -1055,7 +1063,7 @@ class HackGridScene(Scene):
         vig   = pygame.Surface((sw, sh), pygame.SRCALPHA)
         depth = 80
         for i in range(depth):
-            a = int(fade * 110 * (1.0 - i / depth) ** 1.5)
+            a = round(fade * 110 * (1.0 - i / depth) ** 1.5)
             if a <= 0:
                 continue
             pygame.draw.rect(vig, (*color, a), (i, i, sw - 2 * i, sh - 2 * i), 1)
@@ -1065,24 +1073,24 @@ class HackGridScene(Scene):
         panel_h = 90
         panel_y = sh // 2 - panel_h // 2
         banner  = pygame.Surface((sw, panel_h), pygame.SRCALPHA)
-        banner.fill((*color, min(int(fade * 200), 38)))
+        banner.fill((*color, min(round(fade * 200), 38)))
         screen.blit(banner, (0, panel_y))
         line_surf = pygame.Surface((sw, 2), pygame.SRCALPHA)
-        line_surf.fill((*color, int(fade * 200)))
+        line_surf.fill((*color, round(fade * 200)))
         screen.blit(line_surf, (0, panel_y))
         screen.blit(line_surf, (0, panel_y + panel_h - 2))
 
         # Main text
         main_s = self._font_lg.render(
             ov["text"], True,
-            tuple(int(c * fade + (1 - fade) * 40) for c in color),
+            tuple(round(c * fade + (1 - fade) * 40) for c in color),
         )
         screen.blit(main_s, (sw // 2 - main_s.get_width() // 2, panel_y + 14))
 
         # Sub text
         sub_s = self._font_md.render(
             ov["sub"], True,
-            tuple(int(c * fade * 0.7) for c in color),
+            tuple(round(c * fade * 0.7) for c in color),
         )
         screen.blit(sub_s, (sw // 2 - sub_s.get_width() // 2,
                             panel_y + 14 + main_s.get_height() + 6))

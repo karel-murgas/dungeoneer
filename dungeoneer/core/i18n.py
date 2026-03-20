@@ -60,13 +60,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "LANGUAGE",
         "menu.start":                   "Start Run",
         "menu.quit":                    "Quit",
-        "menu.hack_variant":            "HACK VARIANT",
-        "menu.hack.grid":               "Grid",
-        "menu.hack.classic":            "Classic",
         "menu.aim_minigame":            "AIM MINIGAME",
         "menu.aim_minigame_on":         "ON",
         "menu.aim_minigame_off":        "OFF",
-        "menu.hints":                   "[1/2/3] Difficulty   [M] Loot   [A] Aim   [L] Language   [Enter] Start   [Esc] Quit",
+        "menu.hints":                   "[Enter] Start   [F1] Help   [Esc] Quit",
 
         # --- Game over ---
         "gameover.victory":             "EXTRACTION COMPLETE",
@@ -95,7 +92,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Stairs down / open container",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "Aim (ranged) / Attack nearest (melee)",
+        "help.desc.shoot":              "Attack nearest enemy (melee or ranged)",
         "help.key.target":              "Tab",
         "help.desc.target":             "Cycle aim target through visible enemies",
         "help.key.aim":                 "F / click",
@@ -126,7 +123,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Auto-equipped on pickup; only stronger replaces",
         "aim.help.crit":                "CRITICAL HITS",
         "aim.help.crit.1":              "Stop needle at \u226595% accuracy for CRITICAL",
-        "aim.help.crit.2":              "Critical = max weapon damage",
+        "aim.help.crit.2":              "Critical = max weapon damage (unlocks as you progress)",
         "aim.help.controls":            "CONTROLS",
         "aim.help.ctrl.f.key":          "F / click",
         "aim.help.ctrl.f.desc":         "stop needle / fire",
@@ -150,11 +147,40 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Close menu / Quit",
 
-        # --- Quit confirm dialog ---
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "Items",
+        "cheat.section.enemies":        "Enemies",
+        "cheat.section.container":      "Container",
+        "cheat.section.player":         "Player",
+        "cheat.item.ammo_9mm":          "9mm Ammo  ×10",
+        "cheat.item.ammo_rifle":        "Rifle Ammo  ×6",
+        "cheat.item.ammo_shell":        "Shotgun Ammo  ×8",
+        "cheat.spawn_chest":            "Spawn Chest",
+        "cheat.hp.full":                "Set HP → full",
+        "cheat.hp.set1":                "Set HP → 1",
+        "cheat.hp.plus10":              "Heal  +10 HP",
+        "cheat.hp.plus20":              "Heal  +20 HP",
+        "cheat.credits.plus100":        "+100 Credits",
+        "cheat.hint":                   "[↑↓] Navigate   [Enter] Use   [Esc] Close",
+
+        # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABORT RUN",
         "quit_confirm.question":        "Return to main menu?",
         "quit_confirm.confirm":         "[Y / Enter]  Yes",
         "quit_confirm.cancel":          "[N / Esc]   No",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "OVERHEAL WARNING",
+        "overheal_confirm.question":    "Healing may exceed max HP — use anyway?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Use it",
+        "overheal_confirm.cancel":      "[N / Esc]        Cancel",
+
+        # --- Exit confirm dialog (main menu) ---
+        "exit_confirm.title":           "EXIT GAME",
+        "exit_confirm.question":        "Quit the game?",
+        "exit_confirm.confirm":         "[Y / Enter]  Yes",
+        "exit_confirm.cancel":          "[N / Esc]   No",
 
         # --- Items ---
         "item.pistol.name":             "Pistol",
@@ -186,6 +212,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Corp Guard",
         "entity.drone.name":            "Sec Drone",
+        "entity.crate.name":            "Crate",
+        "entity.corp_vault.name":       "Corp Vault",
 
         # --- HUD ---
         "hud.floor":                    "FLOOR {n}",
@@ -200,9 +228,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ARMOR:",
         "inv.none":                     "\u2014 none \u2014",
         "inv.empty":                    "(empty)",
-        "inv.btn_equip":                "[E] Equip",
-        "inv.btn_use":                  "[U] Use",
-        "inv.btn_drop":                 "[D] Drop",
+        "inv.btn_use":                  "[E] Use",
         "inv.btn_close":                "[I] Close",
 
         # --- Weapon picker ---
@@ -214,9 +240,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Floor {n} \u2014 infiltrating facility.",
         "log.heal_cancel":              "Heal cancelled.",
-        "log.no_exit":                  "No exit here.",
+        "log.no_exit":                  "Nothing to interact with here.",
+        "hint.stair_descend":           "[E] Descend deeper",
         "log.no_heals":                 "No healing items.",
         "log.full_hp":                  "Already at full health.",
+        "log.reload_full":              "Magazine is full.",
+        "log.reload_no_reserves":       "No ammo reserves to reload with.",
+        "log.container_already_open":   "Already looted.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (overheal +{overheal}).  [H/Enter] Confirm",
         "log.hack_success":             "Hacked {container}.{credits}",
         "log.hack_fail":                "Hack failed \u2014 security drone dispatched!",
@@ -245,6 +275,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "Data Core secured!{credits} \u2014 EXTRACTING.",
         "log.container_empty":          "The {name} is empty.{credits}",
         "log.container_open":           "Opened {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "You descend to the next level.",
+        "log.reloaded":                 "Reloaded {item}.",
+        "log.equipped":                 "Equipped {item}.",
+        "log.dropped":                  "Dropped {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restored {n} HP.",
@@ -286,10 +323,10 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- Hack header + node label ---
         "hack.header.title":            "INTRUSION PROTOCOL",
-        "hack.header.esc_cancel":       "[ESC]  CANCEL EXTRACTION",
+        "hack.header.esc_cancel":       "[Q]  CANCEL EXTRACTION",
         "hack.header.move_start":       "\u2014 MOVE TO START TIMER \u2014",
-        "hack.header.esc_abort":        "[ESC]  ABORT HACK",
-        "hack.footer.hint":             "W A S D / Arrows  +  Mouse  |  [F1] Help",
+        "hack.header.esc_abort":        "[Q]  ABORT HACK",
+        "hack.footer.hint":             "W A S D / Arrows  +  Mouse  |  [Q] Quit  [F1] Help",
         "hack.footer.counter":          "DATA: {n}/{total}",
         "hack.node.corrupt":            "CORRUPT",
 
@@ -335,7 +372,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.arrows.desc":   "same as W A S D",
         "hack.help.ctrl.mouse.key":     "Mouse click",
         "hack.help.ctrl.mouse.desc":    "click a neighbour to move",
-        "hack.help.ctrl.esc.key":       "ESC",
+        "hack.help.ctrl.esc.key":       "Q  /  Esc",
         "hack.help.ctrl.esc.desc":      "cancel extraction / abort hack",
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "toggle this help (timer paused)",
@@ -347,6 +384,158 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] Help",
+
+        # --- Settings overlay ---
+        "settings.title":               "SETTINGS",
+        "settings.section.difficulty":  "DIFFICULTY",
+        "settings.section.gameplay":    "GAMEPLAY",
+        "settings.section.audio":       "AUDIO",
+        "settings.section.language":    "LANGUAGE",
+        "settings.gameplay.loot":       "Loot",
+        "settings.gameplay.aim":        "Aim",
+        "settings.gameplay.heal":       "Healing",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "threshold",
+        "menu.heal.thr.80":             "New to minigame",
+        "menu.heal.thr.90":             "Learning",
+        "menu.heal.thr.100":            "Default",
+        "menu.heal.thr.110":            "Experienced",
+        "menu.heal.thr.120":            "Skilled",
+        "settings.audio.master":        "Master",
+        "settings.audio.music":         "Music",
+        "settings.audio.sfx":           "Effects",
+        "settings.footer":              "[Esc]  Close",
+
+        # --- Help catalog ---
+        "help_catalog.title":           "HELP & CONTROLS",
+        "help_catalog.tab.exploration": "EXPLORATION",
+        "help_catalog.tab.combat":      "COMBAT",
+        "help_catalog.tab.shooting":    "SHOOTING",
+        "help_catalog.tab.aiming":      "AIMING",
+        "help_catalog.tab.hacking":     "HACKING",
+        "help_catalog.tab.healing":     "HEALING",
+        "help_catalog.footer":          "[\u25c4 \u25ba] Switch tab   [Esc] Close",
+
+        # Exploration tab
+        "help_catalog.expl.h1":         "MOVEMENT",
+        "help_catalog.expl.1.1":        "WASD / Arrow keys \u2014 move one tile; attacks adjacent enemy",
+        "help_catalog.expl.1.2":        "Each step uses one turn \u2014 enemies react",
+        "help_catalog.expl.1.3":        "Space or . \u2014 wait (skip your turn)",
+        "help_catalog.expl.h2":         "FIELD OF VIEW",
+        "help_catalog.expl.2.1":        "Sight radius: 10 tiles from your position",
+        "help_catalog.expl.2.2":        "Explored areas visible in dark \u2014 enemies not tracked",
+        "help_catalog.expl.h3":         "STAIRS & CONTAINERS",
+        "help_catalog.expl.3.1":        "E \u2014 descend stairs or open a container",
+        "help_catalog.expl.3.2":        "Containers may hold items, weapons, or credits",
+        "help_catalog.expl.3.3":        "All containers trigger the hack minigame for bonus loot (if enabled)",
+
+        # Combat tab
+        "help_catalog.comb.h1":         "MELEE COMBAT",
+        "help_catalog.comb.1.1":        "Move into an enemy to melee attack (bumping)",
+        "help_catalog.comb.1.2":        "Diagonal movement and attacks are allowed",
+        "help_catalog.comb.1.3":        "F \u2014 attack nearest enemy in melee range",
+        "help_catalog.comb.h2":         "ARMOR",
+        "help_catalog.comb.2.1":        "Armor reduces incoming damage by its defense value",
+        "help_catalog.comb.2.2":        "Auto-equipped on pickup; stronger armor replaces weaker",
+        "help_catalog.comb.2.3":        "View equipped armor in inventory (I key)",
+        "help_catalog.comb.h3":         "ENEMIES",
+        "help_catalog.comb.3.1":        "Corp Guards: melee attackers, patrol corridors, chase on sight",
+        "help_catalog.comb.3.2":        "Sec Drones: ranged, prefer distance, dispatched by failed hacks",
+        "help_catalog.comb.3.3":        "Enemies only react within line of sight",
+
+        # Shooting tab
+        "help_catalog.shoot.h1":        "RANGED COMBAT",
+        "help_catalog.shoot.1.1":       "F \u2014 aim and fire at selected target",
+        "help_catalog.shoot.1.2":       "Tab \u2014 cycle through visible enemies",
+        "help_catalog.shoot.1.3":       "R \u2014 reload weapon",
+        "help_catalog.shoot.1.4":       "C \u2014 swap equipped weapon",
+        "help_catalog.shoot.h2":        "AMMO",
+        "help_catalog.shoot.2.1":       "9mm \u2014 Pistol and SMG",
+        "help_catalog.shoot.2.2":       "Rifle Ammo \u2014 Rifle",
+        "help_catalog.shoot.2.3":       "Shells \u2014 Shotgun",
+        "help_catalog.shoot.2.4":       "Ammo auto-picked up from enemies and containers",
+        "help_catalog.shoot.h3":        "WEAPONS",
+        "help_catalog.shoot.3.1":       "Pistol \u2014 reliable sidearm, medium range",
+        "help_catalog.shoot.3.2":       "SMG \u2014 3-round burst, deadly up close",
+        "help_catalog.shoot.3.3":       "Shotgun \u2014 devastating close range, 4 shells",
+        "help_catalog.shoot.3.4":       "Rifle \u2014 long range, precision shots",
+        "help_catalog.shoot.3.5":       "Energy Sword \u2014 melee only, cuts through armor",
+        "help_catalog.shoot.3.6":       "Combat Knife \u2014 melee only, fast close-range attack",
+
+        # Aiming tab
+        "help_catalog.aim.h1":          "HOW AIMING WORKS",
+        "help_catalog.aim.1.1":         "A needle sweeps back and forth on a curved arc",
+        "help_catalog.aim.1.2":         "Press F or click to stop the needle and fire",
+        "help_catalog.aim.1.3":         "Green zone = hit;  outside the zone = miss",
+        "help_catalog.aim.1.4":         "Stopping near the centre = maximum damage",
+        "help_catalog.aim.1.5":         "Needle speeds up after each bounce from arc end",
+        "help_catalog.aim.h2":          "ACCURACY & CRITICAL HITS",
+        "help_catalog.aim.2.1":         "Zone shrinks the farther the target",
+        "help_catalog.aim.2.2":         "Stop needle at \u226595% accuracy for a CRITICAL HIT",
+        "help_catalog.aim.2.3":         "Critical = max weapon damage \u2014 effect unlocks as you progress",
+        "help_catalog.aim.h3":          "CONTROLS",
+        "help_catalog.aim.3.1":         "F / click \u2014 stop needle and fire",
+        "help_catalog.aim.3.2":         "Tab \u2014 cycle target before firing",
+        "help_catalog.aim.3.3":         "Esc \u2014 cancel; remaining shots miss automatically",
+
+        # Exploration illustration labels
+        "help_catalog.expl.icon.container": "Container",
+        "help_catalog.expl.icon.ammo":      "Ammo",
+        "help_catalog.expl.icon.stairs":    "Stairs",
+        "help_catalog.expl.icon.vault":     "Vault",
+
+        # Hack node illustration labels
+        "help_catalog.hack.node.entry":     "ENTRY",
+        "help_catalog.hack.node.cache":     "DATA CACHE",
+        "help_catalog.hack.node.empty":     "EMPTY",
+        "help_catalog.hack.node.ice":       "ICE (hidden)",
+        "help_catalog.hack.loot_label":     "Loot examples:",
+
+        # Hacking tab
+        "help_catalog.hack.h1":         "HACKING BASICS",
+        "help_catalog.hack.1.1":        "Move to DATA CACHE nodes and enter them to extract loot",
+        "help_catalog.hack.1.2":        "Timer starts on your first move",
+        "help_catalog.hack.1.3":        "Collect all caches or wait for timer to finish the hack",
+        "help_catalog.hack.h2":         "NODE TYPES",
+        "help_catalog.hack.2.1":        "\u25ba ENTRY \u2014 your starting position",
+        "help_catalog.hack.2.2":        "\u25aa DATA CACHE \u2014 hack to extract loot",
+        "help_catalog.hack.2.3":        "\u25aa EMPTY \u2014 traversal only",
+        "help_catalog.hack.2.4":        "\u25aa ICE \u2014 hidden trap, looks like EMPTY!",
+        "help_catalog.hack.h3":         "ICE EFFECTS",
+        "help_catalog.hack.3.1":        "TIME PENALTY \u2014 \u22123 seconds removed from timer",
+        "help_catalog.hack.3.2":        "DATA CORRUPTED \u2014 destroys a random unhacked loot node",
+        "help_catalog.hack.3.3":        "ACCESS DENIED \u2014 bounces you back, blocks entry",
+        "help_catalog.hack.h4":         "CONTROLS",
+        "help_catalog.hack.4.1":        "WASD / Arrows \u2014 move to adjacent node",
+        "help_catalog.hack.4.2":        "Mouse click \u2014 click a neighbour to move",
+        "help_catalog.hack.4.3":        "Q / Esc \u2014 cancel extraction / abort hack",
+
+        # Healing tab
+        "heal.help.h1":                 "HOW HEALING WORKS",
+        "heal.help.1":                  "Watch two heartbeats \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Press H on the third beat, hold through the gap",
+        "heal.help.3":                  "Release H when the second thump should sound",
+        "heal.help.4":                  "Perfect timing \u2192 +20%   Miss \u2192 \u221220%",
+        "heal.help.h2":                 "SCORING",
+        "heal.help.s1":                 "Perfect +20%  |  Great +10%  |  Good \u00b10%",
+        "heal.help.s2":                 "Poor \u221210%  |  Miss \u221220%",
+        "heal.help.s3":                 "Score = sum of press + release timing error",
+        "heal.help.h3":                 "CONTROLS",
+        "heal.help.key1":               "[H hold] \u2014 press on beat (contraction)",
+        "heal.help.key2":               "[H release] \u2014 release after gap (relaxation)",
+        "heal.help.key3":               "[Esc] \u2014 cancel heal",
+        "heal.help.key4":               "[F1] \u2014 toggle this help",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Cardiac Rhythm",
+        "heal.overlay.watch":           "Watch...",
+        "heal.overlay.now":             "NOW!",
+        "heal.overlay.hint":            "[H] press & hold on the 3rd beat",
+        "heal.overlay.perfect":         "Perfect!",
+        "heal.overlay.great":           "Great",
+        "heal.overlay.good":            "Good",
+        "heal.overlay.poor":            "Weak",
+        "heal.overlay.miss":            "Poor",
     },
 
     "cs": {
@@ -363,13 +552,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "JAZYK",
         "menu.start":                   "Spustit b\u011bh",
         "menu.quit":                    "Ukon\u010dit",
-        "menu.hack_variant":            "VARIANTA HACKU",
-        "menu.hack.grid":               "M\u0159\u00ed\u017eka",
-        "menu.hack.classic":            "Klasick\u00fd",
         "menu.aim_minigame":            "M\u00cd\u0158EN\u00cd",
         "menu.aim_minigame_on":         "ZAP",
         "menu.aim_minigame_off":        "VYP",
-        "menu.hints":                   "[1/2/3] Obt\u00ed\u017enost   [M] Loot   [A] M\u00ed\u0159en\u00ed   [L] Jazyk   [Enter] Spustit   [Esc] Ukon\u010dit",
+        "menu.hints":                   "[Enter] Spustit   [F1] N\u00e1pov\u011bda   [Esc] Ukon\u010dit",
 
         # --- Game over ---
         "gameover.victory":             "EXTRAKCE DOKON\u010cENA",
@@ -398,7 +584,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Schody dol\u016f / otev\u0159\u00edt kontejner",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "M\u00ed\u0159en\u00ed (st\u0159eln\u00e9) / \u00datok na nejbli\u017e\u0161\u00edho (melee)",
+        "help.desc.shoot":              "\u00datok na nejbli\u017e\u0161\u00edho nep\u0159\u00edtele (melee nebo na d\u00e1lku)",
         "help.key.target":              "Tab",
         "help.desc.target":             "P\u0159epni c\u00edl m\u00ed\u0159en\u00ed mezi viditeln\u00fdmi nep\u0159\u00e1teli",
         "help.key.aim":                 "F / klik",
@@ -429,7 +615,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Auto-vybav\u00ed p\u0159i sb\u011bru; nahrad\u00ed jen siln\u011bj\u0161\u00ed",
         "aim.help.crit":                "KRITICK\u00c9 Z\u00c1SAHY",
         "aim.help.crit.1":              "Zastav ru\u010di\u010dku na \u226595\u00a0% pro KRITICK\u00dd Z\u00c1SAH",
-        "aim.help.crit.2":              "Kritick\u00fd = maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b",
+        "aim.help.crit.2":              "Kritick\u00fd = maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b (odemyk\u00e1 se b\u011bhem hry)",
         "aim.help.controls":            "OVL\u00c1D\u00c1N\u00cd",
         "aim.help.ctrl.f.key":          "F / klik",
         "aim.help.ctrl.f.desc":         "zastav ru\u010di\u010dku / v\u00fdst\u0159el",
@@ -453,11 +639,40 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Zav\u0159\u00edt menu / Ukon\u010dit hru",
 
-        # --- Quit confirm dialog ---
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "P\u0159edm\u011bty",
+        "cheat.section.enemies":        "Nep\u0159\u00e1tel\u00e9",
+        "cheat.section.container":      "Kontejner",
+        "cheat.section.player":         "Hr\u00e1\u010d",
+        "cheat.item.ammo_9mm":          "N\u00e1boje 9mm  \u00d710",
+        "cheat.item.ammo_rifle":        "N\u00e1boje do pu\u0161ky  \u00d76",
+        "cheat.item.ammo_shell":        "Broky  \u00d78",
+        "cheat.spawn_chest":            "Spawn truhla",
+        "cheat.hp.full":                "HP \u2192 plno",
+        "cheat.hp.set1":                "HP \u2192 1",
+        "cheat.hp.plus10":              "L\u00e9\u010dit  +10 HP",
+        "cheat.hp.plus20":              "L\u00e9\u010dit  +20 HP",
+        "cheat.credits.plus100":        "+100 Kredit\u016f",
+        "cheat.hint":                   "[\u2191\u2193] Pohyb   [Enter] Pou\u017e\u00edt   [Esc] Zav\u0159\u00edt",
+
+        # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "P\u0158ERU\u0160IT B\u011aH",
         "quit_confirm.question":        "Vr\u00e1tit se do hlavn\u00edho menu?",
         "quit_confirm.confirm":         "[Y / Enter]  Ano",
         "quit_confirm.cancel":          "[N / Esc]   Ne",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "VAROVÁNÍ: PŘELÉČENÍ",
+        "overheal_confirm.question":    "Léčení přesáhne max HP — použít stejně?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Použít",
+        "overheal_confirm.cancel":      "[N / Esc]        Zrušit",
+
+        # --- Exit confirm dialog (main menu) ---
+        "exit_confirm.title":           "UKON\u010cIT HRU",
+        "exit_confirm.question":        "Opravdu ukon\u010dit hru?",
+        "exit_confirm.confirm":         "[Y / Enter]  Ano",
+        "exit_confirm.cancel":          "[N / Esc]   Ne",
 
         # --- Items ---
         "item.pistol.name":             "Pistole",
@@ -489,6 +704,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Str\u00e1\u017en\u00fd",
         "entity.drone.name":            "Bezp. dron",
+        "entity.crate.name":            "Bedna",
+        "entity.corp_vault.name":       "Korp. trezor",
 
         # --- HUD ---
         "hud.floor":                    "PATRO {n}",
@@ -503,9 +720,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ZBROJ:",
         "inv.none":                     "\u2014 \u017e\u00e1dn\u00e9 \u2014",
         "inv.empty":                    "(pr\u00e1zdn\u00e9)",
-        "inv.btn_equip":                "[E] Vybavit",
-        "inv.btn_use":                  "[U] Pou\u017e\u00edt",
-        "inv.btn_drop":                 "[D] Zahodit",
+        "inv.btn_use":                  "[E] Pou\u017e\u00edt",
         "inv.btn_close":                "[I] Zav\u0159\u00edt",
 
         # --- Weapon picker ---
@@ -517,9 +732,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Patro {n} \u2014 infiltrace objektu.",
         "log.heal_cancel":              "L\u00e9\u010den\u00ed zru\u0161eno.",
-        "log.no_exit":                  "Zde nen\u00ed v\u00fdchod.",
+        "log.no_exit":                  "Zde není nic, s čím by šlo interagovat.",
+        "hint.stair_descend":           "[E] Sestoupit hlouběji",
         "log.no_heals":                 "\u017d\u00e1dn\u00e9 l\u00e9\u010div\u00e9 p\u0159edm\u011bty.",
         "log.full_hp":                  "Pln\u00e9 \u017eivoty.",
+        "log.reload_full":              "Zásobník je plný.",
+        "log.reload_no_reserves":       "Žádné zásoby nábojů pro přebití.",
+        "log.container_already_open":   "Již vyrabováno.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (p\u0159ehoj. +{overheal}).  [H/Enter] Potvrdit",
         "log.hack_success":             "Hackov\u00e1no: {container}.{credits}",
         "log.hack_fail":                "Hack selhal \u2014 vysl\u00e1n bezpe\u010dnostn\u00ed dron!",
@@ -548,6 +767,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "Datov\u00e9 j\u00e1dro zaji\u0161t\u011bno!{credits} \u2014 EXTRAKCE.",
         "log.container_empty":          "{name}: pr\u00e1zdn\u00e9.{credits}",
         "log.container_open":           "Otev\u0159eno {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "Sestupuješ do dalšího patra.",
+        "log.reloaded":                 "Přebito: {item}.",
+        "log.equipped":                 "Vybaveno: {item}.",
+        "log.dropped":                  "Zahozeno: {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Obnoveno {n} HP.",
@@ -589,10 +815,10 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- Hack header + node label ---
         "hack.header.title":            "INFILTRA\u010cN\u00cd PROTOKOL",
-        "hack.header.esc_cancel":       "[ESC]  ZARU\u0160IT EXTRAKCI",
+        "hack.header.esc_cancel":       "[Q]  ZARU\u0160IT EXTRAKCI",
         "hack.header.move_start":       "\u2014 POHNI SE PRO ZA\u010c\u00c1TEK \u2014",
-        "hack.header.esc_abort":        "[ESC]  P\u0158ERU\u0160IT HACK",
-        "hack.footer.hint":             "W A S D / \u0161ipky  +  My\u0161  |  [F1] N\u00e1pov\u011bda",
+        "hack.header.esc_abort":        "[Q]  P\u0158ERU\u0160IT HACK",
+        "hack.footer.hint":             "W A S D / \u0161ipky  +  My\u0161  |  [Q] Konec  [F1] N\u00e1pov\u011bda",
         "hack.footer.counter":          "DATA: {n}/{total}",
         "hack.node.corrupt":            "PO\u0160KOZENO",
 
@@ -638,7 +864,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.arrows.desc":   "stejn\u00e9 jako W A S D",
         "hack.help.ctrl.mouse.key":     "Klik my\u0161\u00ed",
         "hack.help.ctrl.mouse.desc":    "klikni na souseda pro pohyb",
-        "hack.help.ctrl.esc.key":       "ESC",
+        "hack.help.ctrl.esc.key":       "Q  /  Esc",
         "hack.help.ctrl.esc.desc":      "zru\u0161it extrakci / p\u0159eru\u0161it hack",
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "p\u0159epnout n\u00e1pov\u011bdu (\u010dasova\u010d zastaven)",
@@ -650,6 +876,158 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] N\u00e1pov\u011bda",
+
+        # --- Settings overlay ---
+        "settings.title":               "NASTAVEN\u00cd",
+        "settings.section.difficulty":  "OBT\u00cd\u017dNOST",
+        "settings.section.gameplay":    "HRA",
+        "settings.section.audio":       "ZVUK",
+        "settings.section.language":    "JAZYK",
+        "settings.gameplay.loot":       "Loot",
+        "settings.gameplay.aim":        "M\u00ed\u0159en\u00ed",
+        "settings.gameplay.heal":       "L\u00e9\u010den\u00ed",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "pr\u00e1h",
+        "menu.heal.thr.80":             "Za\u010d\u00e1te\u010dn\u00edk",
+        "menu.heal.thr.90":             "U\u010d\u00edm se",
+        "menu.heal.thr.100":            "V\u00fdchoz\u00ed",
+        "menu.heal.thr.110":            "Zku\u0161en\u00fd",
+        "menu.heal.thr.120":            "Zdatn\u00fd",
+        "settings.audio.master":        "Hlavn\u00ed",
+        "settings.audio.music":         "Hudba",
+        "settings.audio.sfx":           "Efekty",
+        "settings.footer":              "[Esc]  Zav\u0159\u00edt",
+
+        # --- Help catalog ---
+        "help_catalog.title":           "N\u00c1POV\u011aDA",
+        "help_catalog.tab.exploration": "PR\u016aSKUM",
+        "help_catalog.tab.combat":      "BOJ",
+        "help_catalog.tab.shooting":    "ST\u0158ELBA",
+        "help_catalog.tab.aiming":      "M\u00cd\u0158EN\u00cd",
+        "help_catalog.tab.hacking":     "HACKING",
+        "help_catalog.tab.healing":     "L\u00c9\u010c\u00c9N\u00cd",
+        "help_catalog.footer":          "[\u25c4 \u25ba] P\u0159epnout   [Esc] Zav\u0159\u00edt",
+
+        # Exploration illustration labels
+        "help_catalog.expl.icon.container": "Kontejner",
+        "help_catalog.expl.icon.ammo":      "Munice",
+        "help_catalog.expl.icon.stairs":    "Schody",
+        "help_catalog.expl.icon.vault":     "Trezor",
+
+        # Hack node illustration labels
+        "help_catalog.hack.node.entry":     "VSTUP",
+        "help_catalog.hack.node.cache":     "DATA CACHE",
+        "help_catalog.hack.node.empty":     "PR\u00c1ZDN\u00dd",
+        "help_catalog.hack.node.ice":       "ICE (skryt\u00fd)",
+        "help_catalog.hack.loot_label":     "P\u0159\u00edklady lootu:",
+
+        # Exploration tab
+        "help_catalog.expl.h1":         "POHYB",
+        "help_catalog.expl.1.1":        "WASD / \u0161ipky \u2014 pohyb o dla\u017edici; \u00fatok na sousedn\u00edho nep\u0159\u00edtele",
+        "help_catalog.expl.1.2":        "Ka\u017ed\u00fd krok spot\u0159ebuje jedno kolo \u2014 nep\u0159\u00e1tel\u00e9 reaguj\u00ed",
+        "help_catalog.expl.1.3":        "Mezer\u00edk nebo . \u2014 \u010dek\u00e1n\u00ed (p\u0159esko\u010den\u00ed kola)",
+        "help_catalog.expl.h2":         "ZORN\u00c9 POLE",
+        "help_catalog.expl.2.1":        "Dosah vid\u011bn\u00ed: 10 dla\u017edic od tv\u00e9 pozice",
+        "help_catalog.expl.2.2":        "Prozkoumaná oblast viditelná ve tm\u011b \u2014 nep\u0159\u00e1tel\u00e9 nejsou sledov\u00e1ni",
+        "help_catalog.expl.h3":         "SCHODY & KONTEJNERY",
+        "help_catalog.expl.3.1":        "E \u2014 schody dol\u016f nebo otev\u0159\u00edt kontejner",
+        "help_catalog.expl.3.2":        "Kontejnery mohou obsahovat p\u0159edm\u011bty, zbran\u011b nebo kredity",
+        "help_catalog.expl.3.3":        "V\u0161echny kontejnery spust\u00ed hackov\u00e1n\u00ed pro bonus (pokud je povoleno)",
+
+        # Combat tab
+        "help_catalog.comb.h1":         "BOJ ZBLÍZKA",
+        "help_catalog.comb.1.1":        "Jdi na nep\u0159\u00edtele pro \u00fatok zbl\u00edzka (narážen\u00ed)",
+        "help_catalog.comb.1.2":        "Diagon\u00e1ln\u00ed pohyb a \u00fatok jsou povolen\u00e9",
+        "help_catalog.comb.1.3":        "F \u2014 zaú\u010dtuj na nejbli\u017e\u0161\u00edho nep\u0159\u00edtele v dosahu",
+        "help_catalog.comb.h2":         "ZBROJ",
+        "help_catalog.comb.2.1":        "Zbroj sn\u00ed\u017e\u00ed p\u0159\u00edchoz\u00ed po\u0161kozen\u00ed o svou obrannou hodnotu",
+        "help_catalog.comb.2.2":        "Auto-vybav\u00ed p\u0159i sb\u011bru; siln\u011bj\u0161\u00ed nahrad\u00ed slabš\u00ed",
+        "help_catalog.comb.2.3":        "Vybavenú zbroj zobraz v invent\u00e1\u0159i (kl\u00e1vesa I)",
+        "help_catalog.comb.h3":         "NEP\u0158\u00c1TEL\u00c9",
+        "help_catalog.comb.3.1":        "Str\u00e1\u017en\u00ed: \u00fato\u010d\u00ed zbl\u00edzka, hlidkuj\u00ed chodby, st\u00ed\u017e\u00ed p\u0159i spatřen\u00ed",
+        "help_catalog.comb.3.2":        "Drony: st\u0159\u00edlej\u00ed, dr\u017e\u00ed si vzd\u00e1lenost, vysl\u00e1ni p\u0159i sel\u00e1n\u00ed hacku",
+        "help_catalog.comb.3.3":        "Nep\u0159\u00e1tel\u00e9 reaguj\u00ed jen v linii dohledu",
+
+        # Shooting tab
+        "help_catalog.shoot.h1":        "BOJI NA D\u00c1LKU",
+        "help_catalog.shoot.1.1":       "F \u2014 nam\u00ed\u0159\u00ed a vystr\u011bl na vybran\u00fd c\u00edl",
+        "help_catalog.shoot.1.2":       "Tab \u2014 p\u0159ep\u00edn\u00e1n\u00ed mezi viditeln\u00fdmi nep\u0159\u00e1teli",
+        "help_catalog.shoot.1.3":       "R \u2014 p\u0159ebit\u00ed zbran\u011b",
+        "help_catalog.shoot.1.4":       "C \u2014 v\u00fdm\u011bna zbran\u011b",
+        "help_catalog.shoot.h2":        "MUNICE",
+        "help_catalog.shoot.2.1":       "9mm \u2014 Pistole a samopal",
+        "help_catalog.shoot.2.2":       "N\u00e1boje do pu\u0161ky \u2014 Pu\u0161ka",
+        "help_catalog.shoot.2.3":       "Broky \u2014 Brokovnice",
+        "help_catalog.shoot.2.4":       "Munice se automaticky sb\u00edr\u00e1 od nep\u0159\u00e1tel a z kontejner\u016f",
+        "help_catalog.shoot.h3":        "ZBRAN\u011a",
+        "help_catalog.shoot.3.1":       "Pistole \u2014 spolehlivá, st\u0159edn\u00ed dosah",
+        "help_catalog.shoot.3.2":       "Samopal \u2014 d\u00e1vka 3 n\u00e1boj\u016f, smrteln\u00fd zbl\u00edzka",
+        "help_catalog.shoot.3.3":       "Brokovnice \u2014 devastující zbl\u00edzka, 4 broky",
+        "help_catalog.shoot.3.4":       "Pu\u0161ka \u2014 velk\u00fd dosah, p\u0159esn\u00e9 st\u0159ely",
+        "help_catalog.shoot.3.5":       "Energetick\u00fd me\u010d \u2014 jen zbl\u00edzka, pron\u00edk\u00e1 zbrojí",
+        "help_catalog.shoot.3.6":       "Bojov\u00fd n\u016f\u017e \u2014 jen zbl\u00edzka, rychl\u00fd \u00fatok na kr\u00e1tkou vzd\u00e1lenost",
+
+        # Aiming tab
+        "help_catalog.aim.h1":          "JAK FUNGUJE M\u00cd\u0158EN\u00cd",
+        "help_catalog.aim.1.1":         "Ru\u010di\u010dka kmit\u00e1 tam a zp\u011bt po oblouku",
+        "help_catalog.aim.1.2":         "Stiskni F nebo klikni a zastav ji",
+        "help_catalog.aim.1.3":         "Zelen\u00e1 z\u00f3na = z\u00e1sah;  mimo z\u00f3nu = minul",
+        "help_catalog.aim.1.4":         "Zastaven\u00ed bl\u00edzko st\u0159edu = maxim\u00e1ln\u00ed po\u0161kozen\u00ed",
+        "help_catalog.aim.1.5":         "Ru\u010di\u010dka se po ka\u017ed\u00e9m odrazu zrychl\u00ed",
+        "help_catalog.aim.h2":          "P\u0158ESNOST & KRITICK\u00c9 Z\u00c1SAHY",
+        "help_catalog.aim.2.1":         "Z\u00f3na se zmen\u0161uje se vzd\u00e1lenost\u00ed c\u00edle",
+        "help_catalog.aim.2.2":         "Zastav na \u226595\u00a0% pro KRITICK\u00dd Z\u00c1SAH",
+        "help_catalog.aim.2.3":         "Kritick\u00fd = max po\u0161kozen\u00ed \u2014 efekt se odemyk\u00e1 b\u011bhem hry",
+        "help_catalog.aim.h3":          "OVL\u00c1D\u00c1N\u00cd",
+        "help_catalog.aim.3.1":         "F / klik \u2014 zastav ru\u010di\u010dku a vystr\u011bl",
+        "help_catalog.aim.3.2":         "Tab \u2014 p\u0159epni c\u00edl p\u0159ed v\u00fdst\u0159elem",
+        "help_catalog.aim.3.3":         "Esc \u2014 zru\u0161it; zb\u00fdvaj\u00edc\u00ed v\u00fdst\u0159ely automaticky minuj\u00ed",
+
+        # Hacking tab
+        "help_catalog.hack.h1":         "Z\u00c1KLADY HACKOVÁNÍ",
+        "help_catalog.hack.1.1":        "P\u0159esuň se na uzly DATA CACHE a vstup do nich",
+        "help_catalog.hack.1.2":        "\u010casova\u010d startuje p\u0159i prvn\u00edm pohybu",
+        "help_catalog.hack.1.3":        "Sesbírej v\u0161echny cache nebo po\u010dkej na uplynut\u00ed \u010dasu",
+        "help_catalog.hack.h2":         "TYPY UZL\u016e",
+        "help_catalog.hack.2.1":        "\u25ba VSTUP \u2014 tv\u00e1 v\u00fdchoz\u00ed pozice",
+        "help_catalog.hack.2.2":        "\u25aa DATA CACHE \u2014 hackni pro z\u00edskan\u00ed lootu",
+        "help_catalog.hack.2.3":        "\u25aa PR\u00c1ZDN\u00dd \u2014 jen pr\u016fchod",
+        "help_catalog.hack.2.4":        "\u25aa ICE \u2014 skryt\u00e1 past, vypad\u00e1 jako PR\u00c1ZDN\u00dd!",
+        "help_catalog.hack.h3":         "EFEKTY ICE",
+        "help_catalog.hack.3.1":        "\u010cASOV\u00c1 PENALTA \u2014 \u22123 sekundy z \u010dasova\u010de",
+        "help_catalog.hack.3.2":        "DATA PO\u0160KOZENA \u2014 zni\u010d\u00ed n\u00e1hodn\u00fd nehacknut\u00fd uzel",
+        "help_catalog.hack.3.3":        "P\u0158\u00cdSTUP ODEP\u0158EN \u2014 odraz\u00ed t\u011b zp\u011bt, blokuje vstup",
+        "help_catalog.hack.h4":         "OVL\u00c1D\u00c1N\u00cd",
+        "help_catalog.hack.4.1":        "WASD / \u0161ipky \u2014 pohyb na sousedn\u00ed uzel",
+        "help_catalog.hack.4.2":        "Klik my\u0161\u00ed \u2014 klikni na souseda pro pohyb",
+        "help_catalog.hack.4.3":        "Q / Esc \u2014 zru\u0161it extrakci / p\u0159eru\u0161it hack",
+
+        # Healing tab
+        "heal.help.h1":                 "JAK FUNGUJE L\u00c9\u010cEN\u00cd",
+        "heal.help.1":                  "Sleduj dva tepy \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Stiskni H na t\u0159et\u00edm tepu, dr\u017e p\u0159es mezeru",
+        "heal.help.3":                  "Uvolni H kdy\u017e by m\u011bl zaznít druh\u00fd tep",
+        "heal.help.4":                  "Perfektn\u00ed \u2192 +20%   Mimo \u2192 \u221220%",
+        "heal.help.h2":                 "HODNOCEN\u00cd",
+        "heal.help.s1":                 "Perfektn\u00ed +20%  |  Skvěle +10%  |  Dob\u0159e \u00b10%",
+        "heal.help.s2":                 "Slab\u011b \u221210%  |  \u0160patn\u011b \u221220%",
+        "heal.help.s3":                 "Sk\u00f3re = sou\u010det odchylek stisku + uvoln\u011bn\u00ed",
+        "heal.help.h3":                 "OVLÁD\u00c1N\u00cd",
+        "heal.help.key1":               "[H dr\u017e] \u2014 stisk na tep (stah)",
+        "heal.help.key2":               "[uvolni H] \u2014 uvolni po meze\u0159e (rozta\u017een\u00ed)",
+        "heal.help.key3":               "[Esc] \u2014 zru\u0161it l\u00e9\u010den\u00ed",
+        "heal.help.key4":               "[F1] \u2014 zobrazit/skr\u00fdt n\u00e1pov\u011bdu",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Srde\u010dn\u00ed rytmus",
+        "heal.overlay.watch":           "Sleduj...",
+        "heal.overlay.now":             "TE\u010e!",
+        "heal.overlay.hint":            "[H] stiskni a dr\u017e na 3. tep",
+        "heal.overlay.perfect":         "Perfektn\u00ed!",
+        "heal.overlay.great":           "Skvěle",
+        "heal.overlay.good":            "Dob\u0159e",
+        "heal.overlay.poor":            "Slab\u011b",
+        "heal.overlay.miss":            "Špatně",
     },
 
     "es": {
@@ -666,13 +1044,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "IDIOMA",
         "menu.start":                   "Iniciar partida",
         "menu.quit":                    "Salir",
-        "menu.hack_variant":            "VARIANTE HACK",
-        "menu.hack.grid":               "Cuadr\u00edcula",
-        "menu.hack.classic":            "Cl\u00e1sico",
         "menu.aim_minigame":            "APUNTADO",
         "menu.aim_minigame_on":         "S\u00cd",
         "menu.aim_minigame_off":        "NO",
-        "menu.hints":                   "[1/2/3] Dificultad   [M] Saqueo   [A] Apuntado   [L] Idioma   [Enter] Iniciar   [Esc] Salir",
+        "menu.hints":                   "[Enter] Iniciar   [F1] Ayuda   [Esc] Salir",
 
         # --- Game over ---
         "gameover.victory":             "EXTRACCI\u00d3N COMPLETA",
@@ -701,7 +1076,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.interact":           "Bajar escaleras / abrir contenedor",
 
         "help.key.shoot":               "F",
-        "help.desc.shoot":              "Apuntar (a distancia) / Atacar al m\u00e1s cercano (cuerpo a cuerpo)",
+        "help.desc.shoot":              "Atacar al enemigo m\u00e1s cercano (cuerpo a cuerpo o a distancia)",
         "help.key.target":              "Tab",
         "help.desc.target":             "Cambiar objetivo entre enemigos visibles",
         "help.key.aim":                 "F / clic",
@@ -732,7 +1107,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "aim.help.armor.2":             "Se equipa sola; solo una m\u00e1s fuerte la reemplaza",
         "aim.help.crit":                "GOLPES CR\u00cdTICOS",
         "aim.help.crit.1":              "Para la aguja a \u226595% de precisi\u00f3n para CR\u00cdTICO",
-        "aim.help.crit.2":              "Cr\u00edtico = da\u00f1o m\u00e1ximo del arma",
+        "aim.help.crit.2":              "Cr\u00edtico = da\u00f1o m\u00e1ximo del arma (se desbloquea al progresar)",
         "aim.help.controls":            "CONTROLES",
         "aim.help.ctrl.f.key":          "F / clic",
         "aim.help.ctrl.f.desc":         "detener aguja / disparar",
@@ -756,11 +1131,40 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Cerrar men\u00fa / Salir",
 
-        # --- Quit confirm dialog ---
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "Objetos",
+        "cheat.section.enemies":        "Enemigos",
+        "cheat.section.container":      "Contenedor",
+        "cheat.section.player":         "Jugador",
+        "cheat.item.ammo_9mm":          "Muni\u00f3n 9mm  \u00d710",
+        "cheat.item.ammo_rifle":        "Muni\u00f3n Rifle  \u00d76",
+        "cheat.item.ammo_shell":        "Cartuchos  \u00d78",
+        "cheat.spawn_chest":            "Generar Ba\u00fal",
+        "cheat.hp.full":                "HP \u2192 completo",
+        "cheat.hp.set1":                "HP \u2192 1",
+        "cheat.hp.plus10":              "Curar  +10 HP",
+        "cheat.hp.plus20":              "Curar  +20 HP",
+        "cheat.credits.plus100":        "+100 Cr\u00e9ditos",
+        "cheat.hint":                   "[\u2191\u2193] Navegar   [Enter] Usar   [Esc] Cerrar",
+
+        # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABANDONAR PARTIDA",
         "quit_confirm.question":        "\u00bfVolver al men\u00fa principal?",
         "quit_confirm.confirm":         "[Y / Enter]  S\u00ed",
         "quit_confirm.cancel":          "[N / Esc]   No",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "AVISO: SOBREC\u00dara",
+        "overheal_confirm.question":    "La curación superará el HP máx. — ¿usar igual?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Usar",
+        "overheal_confirm.cancel":      "[N / Esc]        Cancelar",
+
+        # --- Exit confirm dialog (main menu) ---
+        "exit_confirm.title":           "SALIR DEL JUEGO",
+        "exit_confirm.question":        "\u00bfSalir del juego?",
+        "exit_confirm.confirm":         "[Y / Enter]  S\u00ed",
+        "exit_confirm.cancel":          "[N / Esc]   No",
 
         # --- Items ---
         "item.pistol.name":             "Pistola",
@@ -792,6 +1196,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Guardia Corp.",
         "entity.drone.name":            "Dron Seg.",
+        "entity.crate.name":            "Cajón",
+        "entity.corp_vault.name":       "Cámara Corp.",
 
         # --- HUD ---
         "hud.floor":                    "PLANTA {n}",
@@ -806,9 +1212,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ARMADURA:",
         "inv.none":                     "\u2014 ninguno \u2014",
         "inv.empty":                    "(vac\u00edo)",
-        "inv.btn_equip":                "[E] Equipar",
-        "inv.btn_use":                  "[U] Usar",
-        "inv.btn_drop":                 "[D] Tirar",
+        "inv.btn_use":                  "[E] Usar",
         "inv.btn_close":                "[I] Cerrar",
 
         # --- Weapon picker ---
@@ -820,9 +1224,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Planta {n} \u2014 infiltrando el edificio.",
         "log.heal_cancel":              "Curaci\u00f3n cancelada.",
-        "log.no_exit":                  "No hay salida aqu\u00ed.",
+        "log.no_exit":                  "No hay nada con lo que interactuar aquí.",
+        "hint.stair_descend":           "[E] Descender más profundo",
         "log.no_heals":                 "No hay objetos de curaci\u00f3n.",
         "log.full_hp":                  "Ya tienes salud completa.",
+        "log.reload_full":              "El cargador está lleno.",
+        "log.reload_no_reserves":       "Sin reservas de munición para recargar.",
+        "log.container_already_open":   "Ya saqueado.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (exceso +{overheal}).  [H/Enter] Confirmar",
         "log.hack_success":             "Hackeado: {container}.{credits}",
         "log.hack_fail":                "Hackeo fallido \u2014 \u00a1dr\u00f3n de seguridad enviado!",
@@ -851,6 +1259,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "\u00a1N\u00facleo asegurado!{credits} \u2014 EXTRAYENDO.",
         "log.container_empty":          "{name}: vac\u00edo.{credits}",
         "log.container_open":           "Abierto {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "Desciendes al siguiente nivel.",
+        "log.reloaded":                 "Recargado: {item}.",
+        "log.equipped":                 "Equipado: {item}.",
+        "log.dropped":                  "Tirado: {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restaurados {n} HP.",
@@ -892,10 +1307,10 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- Hack header + node label ---
         "hack.header.title":            "PROTOCOLO DE INTRUSI\u00d3N",
-        "hack.header.esc_cancel":       "[ESC]  CANCELAR EXTRACCI\u00d3N",
+        "hack.header.esc_cancel":       "[Q]  CANCELAR EXTRACCI\u00d3N",
         "hack.header.move_start":       "\u2014 MU\u00c9VETE PARA INICIAR \u2014",
-        "hack.header.esc_abort":        "[ESC]  ABORTAR HACK",
-        "hack.footer.hint":             "W A S D / Flechas  +  Rat\u00f3n  |  [F1] Ayuda",
+        "hack.header.esc_abort":        "[Q]  ABORTAR HACK",
+        "hack.footer.hint":             "W A S D / Flechas  +  Rat\u00f3n  |  [Q] Salir  [F1] Ayuda",
         "hack.footer.counter":          "DATOS: {n}/{total}",
         "hack.node.corrupt":            "CORRUPTO",
 
@@ -941,7 +1356,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hack.help.ctrl.arrows.desc":   "igual que W A S D",
         "hack.help.ctrl.mouse.key":     "Clic de rat\u00f3n",
         "hack.help.ctrl.mouse.desc":    "haz clic en un vecino para mover",
-        "hack.help.ctrl.esc.key":       "ESC",
+        "hack.help.ctrl.esc.key":       "Q  /  Esc",
         "hack.help.ctrl.esc.desc":      "cancelar extracci\u00f3n / abortar hackeo",
         "hack.help.ctrl.f1.key":        "F1",
         "hack.help.ctrl.f1.desc":       "alternar esta ayuda (temporizador pausado)",
@@ -953,6 +1368,158 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- HUD hint ---
         "hud.help_hint":                "[F1] Ayuda",
+
+        # --- Settings overlay ---
+        "settings.title":               "CONFIGURACI\u00d3N",
+        "settings.section.difficulty":  "DIFICULTAD",
+        "settings.section.gameplay":    "JUEGO",
+        "settings.section.audio":       "AUDIO",
+        "settings.section.language":    "IDIOMA",
+        "settings.gameplay.loot":       "Saqueo",
+        "settings.gameplay.aim":        "Apuntado",
+        "settings.gameplay.heal":       "Curaci\u00f3n",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "umbral",
+        "menu.heal.thr.80":             "Principiante",
+        "menu.heal.thr.90":             "Aprendiendo",
+        "menu.heal.thr.100":            "Equilibrado",
+        "menu.heal.thr.110":            "Experimentado",
+        "menu.heal.thr.120":            "Experto",
+        "settings.audio.master":        "Principal",
+        "settings.audio.music":         "M\u00fasica",
+        "settings.audio.sfx":           "Efectos",
+        "settings.footer":              "[Esc]  Cerrar",
+
+        # --- Help catalog ---
+        "help_catalog.title":           "AYUDA Y CONTROLES",
+        "help_catalog.tab.exploration": "EXPLORACI\u00d3N",
+        "help_catalog.tab.combat":      "COMBATE",
+        "help_catalog.tab.shooting":    "DISPARO",
+        "help_catalog.tab.aiming":      "APUNTADO",
+        "help_catalog.tab.hacking":     "HACKEO",
+        "help_catalog.tab.healing":     "CURACI\u00d3N",
+        "help_catalog.footer":          "[\u25c4 \u25ba] Cambiar tab   [Esc] Cerrar",
+
+        # Exploration illustration labels
+        "help_catalog.expl.icon.container": "Contenedor",
+        "help_catalog.expl.icon.ammo":      "Muni\u00f3n",
+        "help_catalog.expl.icon.stairs":    "Escaleras",
+        "help_catalog.expl.icon.vault":     "B\u00f3veda",
+
+        # Hack node illustration labels
+        "help_catalog.hack.node.entry":     "ENTRADA",
+        "help_catalog.hack.node.cache":     "DATA CACHE",
+        "help_catalog.hack.node.empty":     "VAC\u00cdO",
+        "help_catalog.hack.node.ice":       "ICE (oculto)",
+        "help_catalog.hack.loot_label":     "Ejemplos de bot\u00edn:",
+
+        # Exploration tab
+        "help_catalog.expl.h1":         "MOVIMIENTO",
+        "help_catalog.expl.1.1":        "WASD / Flechas \u2014 moverse una casilla; ataca al enemigo adyacente",
+        "help_catalog.expl.1.2":        "Cada paso usa un turno \u2014 los enemigos reaccionan",
+        "help_catalog.expl.1.3":        "Espacio o . \u2014 esperar (saltar turno)",
+        "help_catalog.expl.h2":         "CAMPO DE VISI\u00d3N",
+        "help_catalog.expl.2.1":        "Radio de visi\u00f3n: 10 casillas desde tu posici\u00f3n",
+        "help_catalog.expl.2.2":        "\u00c1reas exploradas visibles en oscuro \u2014 enemigos no rastreados",
+        "help_catalog.expl.h3":         "ESCALERAS Y CONTENEDORES",
+        "help_catalog.expl.3.1":        "E \u2014 bajar escaleras o abrir un contenedor",
+        "help_catalog.expl.3.2":        "Los contenedores pueden tener objetos, armas o cr\u00e9ditos",
+        "help_catalog.expl.3.3":        "Todos los contenedores activan el minijuego de hackeo (si est\u00e1 habilitado)",
+
+        # Combat tab
+        "help_catalog.comb.h1":         "COMBATE CUERPO A CUERPO",
+        "help_catalog.comb.1.1":        "Muévete hacia un enemigo para atacar (choque)",
+        "help_catalog.comb.1.2":        "El movimiento y ataque diagonal est\u00e1n permitidos",
+        "help_catalog.comb.1.3":        "F \u2014 atacar al enemigo m\u00e1s cercano al alcance",
+        "help_catalog.comb.h2":         "ARMADURA",
+        "help_catalog.comb.2.1":        "La armadura reduce el da\u00f1o entrante por su valor defensivo",
+        "help_catalog.comb.2.2":        "Se equipa sola; la m\u00e1s fuerte reemplaza a la m\u00e1s d\u00e9bil",
+        "help_catalog.comb.2.3":        "Ver armadura equipada en inventario (tecla I)",
+        "help_catalog.comb.h3":         "ENEMIGOS",
+        "help_catalog.comb.3.1":        "Guardias: atacan cuerpo a cuerpo, patrullan, persiguen al verte",
+        "help_catalog.comb.3.2":        "Drones: a distancia, mantienen distancia, enviados por hackeos fallidos",
+        "help_catalog.comb.3.3":        "Los enemigos solo reaccionan en l\u00ednea de visi\u00f3n",
+
+        # Shooting tab
+        "help_catalog.shoot.h1":        "COMBATE A DISTANCIA",
+        "help_catalog.shoot.1.1":       "F \u2014 apuntar y disparar al objetivo seleccionado",
+        "help_catalog.shoot.1.2":       "Tab \u2014 cambiar entre enemigos visibles",
+        "help_catalog.shoot.1.3":       "R \u2014 recargar arma",
+        "help_catalog.shoot.1.4":       "C \u2014 cambiar arma equipada",
+        "help_catalog.shoot.h2":        "MUNI\u00c9N",
+        "help_catalog.shoot.2.1":       "9mm \u2014 Pistola y subfusil",
+        "help_catalog.shoot.2.2":       "Muni\u00f3n fusil \u2014 Fusil",
+        "help_catalog.shoot.2.3":       "Cartuchos \u2014 Escopeta",
+        "help_catalog.shoot.2.4":       "Muni\u00f3n recogida autom\u00e1ticamente de enemigos y contenedores",
+        "help_catalog.shoot.h3":        "ARMAS",
+        "help_catalog.shoot.3.1":       "Pistola \u2014 confiable, alcance medio",
+        "help_catalog.shoot.3.2":       "Subfusil \u2014 r\u00e1faga de 3, letal de cerca",
+        "help_catalog.shoot.3.3":       "Escopeta \u2014 devastadora de cerca, 4 cartuchos",
+        "help_catalog.shoot.3.4":       "Fusil \u2014 largo alcance, disparos de precisi\u00f3n",
+        "help_catalog.shoot.3.5":       "Espada de energ\u00eda \u2014 solo cuerpo a cuerpo, atraviesa armadura",
+        "help_catalog.shoot.3.6":       "Cuchillo de combate \u2014 solo cuerpo a cuerpo, ataque r\u00e1pido de corto alcance",
+
+        # Aiming tab
+        "help_catalog.aim.h1":          "C\u00d3MO FUNCIONA EL APUNTADO",
+        "help_catalog.aim.1.1":         "Una aguja oscila de un lado a otro en el arco",
+        "help_catalog.aim.1.2":         "Pulsa F o haz clic para detener la aguja y disparar",
+        "help_catalog.aim.1.3":         "Zona verde = impacto;  fuera de la zona = fallo",
+        "help_catalog.aim.1.4":         "Parar cerca del centro = da\u00f1o m\u00e1ximo",
+        "help_catalog.aim.1.5":         "La aguja acelera en cada rebote del arco",
+        "help_catalog.aim.h2":          "PRECISI\u00d3N Y GOLPES CR\u00cdTICOS",
+        "help_catalog.aim.2.1":         "La zona se reduce con la distancia al objetivo",
+        "help_catalog.aim.2.2":         "Para la aguja a \u226595% de precisi\u00f3n para CR\u00cdTICO",
+        "help_catalog.aim.2.3":         "Cr\u00edtico = da\u00f1o m\u00e1ximo \u2014 el efecto se desbloquea al progresar",
+        "help_catalog.aim.h3":          "CONTROLES",
+        "help_catalog.aim.3.1":         "F / clic \u2014 detener aguja y disparar",
+        "help_catalog.aim.3.2":         "Tab \u2014 cambiar objetivo antes de disparar",
+        "help_catalog.aim.3.3":         "Esc \u2014 cancelar; disparos restantes fallan autom\u00e1ticamente",
+
+        # Hacking tab
+        "help_catalog.hack.h1":         "CONCEPTOS B\u00c1SICOS DE HACKEO",
+        "help_catalog.hack.1.1":        "Muévete a nodos DATA CACHE y entra para extraer bot\u00edn",
+        "help_catalog.hack.1.2":        "El temporizador empieza con tu primer movimiento",
+        "help_catalog.hack.1.3":        "Recoge todas las cach\u00e9s o espera que acabe el tiempo",
+        "help_catalog.hack.h2":         "TIPOS DE NODOS",
+        "help_catalog.hack.2.1":        "\u25ba ENTRADA \u2014 tu posici\u00f3n inicial",
+        "help_catalog.hack.2.2":        "\u25aa DATA CACHE \u2014 hackea para extraer bot\u00edn",
+        "help_catalog.hack.2.3":        "\u25aa VAC\u00cdO \u2014 solo travesia",
+        "help_catalog.hack.2.4":        "\u25aa ICE \u2014 trampa oculta, \u00a1parece VAC\u00cdO!",
+        "help_catalog.hack.h3":         "EFECTOS ICE",
+        "help_catalog.hack.3.1":        "PENALIZACI\u00d3N \u2014 \u22123 segundos del temporizador",
+        "help_catalog.hack.3.2":        "DATOS CORRUPTOS \u2014 destruye un nodo no hackeado",
+        "help_catalog.hack.3.3":        "ACCESO DENEGADO \u2014 te devuelve, bloquea entrada",
+        "help_catalog.hack.h4":         "CONTROLES",
+        "help_catalog.hack.4.1":        "WASD / Flechas \u2014 mover al nodo adyacente",
+        "help_catalog.hack.4.2":        "Clic de rat\u00f3n \u2014 haz clic en un vecino para mover",
+        "help_catalog.hack.4.3":        "Q / Esc \u2014 cancelar extracci\u00f3n / abortar hackeo",
+
+        # Healing tab
+        "heal.help.h1":                 "C\u00d3MO FUNCIONA LA CURACI\u00d3N",
+        "heal.help.1":                  "Observa dos latidos \u2014 du-dum, du-dum",
+        "heal.help.2":                  "Pulsa H en el tercer latido, mant\u00e9n durante la pausa",
+        "heal.help.3":                  "Suelta H cuando deber\u00eda sonar el segundo golpe",
+        "heal.help.4":                  "Perfecto \u2192 +20%   Fallo \u2192 \u221220%",
+        "heal.help.h2":                 "PUNTUACI\u00d3N",
+        "heal.help.s1":                 "Perfecto +20%  |  Excelente +10%  |  Bien \u00b10%",
+        "heal.help.s2":                 "D\u00e9bil \u221210%  |  Pobre \u221220%",
+        "heal.help.s3":                 "Puntos = suma de error de pulsar + soltar",
+        "heal.help.h3":                 "CONTROLES",
+        "heal.help.key1":               "[H mant\u00e9n] \u2014 pulsar en el latido (contracci\u00f3n)",
+        "heal.help.key2":               "[soltar H] \u2014 soltar tras la pausa (relajaci\u00f3n)",
+        "heal.help.key3":               "[Esc] \u2014 cancelar curaci\u00f3n",
+        "heal.help.key4":               "[F1] \u2014 mostrar/ocultar esta ayuda",
+
+        # Heal overlay runtime strings
+        "heal.overlay.title":           "Ritmo card\u00edaco",
+        "heal.overlay.watch":           "Observa...",
+        "heal.overlay.now":             "\u00a1AHORA!",
+        "heal.overlay.hint":            "[H] pulsa y mant\u00e9n en el 3er latido",
+        "heal.overlay.perfect":         "\u00a1Perfecto!",
+        "heal.overlay.great":           "Excelente",
+        "heal.overlay.good":            "Bien",
+        "heal.overlay.poor":            "D\u00e9bil",
+        "heal.overlay.miss":            "Pobre",
     },
 }
 

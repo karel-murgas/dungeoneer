@@ -76,11 +76,20 @@ class CombatState(BehaviorState):
         )
         from dungeoneer.combat.line_of_sight import has_los
 
+        # Read and clear the "was shot at" flag set by ActionResolver.
+        was_shot_at = getattr(owner, 'was_shot_at', False)
+        owner.was_shot_at = False
+
+        # Only flee when the player is actively closing in.
+        prev_dist = getattr(self, '_prev_dist', dist)
+        self._prev_dist = dist
+        player_approaching = dist < prev_dist
+
         has_line = has_los(owner.x, owner.y, player.x, player.y, floor.dungeon_map)
 
         if has_line and dist <= 8:
-            if dist < preferred_dist:
-                # Too close — try to back away
+            if dist < preferred_dist and not was_shot_at and player_approaching:
+                # Too close, player is advancing, and not under fire — back away
                 step = self._step_away(owner, player, floor)
                 if step:
                     return step
@@ -93,13 +102,15 @@ class CombatState(BehaviorState):
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
 
+        blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
         path = Pathfinder().find_path(
-            (owner.x, owner.y), (player.x, player.y), floor.dungeon_map
+            (owner.x, owner.y), (player.x, player.y), floor.dungeon_map,
+            extra_blocked=blocked,
         )
         if not path:
             return None
         nx, ny = path[0]
-        if floor.get_actor_at(nx, ny) is None and floor.get_container_at(nx, ny) is None:
+        if floor.get_actor_at(nx, ny) is None:
             return MoveAction(nx - owner.x, ny - owner.y)
         return None
 
@@ -108,11 +119,15 @@ class CombatState(BehaviorState):
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
 
-        path = Pathfinder().find_path((owner.x, owner.y), (tx, ty), floor.dungeon_map)
+        blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
+        path = Pathfinder().find_path(
+            (owner.x, owner.y), (tx, ty), floor.dungeon_map,
+            extra_blocked=blocked,
+        )
         if not path:
             return None
         nx, ny = path[0]
-        if floor.get_actor_at(nx, ny) is None and floor.get_container_at(nx, ny) is None:
+        if floor.get_actor_at(nx, ny) is None:
             return MoveAction(nx - owner.x, ny - owner.y)
         return None
 

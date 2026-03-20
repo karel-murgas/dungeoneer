@@ -33,6 +33,9 @@ class FloatingNumbers:
             colour = (255, 110, 70)     # orange-red for normal hits
         self._entries.append(_Entry(wx, wy, text, colour))
 
+    def add_miss(self, wx: int, wy: int) -> None:
+        self._entries.append(_Entry(wx, wy, "MISS", (140, 140, 155)))
+
     def update(self, dt: float) -> None:
         for e in self._entries:
             e.age += dt
@@ -43,8 +46,8 @@ class FloatingNumbers:
         for e in self._entries:
             progress = e.age / _LIFETIME
             # Ease-out: fast at start, slow at end
-            alpha   = int(255 * (1.0 - progress ** 1.4))
-            rise_px = int(progress ** 0.6 * ts * 2.0)
+            alpha   = round(255 * (1.0 - progress ** 1.4))
+            rise_px = round(progress ** 0.6 * ts * 2.0)
 
             sx, sy = camera.world_to_screen(e.world_x, e.world_y)
             sx += ts // 2

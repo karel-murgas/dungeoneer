@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from dungeoneer.core.i18n import t
+
 if TYPE_CHECKING:
     from dungeoneer.entities.actor import Actor
     from dungeoneer.entities.container_entity import ContainerEntity
@@ -78,9 +80,17 @@ class MeleeAttackAction(Action):
 
 
 class RangedAttackAction(Action):
-    def __init__(self, target: "Actor", max_range: int = 8) -> None:
-        self.target    = target
-        self.max_range = max_range
+    def __init__(
+        self,
+        target: "Actor",
+        max_range: int = 8,
+        accuracy_values: "list[float] | None" = None,
+    ) -> None:
+        self.target          = target
+        self.max_range       = max_range
+        # None  → resolver uses legacy calc_ranged() (random roll)
+        # list  → resolver uses calc_ranged_aimed() per shot; -1.0 entries = miss
+        self.accuracy_values = accuracy_values
 
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         from dungeoneer.combat.line_of_sight import has_los
@@ -111,7 +121,7 @@ class StairAction(Action):
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         from dungeoneer.core.event_bus import bus, StairEvent
         bus.post(StairEvent())
-        return ActionResult(True, "You descend to the next level.", (80, 220, 180))
+        return ActionResult(True, t("log.descend"), (80, 220, 180))
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +143,7 @@ class ReloadAction(Action):
         from dungeoneer.entities.player import Player
         if isinstance(actor, Player) and actor.reload():
             w = actor.equipped_weapon
-            return ActionResult(True, f"Reloaded {w.name}.", (140, 200, 255))
+            return ActionResult(True, t("log.reloaded").format(item=w.name), (140, 200, 255))
         return ActionResult(False)
 
 
@@ -150,7 +160,7 @@ class EquipAction(Action):
         from dungeoneer.entities.player import Player
         if isinstance(actor, Player):
             actor.equip(self.weapon)
-            return ActionResult(True, f"Equipped {self.weapon.name}.", (140, 200, 255))
+            return ActionResult(True, t("log.equipped").format(item=self.weapon.name), (140, 200, 255))
         return ActionResult(False)
 
 
@@ -191,7 +201,7 @@ class DropItemAction(Action):
         if isinstance(actor, Player):
             actor.inventory.remove(self.item)
             floor.add_item_entity(ItemEntity(actor.x, actor.y, self.item))
-            return ActionResult(True, f"Dropped {self.item.name}.", (180, 160, 80))
+            return ActionResult(True, t("log.dropped").format(item=self.item.name), (180, 160, 80))
         return ActionResult(False)
 
 

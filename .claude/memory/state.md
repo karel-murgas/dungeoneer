@@ -4,10 +4,25 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-17, commit a1f96fe)
+## Current State (2026-03-20, stable)
 
-**Phase 1 MVP ✅ + Phase 2 UI Polish ✅ complete.**
-**Phase 3 in progress** — minigame module just merged.
+**Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+Stable version committed: bugfixes, UI polish, minigame refinements merged.
+
+### Latest batch (2026-03-20) — bugfixes & polish
+- **Heal minigame** — 5-tier scoring (Perfect +20% / Great +10% / Good ±0% / Poor −10% / Miss −20%); press + release timing both scored; F1 help updated with SCORING section; hint text shown in overlay
+- **Overheal confirm dialog** — H on an item that would exceed max HP now shows confirm dialog before launching heal overlay; uses `QuitConfirmDialog(key_prefix="overheal_confirm")`
+- **Cheat menu** (F11) — new `rendering/ui/cheat_menu.py`; keyboard + mouse nav; spawn items/enemies/chest, set/adjust HP, add credits
+- **Classic hack scene removed** — `hack_scene.py` and `hack_generator.py` deleted; only grid variant (`hack_scene_grid.py`) remains; `main_hack.py` simplified
+- **Auto-repeat movement** — hold arrow / WASD keys to move continuously (configurable initial delay + repeat period via `settings.py`)
+- **Inventory UX** — single `[E] Use` button (equip/use unified); `[D] Drop` removed from button bar (still works via key)
+- **Entity names i18n** — `entity.crate.name`, `entity.corp_vault.name` added
+- **Log messages** — added `log.reload_full`, `log.reload_no_reserves`, `log.container_already_open`, `hint.stair_descend`, `log.descend`, `log.reloaded`, `log.equipped`, `log.dropped`, `log.credits_drop`
+
+### Codebase cleanup (2026-03-20)
+- `minigame/hack_common.py` — extracted shared neon palette, draw helpers, `make_loot_item()` (was duplicated in hack_scene.py + hack_scene_grid.py)
+- `minigame/hack_routing.py` — extracted ~500 lines of pure geometry: port assignment, orthogonal edge routing, BFS fallback, segment clipping, path interpolation (was at bottom of hack_scene.py)
+- Local auto-memory cleaned: only `user_karel.md` stays local, all project/reference/feedback in git-tracked `.claude/memory/`
 
 ### Phase 2 UI features (all working)
 - WeaponPickerUI (key C) — keyboard + mouse, shows stats
@@ -45,6 +60,23 @@ type: project
 - `main_hack.py` updated: `python main_hack.py [easy|normal|hard] [grid|classic]`; **grid is now default**
 - `rendering/procedural_sprites.py` — extended (63 lines added)
 - `rendering/ui/hud.py`, `help_screen.py`, `main_menu_scene.py` — significant rework
+
+### New (2026-03-20) — heal minigame settings
+- **SettingsOverlay** — two new GAMEPLAY rows: "Healing" toggle (On/Off) and "Threshold" (80/90/100/110/120%) when On
+- When heal minigame is OFF: H key applies flat `heal_amount` without overlay
+- Threshold controls which items are shown as "safe" (no overheal warning): `heal_amount * thr <= missing`
+  - 80% = confident player, more items shown green; 120% = cautious, fewer shown green
+- `MainMenuScene._use_heal_minigame`, `._heal_threshold_pct` carry forward to `GameScene`
+- `HUD(heal_threshold_pct=...)` constructor arg; same threshold logic in HUD display
+- i18n: `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `menu.heal.threshold_pct` (all 3 languages)
+
+### New (2026-03-18) — healing rhythm minigame
+- `minigame/heal_scene.py` — HealOverlay: centred panel overlay; watches 2 heartbeat cycles (du-dum, du-dum), player matches 3rd; ±20% heal based on timing accuracy
+- `audio/audio_manager.py` — added `heart_du`, `heart_dum` procedural sounds
+- `core/settings.py` — HEAL_MIN/MAX_CYCLE_MS, HEAL_MIN/MAX_DU_GAP_MS, HEAL_BEAT_FLASH_MS, HEAL_ACCURACY_WINDOW, HEAL_RESULT_PAUSE, HEAL_RANGE
+- `core/i18n.py` — heal.overlay.* and heal.help.* keys (3 languages)
+- `rendering/ui/help_catalog.py` — new HEALING tab (6th tab)
+- **GameScene**: H key now always launches HealOverlay; removed overheal confirm path; `_heal_overlay` state; `_launch_heal()` / `_on_heal_complete()` mirror aim overlay pattern
 
 ### New (post 2026-03-17) — aim minigame F1 help
 - `minigame/aim_scene.py` — AimOverlay: F1 toggles full-screen help overlay (needle frozen)

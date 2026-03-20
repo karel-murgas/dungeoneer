@@ -36,7 +36,7 @@ class InventoryUI:
         self._hovered_btn: str | None = None
         # Populated during draw(); used for mouse hit-testing
         self._item_rects: dict[int, pygame.Rect] = {}   # abs_index → row rect
-        self._btn_rects:  dict[str, pygame.Rect] = {}   # "equip"|"use"|"drop"|"close" → rect
+        self._btn_rects:  dict[str, pygame.Rect] = {}   # "use"|"close" → rect
 
     # ------------------------------------------------------------------
     # Keyboard input
@@ -44,7 +44,7 @@ class InventoryUI:
 
     def handle_key(self, key: int, player: "Player"):  # type: ignore[name-defined]
         """Returns an Action, 'close', or None."""
-        from dungeoneer.combat.action import EquipAction, UseItemAction, DropItemAction
+        from dungeoneer.combat.action import EquipAction, UseItemAction
 
         items = list(player.inventory)
         n     = len(items)
@@ -62,12 +62,11 @@ class InventoryUI:
         self._selected = min(self._selected, n - 1)
         item = items[self._selected]
 
-        if key == pygame.K_e and isinstance(item, Weapon):
-            return EquipAction(item)
-        if key == pygame.K_u and isinstance(item, Consumable):
-            return UseItemAction(item)
-        if key == pygame.K_d:
-            return DropItemAction(item)
+        if key == pygame.K_e:
+            if isinstance(item, Weapon):
+                return EquipAction(item)
+            if isinstance(item, Consumable):
+                return UseItemAction(item)
         return None
 
     # ------------------------------------------------------------------
@@ -89,7 +88,7 @@ class InventoryUI:
 
     def handle_mouse_button(self, event: pygame.event.Event, player: "Player"):  # type: ignore[name-defined]
         """Returns an Action, 'close', or None."""
-        from dungeoneer.combat.action import EquipAction, UseItemAction, DropItemAction
+        from dungeoneer.combat.action import EquipAction, UseItemAction
 
         items = list(player.inventory)
         n     = len(items)
@@ -104,25 +103,23 @@ class InventoryUI:
                         return None
                     self._selected = min(self._selected, n - 1)
                     item = items[self._selected]
-                    if name == "equip" and isinstance(item, Weapon):
-                        return EquipAction(item)
-                    if name == "use" and isinstance(item, Consumable):
-                        return UseItemAction(item)
-                    if name == "drop":
-                        return DropItemAction(item)
+                    if name == "use":
+                        if isinstance(item, Weapon):
+                            return EquipAction(item)
+                        if isinstance(item, Consumable):
+                            return UseItemAction(item)
                     return None
-            # Item row click — just selects, no action
-            for idx, rect in self._item_rects.items():
-                if rect.collidepoint(event.pos):
-                    self._selected = idx
-                    return None
-
-        elif event.button == 3:  # right click on item row → drop
+            # Item row click — select and use/equip immediately
             for idx, rect in self._item_rects.items():
                 if rect.collidepoint(event.pos):
                     self._selected = idx
                     if idx < n:
-                        return DropItemAction(items[idx])
+                        item = items[idx]
+                        if isinstance(item, Weapon):
+                            return EquipAction(item)
+                        if isinstance(item, Consumable):
+                            return UseItemAction(item)
+                    return None
 
         return None
 
@@ -229,9 +226,7 @@ class InventoryUI:
 
         self._btn_rects = {}
         btn_defs = [
-            ("equip", t("inv.btn_equip")),
             ("use",   t("inv.btn_use")),
-            ("drop",  t("inv.btn_drop")),
             ("close", t("inv.btn_close")),
         ]
         bx = ox + _PAD

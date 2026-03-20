@@ -1,6 +1,5 @@
 """Weapon item — melee and ranged."""
 from __future__ import annotations
-import copy
 from dataclasses import dataclass, field
 
 from dungeoneer.items.item import Item, ItemType, RangeType
@@ -12,13 +11,14 @@ class Weapon(Item):
     range_type:    RangeType = RangeType.MELEE
     damage_min:    int       = 1
     damage_max:    int       = 4
-    attack_bonus:  int       = 0    # added on top of actor.attack
     ammo_capacity: int       = 0    # 0 = unlimited/melee
     ammo_current:  int       = 0
     range_tiles:   int       = 1    # max attack range in tiles
     diagonal:      bool      = False  # True = also reaches diagonal neighbours
     ammo_type:     str       = ""   # "9mm", "rifle", "shell", "" = melee
     shots:         int       = 1    # rounds fired per attack action (burst fire)
+    aim_zone_base:    float  = 0.0  # hit zone size (degrees) at distance 0; 0 = melee, no minigame
+    aim_zone_penalty: float  = 0.0  # degrees lost per tile of distance
 
     def stat_line(self) -> str:
         if self.range_type == RangeType.RANGED:
@@ -39,10 +39,10 @@ def make_pistol() -> Weapon:
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=3, damage_max=6,
-        attack_bonus=0,
         ammo_capacity=10, ammo_current=10,
         range_tiles=8,
         ammo_type="9mm",
+        aim_zone_base=24.0, aim_zone_penalty=2.0,
     )
 
 def make_combat_knife() -> Weapon:
@@ -51,8 +51,7 @@ def make_combat_knife() -> Weapon:
         description=t("item.combat_knife.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.MELEE,
-        damage_min=2, damage_max=5,
-        attack_bonus=1,
+        damage_min=3, damage_max=6,
         ammo_capacity=0, ammo_current=0,
         range_tiles=1,
     )
@@ -64,10 +63,10 @@ def make_shotgun() -> Weapon:
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=9, damage_max=16,
-        attack_bonus=0,
         ammo_capacity=4, ammo_current=4,
         range_tiles=4,
         ammo_type="shell",
+        aim_zone_base=45.0, aim_zone_penalty=5.5,
     )
 
 def make_smg() -> Weapon:
@@ -77,11 +76,11 @@ def make_smg() -> Weapon:
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=2, damage_max=4,
-        attack_bonus=0,
         ammo_capacity=24, ammo_current=24,
         range_tiles=7,
         ammo_type="9mm",
         shots=3,
+        aim_zone_base=30.0, aim_zone_penalty=2.5,
     )
 
 def make_energy_sword() -> Weapon:
@@ -90,8 +89,7 @@ def make_energy_sword() -> Weapon:
         description=t("item.energy_sword.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.MELEE,
-        damage_min=5, damage_max=10,
-        attack_bonus=2,
+        damage_min=7, damage_max=12,
         ammo_capacity=0, ammo_current=0,
         range_tiles=1,
         diagonal=True,
@@ -104,8 +102,8 @@ def make_rifle() -> Weapon:
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
         damage_min=5, damage_max=10,
-        attack_bonus=0,
         ammo_capacity=6, ammo_current=6,
         range_tiles=14,
         ammo_type="rifle",
+        aim_zone_base=32.0, aim_zone_penalty=0.5,
     )

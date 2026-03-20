@@ -7,11 +7,26 @@
       "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/**)",
       "Bash(xargs grep:*)",
       "Read(//c/Users/karel/Documents/Python/Dungeoneer/**)",
-      "Bash(find /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer -type f \\\\\\(-name *.png -o -name *.mp3 -o -name *.wav -o -name *.ogg \\\\\\))"
+      "Bash(find /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer -type f \\\\\\(-name *.png -o -name *.mp3 -o -name *.wav -o -name *.ogg \\\\\\))",
+      "Bash(cp \"c:/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/feedback_assets_workflow.md\" \"c:/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/feedback_assets.md\")",
+      "Bash(cp \"c:/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/feedback_tileset_identification.md\" \"c:/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/memory/ref_tileset.md\")",
+      "Bash(grep -n \"distance\\\\|perceive\\\\|sight_range\" /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer/dungeoneer/ai/*.py)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(find /c/Users/karel/Documents/Python/Dungeoneer -maxdepth 2 -name *.mp3 -o -name *.ogg -o -name *.wav)",
+      "Bash(git pull:*)",
+      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/**)",
+      "Bash(find /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer/dungeoneer/audio -type f -name *.py)",
+      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Programming-Dungeoneer-dungeoneer/memory/**)",
+      "Read(//c/Users/karel/Documents/Programming/Dungeoneer/dungeoneer/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",
-      "c:\\Users\\karel\\Documents\\Python\\Dungeoneer\\dungeoneer"
+      "c:\\Users\\karel\\Documents\\Python\\Dungeoneer\\dungeoneer",
+      "C:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Programming-Dungeoneer-dungeoneer\\memory",
+      "c:\\Users\\karel\\Documents\\Programming\\Dungeoneer\\dungeoneer\\.claude\\memory"
     ]
   }
 }
