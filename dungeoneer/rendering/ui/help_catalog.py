@@ -174,9 +174,15 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "heal.help.4",
         ]),
         ("heal.help.h2", [
+            "heal.help.s1",
+            "heal.help.s2",
+            "heal.help.s3",
+        ]),
+        ("heal.help.h3", [
             "heal.help.key1",
             "heal.help.key2",
             "heal.help.key3",
+            "heal.help.key4",
         ]),
     ]),
 ]
@@ -212,10 +218,10 @@ def _arc_polygon(cx: int, cy: int, r_out: float, r_in: float,
     pts: list[tuple[int, int]] = []
     for i in range(steps + 1):
         a = a0 + (a1 - a0) * i / steps
-        pts.append((int(cx + r_out * math.cos(a)), int(cy + r_out * math.sin(a))))
+        pts.append((round(cx + r_out * math.cos(a)), round(cy + r_out * math.sin(a))))
     for i in range(steps, -1, -1):
         a = a0 + (a1 - a0) * i / steps
-        pts.append((int(cx + r_in * math.cos(a)), int(cy + r_in * math.sin(a))))
+        pts.append((round(cx + r_in * math.cos(a)), round(cy + r_in * math.sin(a))))
     return pts
 
 
@@ -539,8 +545,8 @@ class HelpCatalogOverlay:
         # 4. Needle — in left hit zone
         needle_frac = HIT_FRAC + 0.07
         needle_a    = a0 + needle_frac * total
-        nx = int(ax + r_out * math.cos(needle_a))
-        ny = int(ay + r_out * math.sin(needle_a))
+        nx = round(ax + r_out * math.cos(needle_a))
+        ny = round(ay + r_out * math.sin(needle_a))
         pygame.draw.line(screen, _ARC_NEEDLE, (ax, ay), (nx, ny), 2)
         pygame.draw.circle(screen, _ARC_NEEDLE, (nx, ny), 4)
         pygame.draw.circle(screen, (80, 80, 120), (nx, ny), 3)
@@ -567,11 +573,11 @@ class HelpCatalogOverlay:
     def _aim_label(self, screen: pygame.Surface,
                     ax: int, ay: int, angle: float,
                     r: float, text: str, col: tuple) -> None:
-        lx = int(ax + r * math.cos(angle))
-        ly = int(ay + r * math.sin(angle))
+        lx = round(ax + r * math.cos(angle))
+        ly = round(ay + r * math.sin(angle))
         # Small leader dot at arc surface
-        dot_x = int(ax + (r - 12) * math.cos(angle))
-        dot_y = int(ay + (r - 12) * math.sin(angle))
+        dot_x = round(ax + (r - 12) * math.cos(angle))
+        dot_y = round(ay + (r - 12) * math.sin(angle))
         pygame.draw.circle(screen, col, (dot_x, dot_y), 2)
         surf = self._font_ill.render(text, True, col)
         screen.blit(surf, (lx - surf.get_width() // 2,

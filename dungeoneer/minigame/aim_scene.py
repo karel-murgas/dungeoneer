@@ -36,8 +36,11 @@ _TEXT_DIM       = (80,  120, 100)
 _COL_MISS       = (200,  55,  55)
 _COL_HIT        = (80,  200,  80)
 _COL_CRIT       = (240, 220,   0)
+_CRIT_ZONE_FILL = (200, 170,   0,  90)
+_CRIT_ZONE_EDGE = (240, 220,   0, 210)
 
-_DONE_PAUSE = 0.35
+_DONE_PAUSE          = 0.35
+_BOLT_FLASH_DURATION = 0.12   # seconds of muzzle-flash ring between SMG shots
 
 
 class _State(Enum):
@@ -120,6 +123,12 @@ class AimOverlay:
         self._last_accuracy: Optional[float] = None
         self._completed                  = False
         self._show_help                  = False
+        self._stop_early                 = False
+        self._bolt_flash_timer           = 0.0
+        # Simulated remaining HP — used to detect early kill across shots
+        self._hp_remaining               = target.hp
+        # Speed is shared across all shots so wall-bounce penalty persists
+        self._speed                      = self._start_speed
 
         try:
             self._font_med   = pygame.font.SysFont("consolas", 16, bold=True)
@@ -157,7 +166,7 @@ class AimOverlay:
 
         self._needle_angle = random.uniform(0.0, self._arc_degrees)
         self._needle_dir   = 1.0 if random.random() > 0.5 else -1.0
-        self._speed        = self._start_speed
+        # _speed intentionally NOT reset here — persists across burst shots
 
     def _target_dist(self) -> int:
         return abs(self._player.x - self._target.x) + abs(self._player.y - self._target.y)
@@ -226,6 +235,20 @@ class AimOverlay:
         self._state         = _State.RESULT
         self._result_timer  = self._result_pause
 
+        # ── Early-termination check ──────────────────────────────────
+        # Simulate how much HP the enemy has left after this shot.
+        # Damage formula matches calc_ranged_aimed() exactly.
+        if accuracy >= 0.0:
+            w = self._weapon
+            raw = w.damage_min + round(accuracy * (w.damage_max - w.damage_min))
+            actual = max(1, raw - self._target.total_defence)
+            self._hp_remaining -= actual
+
+        shots_done = self._current_shot + 1  # shots recorded so far
+        # Stop if enemy would be dead, or if we've exhausted available ammo
+        if self._hp_remaining <= 0 or shots_done >= self._weapon.ammo_current:
+            self._stop_early = True
+
     # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
@@ -237,6 +260,7 @@ class AimOverlay:
         if self._state == _State.AIMING:
             if self._show_help:
                 return  # freeze needle while help is open
+            self._bolt_flash_timer = max(0.0, self._bolt_flash_timer - dt)
             self._needle_angle += self._needle_dir * self._speed * dt
             if self._needle_angle >= self._arc_degrees:
                 self._needle_angle = self._arc_degrees
@@ -251,7 +275,8 @@ class AimOverlay:
             self._result_timer -= dt
             if self._result_timer <= 0.0:
                 self._current_shot += 1
-                if self._current_shot < self._total_shots:
+                if self._current_shot < self._total_shots and not self._stop_early:
+                    self._bolt_flash_timer = _BOLT_FLASH_DURATION
                     self._init_shot()
                     self._state = _State.AIMING
                 else:
@@ -301,21 +326,40 @@ class AimOverlay:
             pygame.draw.polygon(surf, _HIT_ZONE_FILL, zone_pts)
             pygame.draw.polygon(surf, _HIT_ZONE_EDGE, zone_pts, 2)
 
+        # Crit zone — narrow golden strip in the centre of the hit zone
+        zone_center_deg = self._zone_start + self._zone_size / 2.0
+        crit_half_deg   = (self._zone_size / 2.0) * (1.0 - self._crit_thresh)
+        crit_start_rad  = self._pos_to_angle(zone_center_deg - crit_half_deg, center_angle)
+        crit_stop_rad   = self._pos_to_angle(zone_center_deg + crit_half_deg, center_angle)
+        crit_pts = _arc_polygon(lcx, lcy, r, r_in, crit_start_rad, crit_stop_rad, steps=6)
+        if len(crit_pts) >= 3:
+            pygame.draw.polygon(surf, _CRIT_ZONE_FILL, crit_pts)
+            pygame.draw.polygon(surf, _CRIT_ZONE_EDGE, crit_pts, 2)
+
         screen.blit(surf, (cx - size // 2, cy - size // 2))
 
         # Needle (drawn directly on screen for crisp lines)
         needle_rad = self._pos_to_angle(self._needle_angle, center_angle)
-        tip_x = int(cx + r * math.cos(needle_rad))
-        tip_y = int(cy - r * math.sin(needle_rad))
+        tip_x = round(cx + r * math.cos(needle_rad))
+        tip_y = round(cy - r * math.sin(needle_rad))
         pygame.draw.line(screen, _NEEDLE_GLOW, (cx, cy), (tip_x, tip_y), 4)
         pygame.draw.line(screen, _NEEDLE,      (cx, cy), (tip_x, tip_y), 2)
         pygame.draw.circle(screen, _CENTER_DOT, (cx, cy), 4)
 
+        # Bolt flash ring — brief glow between burst shots
+        if self._bolt_flash_timer > 0.0:
+            frac = self._bolt_flash_timer / _BOLT_FLASH_DURATION
+            alpha = int(220 * frac)
+            flash_surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            ring_r = round(r_in + 3)
+            pygame.draw.circle(flash_surf, (255, 240, 120, alpha), (lcx, lcy), ring_r, 5)
+            screen.blit(flash_surf, (cx - size // 2, cy - size // 2))
+
         # Arc end tick marks
         for pos in (0.0, self._arc_degrees):
             a  = self._pos_to_angle(pos, center_angle)
-            ex = int(cx + r * math.cos(a))
-            ey = int(cy - r * math.sin(a))
+            ex = round(cx + r * math.cos(a))
+            ey = round(cy - r * math.sin(a))
             pygame.draw.circle(screen, _END_MARK, (ex, ey), 3)
 
         # Labels

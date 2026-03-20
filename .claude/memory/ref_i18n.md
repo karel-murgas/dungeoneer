@@ -29,7 +29,7 @@ from dungeoneer.core.i18n import set_language
 set_language("cs")
 ```
 
-## Key namespaces (2026-03-17, updated)
+## Key namespaces (2026-03-20, updated)
 | Prefix | Usage |
 |--------|-------|
 | `menu.*` | Main menu labels, toggles |
@@ -46,6 +46,7 @@ set_language("cs")
 | `gameover.*` | Game over screen |
 | `quit_confirm.*` | In-game quit confirmation dialog (return to main menu) |
 | `exit_confirm.*` | Main menu exit confirmation dialog (quit the game) |
+| `overheal_confirm.*` | In-game overheal warning dialog (all items exceed threshold) |
 | `settings.*` | SettingsOverlay: title, section headers, row labels, footer |
 | `help_catalog.*` | HelpCatalogOverlay: title, tab names, section headers, bullet content |
 
@@ -59,11 +60,12 @@ set_language("cs")
 | `gameover.*` | GameOverScene (title, sub, floors, credits, buttons) |
 | `help.*` | HelpScreen overlay (key bindings) |
 | `hud.*` | HUD: floor, HP, armor label, heal hint |
-| `inv.*` | InventoryUI: title, labels, buttons |
+| `inv.*` | InventoryUI: title, labels, buttons (inv.btn_use=[E], inv.btn_close=[I]; equip/drop buttons removed) |
 | `weapon_picker.*` | WeaponPickerUI: title, empty msg, close btn, hint |
 | `item.*` | Item names + descriptions (weapons, consumables, ammo, armor) |
-| `entity.*` | Entity names (player, guard, drone) |
-| `log.*` | Gameplay log messages (combat, pickup, containers, healing) |
+| `entity.*` | Entity names (player, guard, drone, crate, corp_vault) |
+| `log.*` | Gameplay log messages (combat, pickup, containers, healing, equip, reload, drop, descent, credits_drop, action-denied feedback) |
+| `hint.*` | In-world contextual hints (e.g. `hint.stair_descend` — shown above player on STAIR_DOWN tile) |
 | `hack.status.*` | HackScene footer status bar text |
 | `hack.overlay.*` | HackScene security/loot overlay banners (title + sub) |
 | `hack.result.*` | HackScene final result overlay |
@@ -73,8 +75,11 @@ set_language("cs")
 | `hack.loot.*` | HackScene loot kind display names |
 | `hack.help.*` | HackScene F1 help overlay |
 | `aim.help.*` | AimOverlay F1 help (mechanic, armor, crits, controls) |
-| `settings.*` | SettingsOverlay (title, sections, labels, footer) |
-| `help_catalog.*` | HelpCatalogOverlay (title, 5 tabs, section headers, bullets for each topic) |
+| `heal.help.*` | HealOverlay F1 help + HelpCatalog HEALING tab (mechanic h1, scoring h2: s1–s3, controls h3: key1–key4) |
+| `heal.overlay.*` | HealOverlay runtime labels (title, hint, quality results) |
+| `overheal_confirm.*` | Overheal warning dialog reusing QuitConfirmDialog (title, question, confirm, cancel) |
+| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `menu.heal.threshold_pct` |
+| `help_catalog.*` | HelpCatalogOverlay (title, 6 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Healing) |
 
 ## Rule (from CLAUDE.md)
 - Every user-visible string goes through `t("key")`

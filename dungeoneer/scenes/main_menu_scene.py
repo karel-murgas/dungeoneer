@@ -50,7 +50,7 @@ _ICON_GAP      = 8    # gap between icon buttons
 
 
 def _scale_to(value: int, scale: float, minimum: int) -> int:
-    return max(minimum, int(value * scale))
+    return max(minimum, round(value * scale))
 
 
 def _draw_gear(surface: pygame.Surface, cx: int, cy: int, r: int,
@@ -84,16 +84,18 @@ class MainMenuScene(Scene):
         *,
         difficulty: Difficulty = NORMAL,
         use_minigame: bool = True,
-        hack_variant: str = "grid",
         use_aim_minigame: bool = True,
+        use_heal_minigame: bool = True,
+        heal_threshold_pct: int = 100,
         language: str = "en",
     ) -> None:
         super().__init__(app)
-        self._difficulty       = difficulty
-        self._use_minigame     = use_minigame
-        self._hack_variant     = hack_variant
-        self._use_aim_minigame = use_aim_minigame
-        self._language         = language
+        self._difficulty          = difficulty
+        self._use_minigame        = use_minigame
+        self._use_aim_minigame    = use_aim_minigame
+        self._use_heal_minigame   = use_heal_minigame
+        self._heal_threshold_pct  = heal_threshold_pct
+        self._language            = language
 
         # Scale fonts and button sizes to screen height (baseline: 720 px)
         _s = min(1.0, settings.SCREEN_HEIGHT / 720)
@@ -312,7 +314,8 @@ class MainMenuScene(Scene):
                 self.app,
                 difficulty=self._difficulty,
                 use_minigame=self._use_minigame,
-                hack_variant=self._hack_variant,
                 use_aim_minigame=self._use_aim_minigame,
+                use_heal_minigame=self._use_heal_minigame,
+                heal_threshold_pct=self._heal_threshold_pct,
             )
         )

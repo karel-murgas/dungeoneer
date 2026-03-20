@@ -41,7 +41,7 @@ class CombatLog:
                 continue
             # Fade alpha: full for first 4 s, then fade out
             fade = max(0.0, 1.0 - (age - (_FADE_SECONDS - 2)) / 2.0)
-            alpha = int(255 * min(1.0, fade))
+            alpha = round(255 * min(1.0, fade))
             r, g, b = colour[:3]
             surf = self._font.render(text, True, (r, g, b))
             surf.set_alpha(alpha)

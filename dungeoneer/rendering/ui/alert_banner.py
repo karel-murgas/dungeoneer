@@ -50,7 +50,7 @@ class AlertBanner:
         # Alpha (fade-out in last segment)
         if elapsed >= _FADE_START:
             fade_t = (elapsed - _FADE_START) / (_DURATION - _FADE_START)
-            alpha  = int(255 * (1.0 - fade_t))
+            alpha  = round(255 * (1.0 - fade_t))
         else:
             alpha = 255
 
@@ -59,7 +59,7 @@ class AlertBanner:
         ts = settings.TILE_SIZE
         # Start at top edge of player tile, then slide up
         base_y = sy - 8
-        draw_y = base_y - int(_SLIDE_PX * slide_t)
+        draw_y = base_y - round(_SLIDE_PX * slide_t)
         draw_x = sx + ts // 2  # horizontally centred on tile
 
         # Render text

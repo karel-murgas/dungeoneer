@@ -50,6 +50,7 @@ class MusicManager:
         self._target_blend = 0.0
         self._fade_rate    = 0.0   # blend units per second
         self._running      = False
+        self._duck_factor  = 1.0   # volume multiplier for ducking (1.0 = normal)
 
     # ------------------------------------------------------------------
     # Public API
@@ -128,6 +129,18 @@ class MusicManager:
     # Internal
     # ------------------------------------------------------------------
 
+    def duck(self, factor: float = 0.25) -> None:
+        """Lower music volume temporarily (e.g. during a minigame)."""
+        self._duck_factor = max(0.0, min(1.0, factor))
+        if self._running:
+            self._apply_volumes()
+
+    def unduck(self) -> None:
+        """Restore full music volume after ducking."""
+        self._duck_factor = 1.0
+        if self._running:
+            self._apply_volumes()
+
     def refresh_volume(self) -> None:
         """Re-apply volumes after settings change. Safe to call any time."""
         if self._running:
@@ -135,7 +148,7 @@ class MusicManager:
 
     def _apply_volumes(self) -> None:
         """Equal-power crossfade: cos/sin curve keeps perceived loudness constant."""
-        vol = settings.MASTER_VOLUME * settings.MUSIC_VOLUME
+        vol = settings.MASTER_VOLUME * settings.MUSIC_VOLUME * self._duck_factor
         angle = self._blend * math.pi / 2.0
         self._ch_calm.set_volume(vol * math.cos(angle))
         self._ch_action.set_volume(vol * math.sin(angle))

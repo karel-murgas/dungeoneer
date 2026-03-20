@@ -29,77 +29,78 @@ class ActionResolver:
 
         return ActionResult(True)
 
-    def _auto_pickup(self, player: "Player", floor: "Floor") -> None:  # type: ignore[name-defined]
+    def give_item(self, player: "Player", item: "Item") -> bool:  # type: ignore[name-defined]
+        """Apply one item to the player using the same rules as floor auto-pickup.
+
+        Returns True if the item was consumed/equipped (caller should remove the
+        floor entity).  Returns False only when the inventory is full and the item
+        could not be added — the caller is responsible for the "inv full" message
+        so it can deduplicate across multiple items in one step.
+        """
         from dungeoneer.core.event_bus import bus, LogMessageEvent
         from dungeoneer.items.ammo import AmmoPickup
         from dungeoneer.items.armor import Armor
         from dungeoneer.items.weapon import Weapon
         from dungeoneer.items.item import RangeType
+        # --- Ammo → straight to reserves ---
+        if isinstance(item, AmmoPickup):
+            player.ammo_reserves[item.ammo_type] = (
+                player.ammo_reserves.get(item.ammo_type, 0) + item.ammo_count
+            )
+            log.info("Ammo pickup: %s", item.name)
+            bus.post(LogMessageEvent(t("log.pickup_ammo").format(item=item.name), (200, 220, 100)))
+            return True
 
-        from dungeoneer.items.consumable import Consumable
+        # --- Armor → auto-equip if slot empty, else discard ---
+        if isinstance(item, Armor):
+            if player.equipped_armor is not None:
+                log.info("Discarded duplicate armor: %s", item.name)
+                bus.post(LogMessageEvent(t("log.armor_duplicate").format(item=player.equipped_armor.name), (120, 100, 80)))
+            else:
+                player.equipped_armor = item
+                log.info("Auto-equipped armor: %s", item.name)
+                bus.post(LogMessageEvent(t("log.armor_equip").format(item=item.name, bonus=item.defense_bonus), (180, 220, 140)))
+            return True
+
+        # --- Weapon duplicates → strip ranged for ammo, discard melee ---
+        if isinstance(item, Weapon):
+            already_have = (
+                (player.equipped_weapon is not None and player.equipped_weapon.id == item.id)
+                or any(isinstance(i, Weapon) and i.id == item.id for i in player.inventory)
+            )
+            if already_have:
+                if item.range_type == RangeType.RANGED and item.ammo_type:
+                    gained = item.ammo_capacity
+                    player.ammo_reserves[item.ammo_type] = (
+                        player.ammo_reserves.get(item.ammo_type, 0) + gained
+                    )
+                    log.info("Stripped %s for %d ammo", item.name, gained)
+                    bus.post(LogMessageEvent(t("log.ammo_strip").format(item=item.name, n=gained, ammo=item.ammo_type), (180, 200, 120)))
+                else:
+                    log.info("Discarded duplicate melee weapon: %s", item.name)
+                    bus.post(LogMessageEvent(t("log.item_duplicate").format(item=item.name), (120, 100, 80)))
+                return True
+
+        # --- Default: add to inventory (Inventory.add handles consumable stacking) ---
+        if player.inventory.add(item):
+            log.info("Auto-pickup: %s", item.name)
+            bus.post(LogMessageEvent(t("log.pickup_item").format(item=item.name, count=""), (240, 220, 80)))
+            return True
+
+        return False  # inventory full
+
+    def _auto_pickup(self, player: "Player", floor: "Floor") -> None:  # type: ignore[name-defined]
+        from dungeoneer.core.event_bus import bus, LogMessageEvent
 
         items_here = floor.get_items_at(player.x, player.y)
         if not items_here:
             return
 
         inventory_full_warned = False
-
         for item_e in list(items_here):  # snapshot — list mutates during loop
-            item = item_e.item
-
-            # --- Ammo pickups → straight to reserves ---
-            if isinstance(item, AmmoPickup):
-                player.ammo_reserves[item.ammo_type] = (
-                    player.ammo_reserves.get(item.ammo_type, 0) + item.ammo_count
-                )
+            consumed = self.give_item(player, item_e.item)
+            if consumed:
                 floor.remove_item_entity(item_e)
-                log.info("Ammo pickup: %s at (%d,%d)", item.name, player.x, player.y)
-                bus.post(LogMessageEvent(t("log.pickup_ammo").format(item=item.name), (200, 220, 100)))
-                continue
-
-            # --- Armor → auto-equip if slot empty, else discard ---
-            if isinstance(item, Armor):
-                if player.equipped_armor is not None:
-                    floor.remove_item_entity(item_e)
-                    log.info("Discarded duplicate armor: %s at (%d,%d)", item.name, player.x, player.y)
-                    bus.post(LogMessageEvent(t("log.armor_duplicate").format(item=player.equipped_armor.name), (120, 100, 80)))
-                else:
-                    player.equipped_armor = item
-                    floor.remove_item_entity(item_e)
-                    log.info("Auto-equipped armor: %s at (%d,%d)", item.name, player.x, player.y)
-                    bus.post(LogMessageEvent(t("log.armor_equip").format(item=item.name, bonus=item.defense_bonus), (180, 220, 140)))
-                continue
-
-            # --- Weapon duplicates ---
-            if isinstance(item, Weapon):
-                already_have = (
-                    (player.equipped_weapon is not None and player.equipped_weapon.id == item.id)
-                    or any(isinstance(i, Weapon) and i.id == item.id for i in player.inventory)
-                )
-                if already_have:
-                    if item.range_type == RangeType.RANGED and item.ammo_type:
-                        # Ranged duplicate → strip for ammo
-                        gained = item.ammo_capacity
-                        player.ammo_reserves[item.ammo_type] = (
-                            player.ammo_reserves.get(item.ammo_type, 0) + gained
-                        )
-                        floor.remove_item_entity(item_e)
-                        log.info("Stripped %s for %d ammo at (%d,%d)", item.name, gained, player.x, player.y)
-                        bus.post(LogMessageEvent(t("log.ammo_strip").format(item=item.name, n=gained, ammo=item.ammo_type), (180, 200, 120)))
-                    else:
-                        # Melee duplicate → discard
-                        floor.remove_item_entity(item_e)
-                        log.info("Discarded duplicate melee weapon: %s at (%d,%d)", item.name, player.x, player.y)
-                        bus.post(LogMessageEvent(t("log.item_duplicate").format(item=item.name), (120, 100, 80)))
-                    continue
-
-            # --- Default: add to inventory (Inventory.add handles consumable stacking) ---
-            if player.inventory.add(item):
-                floor.remove_item_entity(item_e)
-                log.info("Auto-pickup: %s at (%d,%d)", item.name, player.x, player.y)
-                existing = next((i for i in player.inventory if isinstance(i, Consumable) and i.id == item.id), None)
-                count_str = f" ×{existing.count}" if existing and existing.count > 1 else ""
-                bus.post(LogMessageEvent(t("log.pickup_item").format(item=item.name, count=count_str), (240, 220, 80)))
             elif not inventory_full_warned:
                 inventory_full_warned = True
                 bus.post(LogMessageEvent(t("log.inv_full"), (180, 80, 80)))

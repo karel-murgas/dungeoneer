@@ -13,9 +13,12 @@ _M      = 6                    # panel margin
 
 
 class HUD:
-    def __init__(self) -> None:
+    def __init__(self, heal_threshold_pct: int = 100) -> None:
+        self._heal_threshold_pct = heal_threshold_pct
         self._font_large = pygame.font.SysFont("consolas", 18, bold=True)
         self._font_small = pygame.font.SysFont("consolas", 14)
+        self.weapon_rect: pygame.Rect | None = None
+        self.heal_rect:   pygame.Rect | None = None
 
     # ------------------------------------------------------------------
     # Helpers
@@ -88,7 +91,8 @@ class HUD:
             heal_str = t("hud.full_hp")
             heal_col = (70, 90, 75)
         elif healables:
-            exact  = [i for i in healables if i.heal_amount <= missing]
+            thr    = self._heal_threshold_pct / 100.0
+            exact  = [i for i in healables if i.heal_amount * thr <= missing]
             chosen = max(exact, key=lambda c: c.heal_amount) if exact \
                      else min(healables, key=lambda c: c.heal_amount)
             count_str = f"  x{chosen.count}" if chosen.count > 1 else ""
@@ -126,7 +130,7 @@ class HUD:
         # HP bar
         pygame.draw.rect(screen, (60, 20, 20),    (bar_x, bar_y, bar_w, bar_h))
         fill_col = settings.COL_HP_FULL if ratio > 0.4 else settings.COL_HP_LOW
-        pygame.draw.rect(screen, fill_col, (bar_x, bar_y, int(bar_w * ratio), bar_h))
+        pygame.draw.rect(screen, fill_col, (bar_x, bar_y, round(bar_w * ratio), bar_h))
         pygame.draw.rect(screen, (180, 180, 180), (bar_x, bar_y, bar_w, bar_h), 1)
         self._blit_text(screen, self._font_large,
                         f"HP {player.hp}/{player.max_hp}",
@@ -134,6 +138,18 @@ class HUD:
 
         # weapon line
         _WY = bar_y + bar_h + _M
+        self.weapon_rect = pygame.Rect(bar_x - _M, _WY, panel_w, line_h)
+        self.heal_rect   = pygame.Rect(bar_x - _M, _WY + line_h, panel_w, line_h)
+
+        # hover highlights
+        mx, my = pygame.mouse.get_pos()
+        _HOVER = (255, 255, 255, 28)
+        for rect in (self.weapon_rect, self.heal_rect):
+            if rect.collidepoint(mx, my):
+                hl = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+                hl.fill(_HOVER)
+                screen.blit(hl, rect.topleft)
+
         key_surf = self._blit_text(screen, self._font_small, "[C] ", _KEY, (bar_x, _WY))
         wpn_surf = self._blit_text(screen, self._font_small, weapon_str, ammo_col,
                                    (bar_x + c_w, _WY))

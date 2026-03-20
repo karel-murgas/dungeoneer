@@ -15,7 +15,10 @@
       "WebFetch(domain:dithart.itch.io)",
       "WebFetch(domain:ansimuz.itch.io)",
       "WebFetch(domain:sethbb.itch.io)",
-      "WebFetch(domain:free-game-assets.itch.io)"
+      "WebFetch(domain:free-game-assets.itch.io)",
+      "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Programming-Dungeoneer-dungeoneer/memory//**)",
+      "Bash(wc -l /c/Users/karel/Documents/Programming/Dungeoneer/dungeoneer/dungeoneer/**/*.py)",
+      "Bash(ls -lh /c/Users/karel/Documents/Programming/Dungeoneer/dungeoneer/.claude/memory/*.md)"
     ]
   }
 }

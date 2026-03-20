@@ -164,8 +164,9 @@ class AudioManager:
             "heal":        self._to_sound(self._gen_heal()),
             "victory":     self._to_sound(self._gen_victory()),
             "defeat":      self._to_sound(self._gen_defeat()),
-            "heart_du":    self._to_sound(self._gen_heart_du()),
-            "heart_dum":   self._to_sound(self._gen_heart_dum()),
+            "heart_du":      self._to_sound(self._gen_heart_du()),
+            "heart_dum":     self._to_sound(self._gen_heart_dum()),
+            "action_denied": self._to_sound(self._gen_action_denied()),
         }
 
     def _gen_footstep(self) -> np.ndarray:
@@ -291,3 +292,7 @@ class AudioManager:
         # Softer secondary beat — second beat of du-dum (relaxation)
         beat = self._tone(80, 65, vol=0.50, freq_end=50, exp=0.7)
         return beat
+
+    def _gen_action_denied(self) -> np.ndarray:
+        # Short descending buzz — action not permitted
+        return self._tone(220, 90, vol=0.45, freq_end=110, waveform="square", exp=1.0)

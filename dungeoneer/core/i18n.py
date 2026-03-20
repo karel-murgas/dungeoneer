@@ -60,9 +60,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "LANGUAGE",
         "menu.start":                   "Start Run",
         "menu.quit":                    "Quit",
-        "menu.hack_variant":            "HACK VARIANT",
-        "menu.hack.grid":               "Grid",
-        "menu.hack.classic":            "Classic",
         "menu.aim_minigame":            "AIM MINIGAME",
         "menu.aim_minigame_on":         "ON",
         "menu.aim_minigame_off":        "OFF",
@@ -150,11 +147,34 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Close menu / Quit",
 
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "Items",
+        "cheat.section.enemies":        "Enemies",
+        "cheat.section.container":      "Container",
+        "cheat.section.player":         "Player",
+        "cheat.item.ammo_9mm":          "9mm Ammo  ×10",
+        "cheat.item.ammo_rifle":        "Rifle Ammo  ×6",
+        "cheat.item.ammo_shell":        "Shotgun Ammo  ×8",
+        "cheat.spawn_chest":            "Spawn Chest",
+        "cheat.hp.full":                "Set HP → full",
+        "cheat.hp.set1":                "Set HP → 1",
+        "cheat.hp.plus10":              "Heal  +10 HP",
+        "cheat.hp.plus20":              "Heal  +20 HP",
+        "cheat.credits.plus100":        "+100 Credits",
+        "cheat.hint":                   "[↑↓] Navigate   [Enter] Use   [Esc] Close",
+
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABORT RUN",
         "quit_confirm.question":        "Return to main menu?",
         "quit_confirm.confirm":         "[Y / Enter]  Yes",
         "quit_confirm.cancel":          "[N / Esc]   No",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "OVERHEAL WARNING",
+        "overheal_confirm.question":    "Healing may exceed max HP — use anyway?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Use it",
+        "overheal_confirm.cancel":      "[N / Esc]        Cancel",
 
         # --- Exit confirm dialog (main menu) ---
         "exit_confirm.title":           "EXIT GAME",
@@ -192,6 +212,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Corp Guard",
         "entity.drone.name":            "Sec Drone",
+        "entity.crate.name":            "Crate",
+        "entity.corp_vault.name":       "Corp Vault",
 
         # --- HUD ---
         "hud.floor":                    "FLOOR {n}",
@@ -206,9 +228,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ARMOR:",
         "inv.none":                     "\u2014 none \u2014",
         "inv.empty":                    "(empty)",
-        "inv.btn_equip":                "[E] Equip",
-        "inv.btn_use":                  "[U] Use",
-        "inv.btn_drop":                 "[D] Drop",
+        "inv.btn_use":                  "[E] Use",
         "inv.btn_close":                "[I] Close",
 
         # --- Weapon picker ---
@@ -220,9 +240,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Floor {n} \u2014 infiltrating facility.",
         "log.heal_cancel":              "Heal cancelled.",
-        "log.no_exit":                  "No exit here.",
+        "log.no_exit":                  "Nothing to interact with here.",
+        "hint.stair_descend":           "[E] Descend deeper",
         "log.no_heals":                 "No healing items.",
         "log.full_hp":                  "Already at full health.",
+        "log.reload_full":              "Magazine is full.",
+        "log.reload_no_reserves":       "No ammo reserves to reload with.",
+        "log.container_already_open":   "Already looted.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (overheal +{overheal}).  [H/Enter] Confirm",
         "log.hack_success":             "Hacked {container}.{credits}",
         "log.hack_fail":                "Hack failed \u2014 security drone dispatched!",
@@ -251,6 +275,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "Data Core secured!{credits} \u2014 EXTRACTING.",
         "log.container_empty":          "The {name} is empty.{credits}",
         "log.container_open":           "Opened {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "You descend to the next level.",
+        "log.reloaded":                 "Reloaded {item}.",
+        "log.equipped":                 "Equipped {item}.",
+        "log.dropped":                  "Dropped {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restored {n} HP.",
@@ -361,8 +392,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.section.audio":       "AUDIO",
         "settings.section.language":    "LANGUAGE",
         "settings.gameplay.loot":       "Loot",
-        "settings.gameplay.hack":       "Hack",
         "settings.gameplay.aim":        "Aim",
+        "settings.gameplay.heal":       "Healing",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "threshold",
+        "menu.heal.thr.80":             "New to minigame",
+        "menu.heal.thr.90":             "Learning",
+        "menu.heal.thr.100":            "Default",
+        "menu.heal.thr.110":            "Experienced",
+        "menu.heal.thr.120":            "Skilled",
         "settings.audio.master":        "Master",
         "settings.audio.music":         "Music",
         "settings.audio.sfx":           "Effects",
@@ -478,18 +516,26 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.help.2":                  "Press H on the third beat, hold through the gap",
         "heal.help.3":                  "Release H when the second thump should sound",
         "heal.help.4":                  "Perfect timing \u2192 +20%   Miss \u2192 \u221220%",
-        "heal.help.h2":                 "CONTROLS",
+        "heal.help.h2":                 "SCORING",
+        "heal.help.s1":                 "Perfect +20%  |  Great +10%  |  Good \u00b10%",
+        "heal.help.s2":                 "Poor \u221210%  |  Miss \u221220%",
+        "heal.help.s3":                 "Score = sum of press + release timing error",
+        "heal.help.h3":                 "CONTROLS",
         "heal.help.key1":               "[H hold] \u2014 press on beat (contraction)",
         "heal.help.key2":               "[H release] \u2014 release after gap (relaxation)",
         "heal.help.key3":               "[Esc] \u2014 cancel heal",
+        "heal.help.key4":               "[F1] \u2014 toggle this help",
 
         # Heal overlay runtime strings
         "heal.overlay.title":           "Cardiac Rhythm",
         "heal.overlay.watch":           "Watch...",
         "heal.overlay.now":             "NOW!",
+        "heal.overlay.hint":            "[H] press & hold on the 3rd beat",
         "heal.overlay.perfect":         "Perfect!",
+        "heal.overlay.great":           "Great",
         "heal.overlay.good":            "Good",
         "heal.overlay.poor":            "Weak",
+        "heal.overlay.miss":            "Poor",
     },
 
     "cs": {
@@ -506,9 +552,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "JAZYK",
         "menu.start":                   "Spustit b\u011bh",
         "menu.quit":                    "Ukon\u010dit",
-        "menu.hack_variant":            "VARIANTA HACKU",
-        "menu.hack.grid":               "M\u0159\u00ed\u017eka",
-        "menu.hack.classic":            "Klasick\u00fd",
         "menu.aim_minigame":            "M\u00cd\u0158EN\u00cd",
         "menu.aim_minigame_on":         "ZAP",
         "menu.aim_minigame_off":        "VYP",
@@ -596,11 +639,34 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Zav\u0159\u00edt menu / Ukon\u010dit hru",
 
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "P\u0159edm\u011bty",
+        "cheat.section.enemies":        "Nep\u0159\u00e1tel\u00e9",
+        "cheat.section.container":      "Kontejner",
+        "cheat.section.player":         "Hr\u00e1\u010d",
+        "cheat.item.ammo_9mm":          "N\u00e1boje 9mm  \u00d710",
+        "cheat.item.ammo_rifle":        "N\u00e1boje do pu\u0161ky  \u00d76",
+        "cheat.item.ammo_shell":        "Broky  \u00d78",
+        "cheat.spawn_chest":            "Spawn truhla",
+        "cheat.hp.full":                "HP \u2192 plno",
+        "cheat.hp.set1":                "HP \u2192 1",
+        "cheat.hp.plus10":              "L\u00e9\u010dit  +10 HP",
+        "cheat.hp.plus20":              "L\u00e9\u010dit  +20 HP",
+        "cheat.credits.plus100":        "+100 Kredit\u016f",
+        "cheat.hint":                   "[\u2191\u2193] Pohyb   [Enter] Pou\u017e\u00edt   [Esc] Zav\u0159\u00edt",
+
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "P\u0158ERU\u0160IT B\u011aH",
         "quit_confirm.question":        "Vr\u00e1tit se do hlavn\u00edho menu?",
         "quit_confirm.confirm":         "[Y / Enter]  Ano",
         "quit_confirm.cancel":          "[N / Esc]   Ne",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "VAROVÁNÍ: PŘELÉČENÍ",
+        "overheal_confirm.question":    "Léčení přesáhne max HP — použít stejně?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Použít",
+        "overheal_confirm.cancel":      "[N / Esc]        Zrušit",
 
         # --- Exit confirm dialog (main menu) ---
         "exit_confirm.title":           "UKON\u010cIT HRU",
@@ -638,6 +704,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Str\u00e1\u017en\u00fd",
         "entity.drone.name":            "Bezp. dron",
+        "entity.crate.name":            "Bedna",
+        "entity.corp_vault.name":       "Korp. trezor",
 
         # --- HUD ---
         "hud.floor":                    "PATRO {n}",
@@ -652,9 +720,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ZBROJ:",
         "inv.none":                     "\u2014 \u017e\u00e1dn\u00e9 \u2014",
         "inv.empty":                    "(pr\u00e1zdn\u00e9)",
-        "inv.btn_equip":                "[E] Vybavit",
-        "inv.btn_use":                  "[U] Pou\u017e\u00edt",
-        "inv.btn_drop":                 "[D] Zahodit",
+        "inv.btn_use":                  "[E] Pou\u017e\u00edt",
         "inv.btn_close":                "[I] Zav\u0159\u00edt",
 
         # --- Weapon picker ---
@@ -666,9 +732,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Patro {n} \u2014 infiltrace objektu.",
         "log.heal_cancel":              "L\u00e9\u010den\u00ed zru\u0161eno.",
-        "log.no_exit":                  "Zde nen\u00ed v\u00fdchod.",
+        "log.no_exit":                  "Zde není nic, s čím by šlo interagovat.",
+        "hint.stair_descend":           "[E] Sestoupit hlouběji",
         "log.no_heals":                 "\u017d\u00e1dn\u00e9 l\u00e9\u010div\u00e9 p\u0159edm\u011bty.",
         "log.full_hp":                  "Pln\u00e9 \u017eivoty.",
+        "log.reload_full":              "Zásobník je plný.",
+        "log.reload_no_reserves":       "Žádné zásoby nábojů pro přebití.",
+        "log.container_already_open":   "Již vyrabováno.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (p\u0159ehoj. +{overheal}).  [H/Enter] Potvrdit",
         "log.hack_success":             "Hackov\u00e1no: {container}.{credits}",
         "log.hack_fail":                "Hack selhal \u2014 vysl\u00e1n bezpe\u010dnostn\u00ed dron!",
@@ -697,6 +767,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "Datov\u00e9 j\u00e1dro zaji\u0161t\u011bno!{credits} \u2014 EXTRAKCE.",
         "log.container_empty":          "{name}: pr\u00e1zdn\u00e9.{credits}",
         "log.container_open":           "Otev\u0159eno {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "Sestupuješ do dalšího patra.",
+        "log.reloaded":                 "Přebito: {item}.",
+        "log.equipped":                 "Vybaveno: {item}.",
+        "log.dropped":                  "Zahozeno: {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Obnoveno {n} HP.",
@@ -807,8 +884,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.section.audio":       "ZVUK",
         "settings.section.language":    "JAZYK",
         "settings.gameplay.loot":       "Loot",
-        "settings.gameplay.hack":       "Hack",
         "settings.gameplay.aim":        "M\u00ed\u0159en\u00ed",
+        "settings.gameplay.heal":       "L\u00e9\u010den\u00ed",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "pr\u00e1h",
+        "menu.heal.thr.80":             "Za\u010d\u00e1te\u010dn\u00edk",
+        "menu.heal.thr.90":             "U\u010d\u00edm se",
+        "menu.heal.thr.100":            "V\u00fdchoz\u00ed",
+        "menu.heal.thr.110":            "Zku\u0161en\u00fd",
+        "menu.heal.thr.120":            "Zdatn\u00fd",
         "settings.audio.master":        "Hlavn\u00ed",
         "settings.audio.music":         "Hudba",
         "settings.audio.sfx":           "Efekty",
@@ -924,18 +1008,26 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.help.2":                  "Stiskni H na t\u0159et\u00edm tepu, dr\u017e p\u0159es mezeru",
         "heal.help.3":                  "Uvolni H kdy\u017e by m\u011bl zaznít druh\u00fd tep",
         "heal.help.4":                  "Perfektn\u00ed \u2192 +20%   Mimo \u2192 \u221220%",
-        "heal.help.h2":                 "OVLÁD\u00c1N\u00cd",
+        "heal.help.h2":                 "HODNOCEN\u00cd",
+        "heal.help.s1":                 "Perfektn\u00ed +20%  |  Skvěle +10%  |  Dob\u0159e \u00b10%",
+        "heal.help.s2":                 "Slab\u011b \u221210%  |  \u0160patn\u011b \u221220%",
+        "heal.help.s3":                 "Sk\u00f3re = sou\u010det odchylek stisku + uvoln\u011bn\u00ed",
+        "heal.help.h3":                 "OVLÁD\u00c1N\u00cd",
         "heal.help.key1":               "[H dr\u017e] \u2014 stisk na tep (stah)",
         "heal.help.key2":               "[uvolni H] \u2014 uvolni po meze\u0159e (rozta\u017een\u00ed)",
         "heal.help.key3":               "[Esc] \u2014 zru\u0161it l\u00e9\u010den\u00ed",
+        "heal.help.key4":               "[F1] \u2014 zobrazit/skr\u00fdt n\u00e1pov\u011bdu",
 
         # Heal overlay runtime strings
         "heal.overlay.title":           "Srde\u010dn\u00ed rytmus",
         "heal.overlay.watch":           "Sleduj...",
         "heal.overlay.now":             "TE\u010e!",
+        "heal.overlay.hint":            "[H] stiskni a dr\u017e na 3. tep",
         "heal.overlay.perfect":         "Perfektn\u00ed!",
+        "heal.overlay.great":           "Skvěle",
         "heal.overlay.good":            "Dob\u0159e",
         "heal.overlay.poor":            "Slab\u011b",
+        "heal.overlay.miss":            "Špatně",
     },
 
     "es": {
@@ -952,9 +1044,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "menu.language":                "IDIOMA",
         "menu.start":                   "Iniciar partida",
         "menu.quit":                    "Salir",
-        "menu.hack_variant":            "VARIANTE HACK",
-        "menu.hack.grid":               "Cuadr\u00edcula",
-        "menu.hack.classic":            "Cl\u00e1sico",
         "menu.aim_minigame":            "APUNTADO",
         "menu.aim_minigame_on":         "S\u00cd",
         "menu.aim_minigame_off":        "NO",
@@ -1042,11 +1131,34 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Cerrar men\u00fa / Salir",
 
+        # --- Cheat / debug menu (F11) ---
+        "cheat.title":                  "CHEAT MENU  [F11]",
+        "cheat.section.items":          "Objetos",
+        "cheat.section.enemies":        "Enemigos",
+        "cheat.section.container":      "Contenedor",
+        "cheat.section.player":         "Jugador",
+        "cheat.item.ammo_9mm":          "Muni\u00f3n 9mm  \u00d710",
+        "cheat.item.ammo_rifle":        "Muni\u00f3n Rifle  \u00d76",
+        "cheat.item.ammo_shell":        "Cartuchos  \u00d78",
+        "cheat.spawn_chest":            "Generar Ba\u00fal",
+        "cheat.hp.full":                "HP \u2192 completo",
+        "cheat.hp.set1":                "HP \u2192 1",
+        "cheat.hp.plus10":              "Curar  +10 HP",
+        "cheat.hp.plus20":              "Curar  +20 HP",
+        "cheat.credits.plus100":        "+100 Cr\u00e9ditos",
+        "cheat.hint":                   "[\u2191\u2193] Navegar   [Enter] Usar   [Esc] Cerrar",
+
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABANDONAR PARTIDA",
         "quit_confirm.question":        "\u00bfVolver al men\u00fa principal?",
         "quit_confirm.confirm":         "[Y / Enter]  S\u00ed",
         "quit_confirm.cancel":          "[N / Esc]   No",
+
+        # --- Overheal confirm dialog ---
+        "overheal_confirm.title":       "AVISO: SOBREC\u00dara",
+        "overheal_confirm.question":    "La curación superará el HP máx. — ¿usar igual?",
+        "overheal_confirm.confirm":     "[H / Y / Enter]  Usar",
+        "overheal_confirm.cancel":      "[N / Esc]        Cancelar",
 
         # --- Exit confirm dialog (main menu) ---
         "exit_confirm.title":           "SALIR DEL JUEGO",
@@ -1084,6 +1196,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Guardia Corp.",
         "entity.drone.name":            "Dron Seg.",
+        "entity.crate.name":            "Cajón",
+        "entity.corp_vault.name":       "Cámara Corp.",
 
         # --- HUD ---
         "hud.floor":                    "PLANTA {n}",
@@ -1098,9 +1212,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "inv.armor_label":              "ARMADURA:",
         "inv.none":                     "\u2014 ninguno \u2014",
         "inv.empty":                    "(vac\u00edo)",
-        "inv.btn_equip":                "[E] Equipar",
-        "inv.btn_use":                  "[U] Usar",
-        "inv.btn_drop":                 "[D] Tirar",
+        "inv.btn_use":                  "[E] Usar",
         "inv.btn_close":                "[I] Cerrar",
 
         # --- Weapon picker ---
@@ -1112,9 +1224,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         # --- Game log messages ---
         "log.floor_enter":              "Planta {n} \u2014 infiltrando el edificio.",
         "log.heal_cancel":              "Curaci\u00f3n cancelada.",
-        "log.no_exit":                  "No hay salida aqu\u00ed.",
+        "log.no_exit":                  "No hay nada con lo que interactuar aquí.",
+        "hint.stair_descend":           "[E] Descender más profundo",
         "log.no_heals":                 "No hay objetos de curaci\u00f3n.",
         "log.full_hp":                  "Ya tienes salud completa.",
+        "log.reload_full":              "El cargador está lleno.",
+        "log.reload_no_reserves":       "Sin reservas de munición para recargar.",
+        "log.container_already_open":   "Ya saqueado.",
         "log.heal_confirm":             "{item}{count}: +{hp} HP (exceso +{overheal}).  [H/Enter] Confirmar",
         "log.hack_success":             "Hackeado: {container}.{credits}",
         "log.hack_fail":                "Hackeo fallido \u2014 \u00a1dr\u00f3n de seguridad enviado!",
@@ -1143,6 +1259,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.container_secured":        "\u00a1N\u00facleo asegurado!{credits} \u2014 EXTRAYENDO.",
         "log.container_empty":          "{name}: vac\u00edo.{credits}",
         "log.container_open":           "Abierto {name}: {items}.{credits}",
+
+        # --- Inventory / equipment actions ---
+        "log.descend":                  "Desciendes al siguiente nivel.",
+        "log.reloaded":                 "Recargado: {item}.",
+        "log.equipped":                 "Equipado: {item}.",
+        "log.dropped":                  "Tirado: {item}.",
+        "log.credits_drop":             "+\u00a5{n}",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restaurados {n} HP.",
@@ -1253,8 +1376,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.section.audio":       "AUDIO",
         "settings.section.language":    "IDIOMA",
         "settings.gameplay.loot":       "Saqueo",
-        "settings.gameplay.hack":       "Hack",
         "settings.gameplay.aim":        "Apuntado",
+        "settings.gameplay.heal":       "Curaci\u00f3n",
+        "settings.gameplay.heal_threshold": "Quickheal",
+        "settings.gameplay.heal_threshold_suffix": "umbral",
+        "menu.heal.thr.80":             "Principiante",
+        "menu.heal.thr.90":             "Aprendiendo",
+        "menu.heal.thr.100":            "Equilibrado",
+        "menu.heal.thr.110":            "Experimentado",
+        "menu.heal.thr.120":            "Experto",
         "settings.audio.master":        "Principal",
         "settings.audio.music":         "M\u00fasica",
         "settings.audio.sfx":           "Efectos",
@@ -1370,18 +1500,26 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.help.2":                  "Pulsa H en el tercer latido, mant\u00e9n durante la pausa",
         "heal.help.3":                  "Suelta H cuando deber\u00eda sonar el segundo golpe",
         "heal.help.4":                  "Perfecto \u2192 +20%   Fallo \u2192 \u221220%",
-        "heal.help.h2":                 "CONTROLES",
+        "heal.help.h2":                 "PUNTUACI\u00d3N",
+        "heal.help.s1":                 "Perfecto +20%  |  Excelente +10%  |  Bien \u00b10%",
+        "heal.help.s2":                 "D\u00e9bil \u221210%  |  Pobre \u221220%",
+        "heal.help.s3":                 "Puntos = suma de error de pulsar + soltar",
+        "heal.help.h3":                 "CONTROLES",
         "heal.help.key1":               "[H mant\u00e9n] \u2014 pulsar en el latido (contracci\u00f3n)",
         "heal.help.key2":               "[soltar H] \u2014 soltar tras la pausa (relajaci\u00f3n)",
         "heal.help.key3":               "[Esc] \u2014 cancelar curaci\u00f3n",
+        "heal.help.key4":               "[F1] \u2014 mostrar/ocultar esta ayuda",
 
         # Heal overlay runtime strings
         "heal.overlay.title":           "Ritmo card\u00edaco",
         "heal.overlay.watch":           "Observa...",
         "heal.overlay.now":             "\u00a1AHORA!",
+        "heal.overlay.hint":            "[H] pulsa y mant\u00e9n en el 3er latido",
         "heal.overlay.perfect":         "\u00a1Perfecto!",
+        "heal.overlay.great":           "Excelente",
         "heal.overlay.good":            "Bien",
         "heal.overlay.poor":            "D\u00e9bil",
+        "heal.overlay.miss":            "Pobre",
     },
 }
 
