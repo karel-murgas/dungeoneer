@@ -62,3 +62,13 @@ AIM_RADIUS_PX:      int   = 64     # arc radius in pixels (~2 tiles)
 # sigma = 1.0 / enemy.aim_skill   (higher skill = lower sigma = tighter grouping)
 AIM_SIM_MEAN_BASE:  float = 0.70   # mean accuracy at distance 0
 AIM_SIM_MEAN_SLOPE: float = 0.05   # mean accuracy reduction per tile of distance
+
+# Healing rhythm minigame
+HEAL_MIN_CYCLE_MS:    int   = 550   # fastest heartbeat (ms between beat starts)
+HEAL_MAX_CYCLE_MS:    int   = 950   # slowest heartbeat
+HEAL_MIN_DU_GAP_MS:   int   = 140   # shortest DU→DUM gap (ms)
+HEAL_MAX_DU_GAP_MS:   int   = 280   # longest DU→DUM gap (ms)
+HEAL_BEAT_FLASH_MS:   int   = 110   # visual flash duration (ms)
+HEAL_ACCURACY_WINDOW: float = 0.25  # ±window in seconds (full accuracy at 0, none at ±window/2)
+HEAL_RESULT_PAUSE:    float = 0.9   # seconds to show result before closing
+HEAL_RANGE:           float = 0.20  # ±20% modifier range (0.8× to 1.2× base)

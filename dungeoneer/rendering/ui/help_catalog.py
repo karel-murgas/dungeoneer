@@ -3,7 +3,7 @@
 Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 ◄ ► arrow keys or by clicking tab labels.  Close with Esc / Enter.
 
-Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING
+Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING | HEALING
 
 Each tab can have an illustration drawn at the top of the content area:
   - Exploration: sprite icons for container / ammo / stairs / vault
@@ -57,7 +57,7 @@ _LABEL_CRIT     = (240, 210, 0)
 _NODE_ENTRY  = (0,   190, 210)
 _NODE_CACHE  = (0,   160,  60)
 _NODE_EMPTY  = (38,   60,  76)
-_NODE_ICE    = (80,   58,  18)
+_NODE_ICE    = (200,  40,  40)
 _NODE_BORDER = (55,   90, 110)
 
 _PAD    = 20
@@ -121,6 +121,7 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.shoot.3.3",
             "help_catalog.shoot.3.4",
             "help_catalog.shoot.3.5",
+            "help_catalog.shoot.3.6",
         ]),
     ]),
     ("help_catalog.tab.aiming", [
@@ -165,11 +166,31 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.hack.4.3",
         ]),
     ]),
+    ("help_catalog.tab.healing", [
+        ("heal.help.h1", [
+            "heal.help.1",
+            "heal.help.2",
+            "heal.help.3",
+            "heal.help.4",
+        ]),
+        ("heal.help.h2", [
+            "heal.help.s1",
+            "heal.help.s2",
+            "heal.help.s3",
+        ]),
+        ("heal.help.h3", [
+            "heal.help.key1",
+            "heal.help.key2",
+            "heal.help.key3",
+            "heal.help.key4",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
 _TAB_AIMING      = 3
 _TAB_HACKING     = 4
+_TAB_HEALING     = 5
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -197,10 +218,10 @@ def _arc_polygon(cx: int, cy: int, r_out: float, r_in: float,
     pts: list[tuple[int, int]] = []
     for i in range(steps + 1):
         a = a0 + (a1 - a0) * i / steps
-        pts.append((int(cx + r_out * math.cos(a)), int(cy + r_out * math.sin(a))))
+        pts.append((round(cx + r_out * math.cos(a)), round(cy + r_out * math.sin(a))))
     for i in range(steps, -1, -1):
         a = a0 + (a1 - a0) * i / steps
-        pts.append((int(cx + r_in * math.cos(a)), int(cy + r_in * math.sin(a))))
+        pts.append((round(cx + r_in * math.cos(a)), round(cy + r_in * math.sin(a))))
     return pts
 
 
@@ -524,8 +545,8 @@ class HelpCatalogOverlay:
         # 4. Needle — in left hit zone
         needle_frac = HIT_FRAC + 0.07
         needle_a    = a0 + needle_frac * total
-        nx = int(ax + r_out * math.cos(needle_a))
-        ny = int(ay + r_out * math.sin(needle_a))
+        nx = round(ax + r_out * math.cos(needle_a))
+        ny = round(ay + r_out * math.sin(needle_a))
         pygame.draw.line(screen, _ARC_NEEDLE, (ax, ay), (nx, ny), 2)
         pygame.draw.circle(screen, _ARC_NEEDLE, (nx, ny), 4)
         pygame.draw.circle(screen, (80, 80, 120), (nx, ny), 3)
@@ -552,11 +573,11 @@ class HelpCatalogOverlay:
     def _aim_label(self, screen: pygame.Surface,
                     ax: int, ay: int, angle: float,
                     r: float, text: str, col: tuple) -> None:
-        lx = int(ax + r * math.cos(angle))
-        ly = int(ay + r * math.sin(angle))
+        lx = round(ax + r * math.cos(angle))
+        ly = round(ay + r * math.sin(angle))
         # Small leader dot at arc surface
-        dot_x = int(ax + (r - 12) * math.cos(angle))
-        dot_y = int(ay + (r - 12) * math.sin(angle))
+        dot_x = round(ax + (r - 12) * math.cos(angle))
+        dot_y = round(ay + (r - 12) * math.sin(angle))
         pygame.draw.circle(screen, col, (dot_x, dot_y), 2)
         surf = self._font_ill.render(text, True, col)
         screen.blit(surf, (lx - surf.get_width() // 2,
@@ -580,7 +601,7 @@ class HelpCatalogOverlay:
             (_NODE_ENTRY, (0, 80, 100),  "\u25ba", t("help_catalog.hack.node.entry")),
             (_NODE_CACHE, (0, 55, 22),   "\u25aa", t("help_catalog.hack.node.cache")),
             (_NODE_EMPTY, (28, 45, 58),  "",       t("help_catalog.hack.node.empty")),
-            (_NODE_ICE,   (38, 28, 8),   "?",      t("help_catalog.hack.node.ice")),
+            (_NODE_ICE,   (80, 10, 10),  "?",      t("help_catalog.hack.node.ice")),
         ]
         loot_items = [
             ("item_hack_credits",    t("hack.loot.credits")),

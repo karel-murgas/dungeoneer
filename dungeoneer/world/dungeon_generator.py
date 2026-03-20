@@ -137,11 +137,13 @@ class DungeonGenerator:
                     room_tile_set.add((rx, ry))
 
         # Containers in random rooms (any room, including start/end)
-        # Avoid doorway tiles so the player can always pass through entrances.
+        # Avoid doorway tiles, stairs, and already-placed chests.
         container_rooms = self._rng.choices(rooms, k=containers)
+        blocked: set[tuple[int, int]] = {(sx, sy)}
         for room in container_rooms:
-            cx, cy = self._safe_container_pos(room, room_tile_set, dungeon_map)
+            cx, cy = self._safe_container_pos(room, room_tile_set, dungeon_map, blocked)
             spawns.append(SpawnDesc("container", cx, cy))
+            blocked.add((cx, cy))
 
         return GenerationResult(dungeon_map, rooms, spawns, (sx, sy))
 
@@ -259,18 +261,30 @@ class DungeonGenerator:
         room: Room,
         room_tile_set: set[tuple[int, int]],
         dungeon_map: DungeonMap,
+        blocked: set[tuple[int, int]] | None = None,
         max_tries: int = 30,
     ) -> tuple[int, int]:
-        """Return an inner tile not adjacent to a corridor entrance.
+        """Return an inner tile not adjacent to a corridor entrance and not in *blocked*.
 
-        Falls back to the room centre if every sampled tile is an entrance tile
+        Falls back to the room centre if every sampled tile is rejected
         (can happen in very small rooms with multiple corridors).
         """
+        if blocked is None:
+            blocked = set()
         for _ in range(max_tries):
             x, y = room.random_inner_point()
-            if not self._adjacent_to_corridor(x, y, room_tile_set, dungeon_map):
+            if (x, y) not in blocked and not self._adjacent_to_corridor(x, y, room_tile_set, dungeon_map):
                 return x, y
-        return room.cx, room.cy
+        # Fallback: pick room centre only if it isn't blocked
+        cx, cy = room.cx, room.cy
+        if (cx, cy) not in blocked:
+            return cx, cy
+        # Last resort: first unblocked inner tile
+        for ry in range(room.inner_y, room.inner_y + room.inner_h):
+            for rx in range(room.inner_x, room.inner_x + room.inner_w):
+                if (rx, ry) not in blocked:
+                    return rx, ry
+        return cx, cy
 
     def _adjacent_to_corridor(
         self,

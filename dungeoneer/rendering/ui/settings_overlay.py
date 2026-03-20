@@ -43,8 +43,10 @@ _BTN_H    = 30
 _BTN_W_SM = 76
 _BTN_W_MD = 110
 _ROW_H    = 36    # height of a labeled toggle row
+_HINT_H   = 16    # height of the small hint line below threshold slider
 _LBL_W    = 96    # width of the row label column
 _VOL_STEP = 0.1
+_THR_VALS = [80, 90, 100, 110, 120]
 
 
 class SettingsOverlay:
@@ -90,22 +92,26 @@ class SettingsOverlay:
         self._btn_rects = {}
 
         # --- Compute panel height ---
-        # title + sep + DIFFICULTY(sec+row) + sep + GAMEPLAY(sec+3rows) +
+        # title + sep + DIFFICULTY(sec+row) + sep + GAMEPLAY(sec+N rows) +
         # sep + LANGUAGE(sec+row) + sep + AUDIO(sec+3rows) + footer + pads
         sec_h  = self._font_sec.get_height() + 4
         rows_diff = 1
-        rows_game = 2 if not s._use_minigame else 3
+        rows_game = (
+            2                                    # loot + aim
+            + 1                                  # heal minigame toggle
+        )
+        thr_extra = (_ROW_H + _HINT_H) if s._use_heal_minigame else 0
         rows_lang = 1
         rows_audio = 3
         inner_h = (
             30 + 8           # title + gap
-            + sec_h + rows_diff * _ROW_H + 10   # DIFFICULTY
+            + sec_h + rows_diff * _ROW_H + 10            # DIFFICULTY
             + 1 + 8          # separator
-            + sec_h + rows_game * _ROW_H + 10   # GAMEPLAY
+            + sec_h + rows_game * _ROW_H + thr_extra + 10  # GAMEPLAY
             + 1 + 8          # separator
-            + sec_h + rows_lang * _ROW_H + 10   # LANGUAGE
+            + sec_h + rows_lang * _ROW_H + 10            # LANGUAGE
             + 1 + 8          # separator
-            + sec_h + rows_audio * _ROW_H + 8   # AUDIO
+            + sec_h + rows_audio * _ROW_H + 8            # AUDIO
             + 22             # footer
         )
         ph = inner_h + _PAD * 2
@@ -159,17 +165,21 @@ class SettingsOverlay:
              ("random",   t("menu.loot.random"),   not s._use_minigame)],
             btn_w=_BTN_W_MD)
         cy += _ROW_H
-        if s._use_minigame:
-            self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.hack"),
-                [("grid",    t("menu.hack.grid"),    s._hack_variant == "grid"),
-                 ("classic", t("menu.hack.classic"), s._hack_variant == "classic")],
-                btn_w=_BTN_W_MD)
-            cy += _ROW_H
         self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.aim"),
             [("aim_on",  t("menu.aim_minigame_on"),  s._use_aim_minigame),
              ("aim_off", t("menu.aim_minigame_off"), not s._use_aim_minigame)],
             btn_w=_BTN_W_SM)
-        cy += _ROW_H + 8
+        cy += _ROW_H
+        self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.heal"),
+            [("heal_on",  t("menu.aim_minigame_on"),  s._use_heal_minigame),
+             ("heal_off", t("menu.aim_minigame_off"), not s._use_heal_minigame)],
+            btn_w=_BTN_W_SM)
+        cy += _ROW_H
+        if s._use_heal_minigame:
+            cy = self._draw_threshold_row(screen, ox, cy, pw,
+                                          t("settings.gameplay.heal_threshold"),
+                                          s._heal_threshold_pct)
+        cy += 8
         self._draw_sep(screen, ox, cy, pw)
         cy += 10
 
@@ -290,6 +300,62 @@ class SettingsOverlay:
 
         return cy + _ROW_H
 
+    def _draw_threshold_row(self, screen: pygame.Surface, ox: int, cy: int,
+                             pw: int, label: str, value: int) -> int:
+        """Draw  Label  [◄]  val%  [►]  + a hint line below. Returns new cy."""
+        bx = ox + _PAD
+        by = cy + (_ROW_H - _BTN_H) // 2
+
+        lbl_surf = self._font_lbl.render(label, True, _COL_LBL)
+        screen.blit(lbl_surf, (bx, by + (_BTN_H - lbl_surf.get_height()) // 2))
+        bx += _LBL_W + 8
+
+        arrow_w = 28
+        val_w   = 52
+
+        # [◄]
+        dn_rect = pygame.Rect(bx, by, arrow_w, _BTN_H)
+        hov_dn  = self._hovered == "heal_thr_dn"
+        _bg  = _BTN_HOV if hov_dn else _BTN_NRM
+        _brd = _COL_BORDER_HOV if hov_dn else _COL_BORDER_NRM
+        pygame.draw.rect(screen, _bg,  dn_rect, border_radius=4)
+        pygame.draw.rect(screen, _brd, dn_rect, 2, border_radius=4)
+        arr = self._font_btn.render("\u25c4", True, _COL_BTN_NRM)
+        screen.blit(arr, (dn_rect.centerx - arr.get_width() // 2,
+                          dn_rect.centery - arr.get_height() // 2))
+        self._btn_rects["heal_thr_dn"] = dn_rect
+        bx += arrow_w + 4
+
+        # value %
+        pct_surf = self._font_vol.render(f"{value}%", True, _COL_BTN_SEL)
+        screen.blit(pct_surf, (bx + (val_w - pct_surf.get_width()) // 2,
+                                by + (_BTN_H - pct_surf.get_height()) // 2))
+        bx += val_w + 4
+
+        # [►]
+        up_rect = pygame.Rect(bx, by, arrow_w, _BTN_H)
+        hov_up  = self._hovered == "heal_thr_up"
+        _bg2  = _BTN_HOV if hov_up else _BTN_NRM
+        _brd2 = _COL_BORDER_HOV if hov_up else _COL_BORDER_NRM
+        pygame.draw.rect(screen, _bg2,  up_rect, border_radius=4)
+        pygame.draw.rect(screen, _brd2, up_rect, 2, border_radius=4)
+        arr2 = self._font_btn.render("\u25ba", True, _COL_BTN_NRM)
+        screen.blit(arr2, (up_rect.centerx - arr2.get_width() // 2,
+                           up_rect.centery - arr2.get_height() // 2))
+        self._btn_rects["heal_thr_up"] = up_rect
+        bx += arrow_w + 8
+
+        # suffix "threshold" after ►
+        sfx_surf = self._font_lbl.render(t("settings.gameplay.heal_threshold_suffix"), True, _COL_LBL)
+        screen.blit(sfx_surf, (bx, by + (_BTN_H - sfx_surf.get_height()) // 2))
+
+        # hint line below the slider
+        hint_surf = self._font_foot.render(t(f"menu.heal.thr.{value}"), True, _COL_LBL)
+        hint_x = ox + _PAD + _LBL_W + 8 + arrow_w + 4 + (val_w - hint_surf.get_width()) // 2
+        screen.blit(hint_surf, (hint_x, cy + _ROW_H))
+
+        return cy + _ROW_H + _HINT_H
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
@@ -307,10 +373,16 @@ class SettingsOverlay:
         elif hit == "hard":      s._difficulty = HARD
         elif hit == "minigame":  s._use_minigame = True
         elif hit == "random":    s._use_minigame = False
-        elif hit == "grid":      s._hack_variant = "grid"
-        elif hit == "classic":   s._hack_variant = "classic"
         elif hit == "aim_on":    s._use_aim_minigame = True
         elif hit == "aim_off":   s._use_aim_minigame = False
+        elif hit == "heal_on":   s._use_heal_minigame = True
+        elif hit == "heal_off":  s._use_heal_minigame = False
+        elif hit == "heal_thr_dn":
+            idx = _THR_VALS.index(s._heal_threshold_pct) if s._heal_threshold_pct in _THR_VALS else 2
+            s._heal_threshold_pct = _THR_VALS[max(0, idx - 1)]
+        elif hit == "heal_thr_up":
+            idx = _THR_VALS.index(s._heal_threshold_pct) if s._heal_threshold_pct in _THR_VALS else 2
+            s._heal_threshold_pct = _THR_VALS[min(len(_THR_VALS) - 1, idx + 1)]
         elif hit == "en":        s._set_language("en")
         elif hit == "cs":        s._set_language("cs")
         elif hit == "es":        s._set_language("es")

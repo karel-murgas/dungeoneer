@@ -131,5 +131,5 @@ class EntityRenderer:
         pygame.draw.rect(screen, (60, 20, 20), (sx + 2, sy - 6, bar_w, bar_h))
         fill_col = settings.COL_HP_FULL if ratio > 0.4 else settings.COL_HP_LOW
         pygame.draw.rect(
-            screen, fill_col, (sx + 2, sy - 6, int(bar_w * ratio), bar_h)
+            screen, fill_col, (sx + 2, sy - 6, round(bar_w * ratio), bar_h)
         )

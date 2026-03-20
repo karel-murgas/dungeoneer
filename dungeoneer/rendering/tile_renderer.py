@@ -200,7 +200,7 @@ def _make_shadow(ts: int, horizontal: bool) -> pygame.Surface:
     surf = pygame.Surface((ts, ts), pygame.SRCALPHA)
     depth = 10
     for i in range(depth):
-        alpha = int(85 * (1 - i / depth))
+        alpha = round(85 * (1 - i / depth))
         if horizontal:
             surf.fill((0, 0, 0, alpha), (0, i, ts, 1))
         else:

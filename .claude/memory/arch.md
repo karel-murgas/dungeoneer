@@ -77,8 +77,9 @@ dungeoneer/
 │       ├── help_screen.py — HelpScreen (F1): localised key-binding overlay
 │       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
+│       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking)
+│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
@@ -93,14 +94,14 @@ dungeoneer/
 │   └── game_over_scene.py — GameOverScene: victory/defeat screen; "Main Menu [R]" → MainMenuScene
 │
 ├── minigame/
-│   ├── hack_scene.py        — HackScene(Scene): classic node-graph minigame
-│   ├── hack_generator.py    — generate_hack_map(params) → HackMap; HackParams.for_difficulty()
-│   ├── hack_node.py         — HackNode, HackMap, NodeType, LootKind (incl. ARMOR, MYSTERY), SecurityKind enums
+│   ├── hack_node.py         — LootKind (incl. ARMOR, MYSTERY), SecurityKind enums (shared)
 │   ├── hack_audio.py        — HackAudio: minigame-specific sound effects
-│   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) variant (~1232 lines)
+│   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) hacking minigame (only variant)
 │   ├── hack_grid_generator.py — generate_grid_map(params) → HackGridMap; HackGridParams.for_difficulty()
 │   ├── hack_grid_map.py     — HackGridMap, GridCell, GridCellType; physical 2× grid model
-│   └── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
+│   ├── hack_common.py       — shared colours (neon palette), draw helpers (corner bracket, glow circle), make_loot_item()
+│   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
+│   └── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
 │
 ├── cyberware/           — (stub, not integrated)
 ├── skills/              — (stub, empty)

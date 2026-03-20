@@ -26,7 +26,6 @@ class GameOverScene(Scene):
         self, app: "GameApp", *, victory: bool, floor_depth: int,
         difficulty: Difficulty | None = None,
         use_minigame: bool = True,
-        hack_variant: str = "grid",
         use_aim_minigame: bool = True,
         credits_earned: int = 0,
         audio=None,
@@ -36,7 +35,6 @@ class GameOverScene(Scene):
         self.floor_depth         = floor_depth
         self._difficulty         = difficulty
         self._use_minigame       = use_minigame
-        self._hack_variant       = hack_variant
         self._use_aim_minigame   = use_aim_minigame
         self._credits_earned  = credits_earned
         self._audio           = audio
@@ -140,7 +138,6 @@ class GameOverScene(Scene):
                 self.app,
                 difficulty=self._difficulty if self._difficulty is not None else NORMAL,
                 use_minigame=self._use_minigame,
-                hack_variant=self._hack_variant,
                 use_aim_minigame=self._use_aim_minigame,
                 language=get_language(),
             )
