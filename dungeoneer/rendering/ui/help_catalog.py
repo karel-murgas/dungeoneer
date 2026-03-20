@@ -415,6 +415,8 @@ class HelpCatalogOverlay:
             return self._draw_aim_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HACKING:
             return self._draw_hack_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_HEALING:
+            return self._draw_heal_illustration(screen, ox, cy, pw)
         return 0
 
     # ------------------------------------------------------------------
@@ -673,6 +675,66 @@ class HelpCatalogOverlay:
                          loot_y + SPR_SIZE + 2))
 
         return panel_h
+
+    # ------------------------------------------------------------------
+    # Healing illustration — EKG heartbeat waveform
+    # ------------------------------------------------------------------
+
+    def _draw_heal_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        IH = 90
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, IH)
+        pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        base_y = cy + IH // 2 + 4
+        font_s = self._font_ill
+
+        def _waveform(sx: int) -> tuple[list[tuple[int, int]], int]:
+            pts: list[tuple[int, int]] = []
+            x = sx
+            for _ in range(8):
+                pts.append((x, base_y)); x += 3
+            pts += [(x, base_y), (x+3, base_y-9), (x+6, base_y)]   # du
+            x += 9
+            pts += [
+                (x, base_y), (x+3, base_y+6), (x+5, base_y-22),
+                (x+8, base_y+6), (x+11, base_y),
+            ]
+            x += 14
+            for _ in range(4):
+                pts.append((x, base_y)); x += 3
+            return pts, x
+
+        pts1, x1 = _waveform(ox + _PAD + 10)
+        if len(pts1) >= 2:
+            pygame.draw.lines(screen, (0, 130, 60), False, pts1, 2)
+        pts2, x2 = _waveform(x1)
+        if len(pts2) >= 2:
+            pygame.draw.lines(screen, (0, 160, 70), False, pts2, 2)
+
+        # Third beat — highlighted, player presses H here
+        du3  = [(x2, base_y), (x2+3, base_y-9), (x2+6, base_y)]
+        dum3_b = [(x2+6, base_y), (x2+9, base_y+6), (x2+11, base_y-22)]
+        mark   = (x2+11, base_y-22)
+        dum3_a = [(x2+11, base_y-22), (x2+14, base_y+6), (x2+17, base_y)]
+        for pts in (du3, dum3_b, dum3_a):
+            if len(pts) >= 2:
+                pygame.draw.lines(screen, (0, 210, 90), False, pts, 2)
+        pygame.draw.circle(screen, (240, 200, 80), mark, 5)
+        pygame.draw.line(screen, (240, 200, 80),
+                         (mark[0], base_y - 30), (mark[0], base_y + 12), 1)
+
+        # [H] label below the spike
+        h_surf = self._font_sec.render("[H]", True, (0, 220, 180))
+        screen.blit(h_surf, (mark[0] - h_surf.get_width() // 2, base_y + 14))
+
+        # Beat labels: "1" "2" "3"
+        for i, bx in enumerate([ox + _PAD + 30, x1 + 20, x2 + 20]):
+            lbl = font_s.render(str(i + 1), True, _COL_DIM)
+            screen.blit(lbl, (bx, cy + 6))
+
+        return IH
 
     # ------------------------------------------------------------------
     # Helpers

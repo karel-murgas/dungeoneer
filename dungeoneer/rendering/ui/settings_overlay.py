@@ -99,6 +99,7 @@ class SettingsOverlay:
         rows_game = (
             2                                    # loot + aim
             + 1                                  # heal minigame toggle
+            + 1                                  # tutorial toggle
         )
         thr_extra = (_ROW_H + _HINT_H) if s._use_heal_minigame else 0
         rows_lang = 1
@@ -173,6 +174,11 @@ class SettingsOverlay:
         self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.heal"),
             [("heal_on",  t("menu.aim_minigame_on"),  s._use_heal_minigame),
              ("heal_off", t("menu.aim_minigame_off"), not s._use_heal_minigame)],
+            btn_w=_BTN_W_SM)
+        cy += _ROW_H
+        self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.tutorial"),
+            [("tutorial_on",  t("menu.tutorial_on"),  s._use_tutorial),
+             ("tutorial_off", t("menu.tutorial_off"), not s._use_tutorial)],
             btn_w=_BTN_W_SM)
         cy += _ROW_H
         if s._use_heal_minigame:
@@ -375,8 +381,10 @@ class SettingsOverlay:
         elif hit == "random":    s._use_minigame = False
         elif hit == "aim_on":    s._use_aim_minigame = True
         elif hit == "aim_off":   s._use_aim_minigame = False
-        elif hit == "heal_on":   s._use_heal_minigame = True
-        elif hit == "heal_off":  s._use_heal_minigame = False
+        elif hit == "heal_on":        s._use_heal_minigame = True
+        elif hit == "heal_off":       s._use_heal_minigame = False
+        elif hit == "tutorial_on":    s._use_tutorial = True
+        elif hit == "tutorial_off":   s._use_tutorial = False
         elif hit == "heal_thr_dn":
             idx = _THR_VALS.index(s._heal_threshold_pct) if s._heal_threshold_pct in _THR_VALS else 2
             s._heal_threshold_pct = _THR_VALS[max(0, idx - 1)]

@@ -41,6 +41,7 @@ from dungeoneer.rendering.ui.help_screen import HelpScreen
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
+from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
 from dungeoneer.audio.audio_manager import AudioManager
 from dungeoneer.audio.music_manager import MusicManager
 
@@ -59,6 +60,7 @@ class GameScene(Scene):
         use_aim_minigame: bool = True,
         use_heal_minigame: bool = True,
         heal_threshold_pct: int = 100,
+        use_tutorial: bool = False,
     ) -> None:
         super().__init__(app)
         self.difficulty          = difficulty
@@ -76,7 +78,9 @@ class GameScene(Scene):
         self.help_screen    = HelpScreen()
         self.quit_confirm     = QuitConfirmDialog()
         self.overheal_confirm = QuitConfirmDialog(key_prefix="overheal_confirm")
-        self.cheat_menu     = CheatMenuOverlay()
+        self.cheat_menu       = CheatMenuOverlay()
+        self.tutorial_manager = TutorialManager(enabled=use_tutorial)
+        self.tutorial_overlay = TutorialOverlay()
         self.alert_banner   = AlertBanner()
         self.audio          = AudioManager()
         self.music          = MusicManager()
@@ -92,6 +96,8 @@ class GameScene(Scene):
         self._overheal_confirm_open = False
         self._overheal_pending: "Consumable | None" = None
         self._cheat_menu_open    = False
+        self._tutorial_open      = False                # tutorial overlay active
+        self._tutorial_queue:    list[str] = []        # steps waiting to be shown
         self._heal_overlay       = None                 # HealOverlay instance when healing
         self._had_visible_enemies = False  # for alert-banner trigger detection
         self._pending_advance    = False   # waiting for enemy-turn delay
@@ -110,6 +116,7 @@ class GameScene(Scene):
         self.audio.attach()
         self._load_floor(depth=1)
         self.music.start()
+        self._maybe_show_tutorial("movement")
 
     def on_exit(self) -> None:
         log.info("GameScene.on_exit  game_over=%s", self._game_over)
@@ -134,6 +141,7 @@ class GameScene(Scene):
                 if now_visible and not self._had_visible_enemies:
                     self.alert_banner.trigger()
                     self.music.to_action(fast=True)
+                    self._maybe_show_tutorial("enemy")
                 self._had_visible_enemies = now_visible
             self._schedule_advance()
 
@@ -292,6 +300,7 @@ class GameScene(Scene):
                 difficulty=self.difficulty,
                 use_minigame=self.use_minigame,
                 use_aim_minigame=self.use_aim_minigame,
+                use_tutorial=self.tutorial_manager.enabled,
                 language=get_language(),
             )
         )
@@ -325,6 +334,12 @@ class GameScene(Scene):
         if self._heal_overlay is not None:
             for event in events:
                 self._heal_overlay.handle_event(event)
+            return
+
+        # Tutorial overlay takes exclusive input while active
+        if self._tutorial_open:
+            for event in events:
+                self.tutorial_overlay.handle_event(event)
             return
 
         for event in events:
@@ -534,6 +549,9 @@ class GameScene(Scene):
     def _handle_player_input(self, events: List[pygame.event.Event]) -> None:
         if self.alert_banner.is_blocking:
             return
+        self._check_tutorial_triggers()
+        if self._tutorial_open:
+            return
         is_pt = self.turn_manager.is_player_turn()
         if not is_pt or self._game_over or self._pending_advance:
             if not self._game_over:
@@ -675,6 +693,7 @@ class GameScene(Scene):
             if now_visible and not self._had_visible_enemies:
                 self.alert_banner.trigger()
                 self.music.to_action(fast=True)
+                self._maybe_show_tutorial("enemy")
             self._had_visible_enemies = now_visible
             break
 
@@ -864,6 +883,70 @@ class GameScene(Scene):
         return None
 
     # ------------------------------------------------------------------
+    # Tutorial helpers
+    # ------------------------------------------------------------------
+
+    def _maybe_show_tutorial(self, step: str) -> None:
+        """Enqueue a tutorial step (used from alert-banner sites and on_enter)."""
+        self._enqueue_tutorial(step)
+
+    def _enqueue_tutorial(self, step: str) -> None:
+        """Mark step as pending and show it immediately or queue it."""
+        if not self.tutorial_manager.should_show(step):
+            return
+        self._tutorial_queue.append(step)
+        if not self._tutorial_open:
+            self._drain_tutorial_queue()
+
+    def _drain_tutorial_queue(self) -> None:
+        """Show the next queued step if nothing is currently displayed."""
+        if not self._tutorial_open and self._tutorial_queue:
+            step = self._tutorial_queue.pop(0)
+            self._tutorial_open = True
+            self.tutorial_overlay.show(step, on_close=self._on_tutorial_close)
+
+    def _on_tutorial_close(self) -> None:
+        self._tutorial_open = False
+        # Re-check conditions (e.g. a container became visible while we were reading
+        # the movement tutorial) and then show the next queued step.
+        self._check_tutorial_triggers()
+        self._drain_tutorial_queue()
+
+    def _check_tutorial_triggers(self) -> None:
+        """Enqueue any tutorial steps whose conditions are now met.
+
+        Safe to call at any time — each step is only ever enqueued once
+        (should_show() marks it as seen on the first call).
+        """
+        if self.player is None:
+            return
+        from dungeoneer.items.consumable import Consumable
+        from dungeoneer.items.weapon import Weapon
+        from dungeoneer.items.item import RangeType
+        # Container tutorial: player can see an unopened container
+        if self.floor and any(
+            not c.opened and self.floor.dungeon_map.visible[c.y, c.x]
+            for c in self.floor.containers
+        ):
+            self._enqueue_tutorial("container")
+        # Ammo tutorial: clip empty OR an extra ranged weapon is in inventory
+        w = self.player.equipped_weapon
+        clip_empty = (
+            w is not None
+            and w.range_type == RangeType.RANGED
+            and w.ammo_current == 0
+        )
+        extra_ranged = any(
+            isinstance(it, Weapon) and it.range_type == RangeType.RANGED
+            for it in self.player.inventory
+        )
+        if clip_empty or extra_ranged:
+            self._enqueue_tutorial("ammo")
+        # Medipack tutorial: player has a consumable
+        if any(isinstance(it, Consumable) for it in self.player.inventory):
+            self._enqueue_tutorial("medipack")
+
+    # ------------------------------------------------------------------
     # Hack minigame integration
     # ------------------------------------------------------------------
 
@@ -968,6 +1051,7 @@ class GameScene(Scene):
         if now_visible and not self._had_visible_enemies:
             self.alert_banner.trigger()
             self.music.to_action(fast=True)
+            self._maybe_show_tutorial("enemy")
         self._had_visible_enemies = now_visible
 
     # ------------------------------------------------------------------
@@ -1311,6 +1395,7 @@ class GameScene(Scene):
                     and not self._quit_confirm_open
                     and not self._overheal_confirm_open
                     and not self._cheat_menu_open
+                    and not self._tutorial_open
                     and not self.alert_banner.is_blocking
                     and not self._had_visible_enemies
                     and not self._is_any_enemy_alert()
@@ -1327,6 +1412,7 @@ class GameScene(Scene):
                             if now_visible and not self._had_visible_enemies:
                                 self.alert_banner.trigger()
                                 self.music.to_action(fast=True)
+                                self._maybe_show_tutorial("enemy")
                             self._had_visible_enemies = now_visible
                             self._move_hold_timer = self._MOVE_HOLD_REPEAT
                     else:
@@ -1394,3 +1480,5 @@ class GameScene(Scene):
                 self.overheal_confirm.draw(screen)
             if self._cheat_menu_open:
                 self.cheat_menu.draw(screen)
+            if self._tutorial_open:
+                self.tutorial_overlay.draw(screen)

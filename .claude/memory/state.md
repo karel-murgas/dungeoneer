@@ -4,10 +4,16 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-20, stable)
+## Current State (2026-03-20, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
-Stable version committed: bugfixes, UI polish, minigame refinements merged.
+
+### In progress (2026-03-20) — tutorial system
+- **Tutorial overlay** — `rendering/ui/tutorial_overlay.py`; `TutorialManager` (tracks seen steps per run) + `TutorialOverlay` (blocking centred panel, procedural illustrations per step)
+- **5 steps**: `movement` (game start), `enemy` (first visible enemy), `container` (first container interaction), `ammo` (first ranged weapon), `medipack` (first consumable in inventory)
+- **Opt-in** (default OFF): toggle in SettingsOverlay under GAMEPLAY → Tutorial [ON/OFF]
+- **i18n**: `tutorial.*` keys in en/cs/es; `settings.gameplay.tutorial`, `tutorial.continue`, `menu.tutorial_on/off`
+- **GameScene**: `use_tutorial` param → `TutorialManager(enabled=)`; triggers added at alert-banner sites (enemy), container validate, player-turn start (ammo/medipack); routing in `handle_events` mirrors aim/heal overlay pattern
 
 ### Latest batch (2026-03-20) — bugfixes & polish
 - **Heal minigame** — 5-tier scoring (Perfect +20% / Great +10% / Good ±0% / Poor −10% / Miss −20%); press + release timing both scored; F1 help updated with SCORING section; hint text shown in overlay
