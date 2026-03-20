@@ -87,6 +87,7 @@ class MainMenuScene(Scene):
         use_aim_minigame: bool = True,
         use_heal_minigame: bool = True,
         heal_threshold_pct: int = 100,
+        use_tutorial: bool = False,
         language: str = "en",
     ) -> None:
         super().__init__(app)
@@ -95,6 +96,7 @@ class MainMenuScene(Scene):
         self._use_aim_minigame    = use_aim_minigame
         self._use_heal_minigame   = use_heal_minigame
         self._heal_threshold_pct  = heal_threshold_pct
+        self._use_tutorial        = use_tutorial
         self._language            = language
 
         # Scale fonts and button sizes to screen height (baseline: 720 px)
@@ -317,5 +319,6 @@ class MainMenuScene(Scene):
                 use_aim_minigame=self._use_aim_minigame,
                 use_heal_minigame=self._use_heal_minigame,
                 heal_threshold_pct=self._heal_threshold_pct,
+                use_tutorial=self._use_tutorial,
             )
         )

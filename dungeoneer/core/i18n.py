@@ -536,6 +536,22 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.good":            "Good",
         "heal.overlay.poor":            "Weak",
         "heal.overlay.miss":            "Poor",
+
+        # --- Tutorial overlay ---
+        "tutorial.continue":                    "[ Space / Enter ]  Continue",
+        "settings.gameplay.tutorial":           "Tutorial",
+        "menu.tutorial_on":                     "ON",
+        "menu.tutorial_off":                    "OFF",
+        "tutorial.movement.title":              "Movement",
+        "tutorial.movement.body":               "Move with WASD or Arrow keys.\nEach step uses one turn — enemies react after you.\nExplore the dungeon, find enemies and containers.\nFind the staircase and press [E] to descend to the next floor.",
+        "tutorial.enemy.title":                 "Enemy Spotted!",
+        "tutorial.enemy.body":                  "Press F to attack the nearest enemy.\nFor ranged weapons a targeting minigame will launch — stop the needle inside the GREEN zone to hit.\nThe closer the enemy, the wider the green zone — easier to hit!\nTab cycles between visible targets.",
+        "tutorial.container.title":             "Container",
+        "tutorial.container.body":              "Step onto a container or stand next to it and press E.\nA hacking minigame starts:\n- Reach GREEN nodes for loot\n- Watch the timer bar at the top\n- Beware of hidden ICE traps!\n>> Press Q before time runs out to escape safely",
+        "tutorial.ammo.title":                  "Weapons & Ammo",
+        "tutorial.ammo.body":                   "C — switch equipped weapon\nR — reload current weapon\nAmmo is shown in the HUD (top-right): current / reserves.\nDifferent weapons use different ammo types.",
+        "tutorial.medipack.title":              "Med Kit Found",
+        "tutorial.medipack.body":               "H — use a healing item.\nWith the minigame enabled a rhythm overlay appears:\nWatch two heartbeats (du-dum, du-dum), then press and hold H on the third beat — release on the second thump.\nBetter timing = more HP restored.",
     },
 
     "cs": {
@@ -1027,7 +1043,23 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.great":           "Skvěle",
         "heal.overlay.good":            "Dob\u0159e",
         "heal.overlay.poor":            "Slab\u011b",
-        "heal.overlay.miss":            "Špatně",
+        "heal.overlay.miss":            "\u0160patn\u011b",
+
+        # --- Tutorial overlay ---
+        "tutorial.continue":                    "[ Mezerník / Enter ]  Pokračovat",
+        "settings.gameplay.tutorial":           "Tutoriál",
+        "menu.tutorial_on":                     "ZAP",
+        "menu.tutorial_off":                    "VYP",
+        "tutorial.movement.title":              "Pohyb",
+        "tutorial.movement.body":               "Pohybuj se klávesami WASD nebo šipkami.\nKaždý krok spotřebuje jeden tah — nepřátelé reagují.\nProzkoumat dungeon, najdi nepřátele a truhly.\nNajdi schody a stiskni [E] pro sestup do dalšího patra.",
+        "tutorial.enemy.title":                 "Nepřítel!",
+        "tutorial.enemy.body":                  "Stiskni F pro útok na nejbližšího nepřítele.\nPro zbraně na dálku se spustí minihra mířování — zastav ručičku uvnitř ZELENÉ zóny pro zásah.\nČím blíže nepřítel, tím širší zelená zóna — snazší zásah!\nTab přepíná mezi viditelnými cíli.",
+        "tutorial.container.title":             "Truhla",
+        "tutorial.container.body":              "Stoupni na truhlu nebo stůj vedle ní a stiskni E.\nSpustí se hackování:\n- Dosáhni na ZELENÉ uzly pro loot\n- Sleduj časovač nahoře\n- Dávej pozor na skryté pasti ICE!\n>> Stiskni Q před vypršením pro bezpečný únik",
+        "tutorial.ammo.title":                  "Zbraně a náboje",
+        "tutorial.ammo.body":                   "C — přepnutí vybavené zbraně\nR — přebití aktuální zbraně\nNáboje jsou v HUD (vpravo nahoře): aktuální / zásoby.\nRůzné zbraně používají různé typy nábojů.",
+        "tutorial.medipack.title":              "Lékárnička!",
+        "tutorial.medipack.body":               "H — použít léčivý předmět.\nPokud je minihra zapnuta, zobrazí se rytmický panel:\nSleduj dva tepy (du-dum, du-dum), pak stiskni a drž H na třetím tepu — pusť na druhý úder.\nLepší načasování = více HP.",
     },
 
     "es": {
@@ -1520,6 +1552,22 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.good":            "Bien",
         "heal.overlay.poor":            "D\u00e9bil",
         "heal.overlay.miss":            "Pobre",
+
+        # --- Tutorial overlay ---
+        "tutorial.continue":                    "[ Espacio / Enter ]  Continuar",
+        "settings.gameplay.tutorial":           "Tutorial",
+        "menu.tutorial_on":                     "ON",
+        "menu.tutorial_off":                    "OFF",
+        "tutorial.movement.title":              "Movimiento",
+        "tutorial.movement.body":               "Muévete con WASD o las teclas de flecha.\nCada paso usa un turno — los enemigos reaccionan.\nExplora el dungeon, encuentra enemigos y cofres.\nEncuentra la escalera y pulsa [E] para bajar al siguiente piso.",
+        "tutorial.enemy.title":                 "¡Enemigo!",
+        "tutorial.enemy.body":                  "Pulsa F para atacar al enemigo más cercano.\nCon armas a distancia aparece el minijuego de puntería — detén la aguja en la zona VERDE para acertar.\nCuanto más cerca el enemigo, más grande la zona verde — ¡más fácil!\nTab cambia entre objetivos visibles.",
+        "tutorial.container.title":             "Cofre",
+        "tutorial.container.body":              "Súbete al cofre o sitúate junto a él y pulsa E.\nSe lanza el minijuego de hackeo:\n- Alcanza los nodos VERDES para conseguir botín\n- Vigila la barra de tiempo en la parte superior\n- ¡Cuidado con las trampas ICE ocultas!\n>> Pulsa Q antes de que acabe el tiempo para escapar",
+        "tutorial.ammo.title":                  "Armas y munición",
+        "tutorial.ammo.body":                   "C — cambiar arma equipada\nR — recargar arma actual\nLa munición se muestra en el HUD (arriba-derecha): actual / reservas.\nDiferentes armas usan distintos tipos de munición.",
+        "tutorial.medipack.title":              "¡Botiquín!",
+        "tutorial.medipack.body":               "H — usar un objeto de curación.\nCon el minijuego activo aparece un panel de ritmo:\nObserva dos latidos (du-dum, du-dum), luego pulsa y mantén H en el tercer latido — suéltalo en el segundo golpe.\nMejor ritmo = más HP restaurado.",
     },
 }
 

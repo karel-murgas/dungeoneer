@@ -79,7 +79,8 @@ dungeoneer/
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       └── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
+│       ├── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 5 steps, procedural illustrations)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME

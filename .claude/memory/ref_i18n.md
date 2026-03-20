@@ -78,8 +78,9 @@ set_language("cs")
 | `heal.help.*` | HealOverlay F1 help + HelpCatalog HEALING tab (mechanic h1, scoring h2: s1–s3, controls h3: key1–key4) |
 | `heal.overlay.*` | HealOverlay runtime labels (title, hint, quality results) |
 | `overheal_confirm.*` | Overheal warning dialog reusing QuitConfirmDialog (title, question, confirm, cancel) |
-| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `menu.heal.threshold_pct` |
+| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `menu.heal.threshold_pct` |
 | `help_catalog.*` | HelpCatalogOverlay (title, 6 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Healing) |
+| `tutorial.*` | TutorialOverlay: `tutorial.<step>.title`, `tutorial.<step>.body` (steps: movement/enemy/container/ammo/medipack), `tutorial.continue`, `menu.tutorial_on/off` |
 
 ## Rule (from CLAUDE.md)
 - Every user-visible string goes through `t("key")`
