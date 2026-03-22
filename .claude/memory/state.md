@@ -4,9 +4,37 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-20, in dev)
+## Current State (2026-03-22, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+
+### New (2026-03-22) — minimap overlay
+- **MinimapOverlay** (`rendering/ui/minimap_overlay.py`) — fullscreen dungeon minimap toggle on **M** key
+- Shows explored tiles vs fog of war (unexplored = black), walls (dark grey), floors (grey, brighter if visible)
+- Colour-coded entities: player (cyan), visible enemies (red), unopened chests (yellow), elevator/vault (blue), items on floor (dim dots)
+- Legend bar at bottom; close with M or Esc
+- i18n: `minimap.*` keys (en/cs/es); help_screen + help_catalog EXPLORATION tab updated
+
+### New (2026-03-22) — map size setting
+- **SettingsOverlay** — new GAMEPLAY row: "Map" toggle (Large / Small)
+- Large = 60×40 (default, unchanged), Small = 40×26 (~60% area)
+- Enemy/container counts stay the same → higher density on small map
+- Setting carried through MainMenuScene → GameScene → GameOverScene → back to MainMenuScene
+- `settings.py`: `MAP_WIDTH_SMALL`, `MAP_HEIGHT_SMALL`
+- i18n: `settings.gameplay.map_size`, `menu.map_size.large`, `menu.map_size.small` (all 3 languages)
+
+### New (2026-03-22) — elevator replaces stairs
+- **Floor descent** now uses an **elevator** instead of stairs
+- `TileType.ELEVATOR_CLOSED` / `ELEVATOR_OPEN` — wall-like tiles (not walkable when closed)
+- **Elevator placement**: spawns in room perimeter wall with exactly 1 cardinal floor neighbor (accessible from one side only)
+- **Animation sequence**: press [E] when adjacent → doors open (0.35s) → player enters (0.25s) → doors close (0.4s) → descend to next floor
+- **Tile indices**: closed=36, open=37 (Dithart tileset)
+- **Sounds**: `elevator_open` (hiss+slide+ding), `elevator_close` (hiss+slide+thud)
+- `ElevatorAction` (adjacency check) + `ElevatorEvent(elevator_x, elevator_y)` — `StairAction`/`StairEvent` kept for compat
+- **Final floor**: elevator replaced with wall, Corp Vault placed on adjacent floor tile
+- **i18n**: `hint.elevator_descend` in en/cs/es; help catalog and tutorial text updated (stairs→elevator)
+- **Help catalog**: illustration shows elevator tile instead of stair tile
+- **Tutorial overlay**: elevator tile + `[E] Elevator` label
 
 ### In progress (2026-03-20) — tutorial system
 - **Tutorial overlay** — `rendering/ui/tutorial_overlay.py`; `TutorialManager` (tracks seen steps per run) + `TutorialOverlay` (blocking centred panel, procedural illustrations per step)

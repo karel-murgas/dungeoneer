@@ -6,7 +6,7 @@ Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING | HEALING
 
 Each tab can have an illustration drawn at the top of the content area:
-  - Exploration: sprite icons for container / ammo / stairs / vault
+  - Exploration: sprite icons for container / ammo / elevator / vault
   - Aiming:      arc diagram with MISS / HIT / CRITICAL zones
   - Hacking:     node-type legend + loot icon examples
 
@@ -83,6 +83,10 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.expl.3.1",
             "help_catalog.expl.3.2",
             "help_catalog.expl.3.3",
+        ]),
+        ("help_catalog.expl.h4", [
+            "help_catalog.expl.4.1",
+            "help_catalog.expl.4.2",
         ]),
     ]),
     ("help_catalog.tab.combat", [
@@ -240,7 +244,7 @@ class HelpCatalogOverlay:
         self._tab_idx   = 0
         self._hovered_tab: int | None = None
         self._tab_rects: list[pygame.Rect] = []
-        self._stair_tile: pygame.Surface | None = None   # lazy-loaded
+        self._elevator_tile: pygame.Surface | None = None   # lazy-loaded
         self._panel_rect: pygame.Rect | None = None
         self._close_rect: pygame.Rect | None = None
         self._close_hovered = False
@@ -423,21 +427,23 @@ class HelpCatalogOverlay:
     # Exploration illustration — sprite icons row
     # ------------------------------------------------------------------
 
-    def _get_stair_tile(self) -> pygame.Surface:
-        """Lazy-load and cache the tileset stair tile (floor + stair blended)."""
-        if self._stair_tile is None:
+    def _get_elevator_tile(self) -> pygame.Surface:
+        """Lazy-load and cache the closed elevator tile (floor + elevator blended)."""
+        if self._elevator_tile is None:
             from dungeoneer.rendering.spritesheet import SpriteSheet
+            path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "tiles", "dithart_scifi.png"
+            )
             try:
-                sheet = SpriteSheet(_TILESET_PATH, 32, 32)
-                surf  = sheet.get_tile_surface(_TILE_FLOOR)   # floor base
-                sheet.blit_tile(surf, _TILE_STAIR, 0, 0)      # stair on top
-                self._stair_tile = surf
+                sheet = SpriteSheet(path, 32, 32)
+                surf  = sheet.get_tile_surface(112)   # floor base
+                sheet.blit_tile(surf, 36, 0, 0)       # closed elevator on top
+                self._elevator_tile = surf
             except Exception:
-                # Fallback: plain coloured square if tileset unavailable
                 surf = pygame.Surface((32, 32), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (0, 180, 160), (0, 0, 32, 32))
-                self._stair_tile = surf
-        return self._stair_tile
+                self._elevator_tile = surf
+        return self._elevator_tile
 
     def _draw_expl_illustration(self, screen: pygame.Surface,
                                   ox: int, cy: int, pw: int) -> int:
@@ -446,7 +452,7 @@ class HelpCatalogOverlay:
         items = [
             ("container_closed", t("help_catalog.expl.icon.container")),
             ("item_loot_ammo",   t("help_catalog.expl.icon.ammo")),
-            ("stairs",           t("help_catalog.expl.icon.stairs")),
+            ("elevator",         t("help_catalog.expl.icon.stairs")),
             ("vault_closed",     t("help_catalog.expl.icon.vault")),
         ]
 
@@ -466,8 +472,8 @@ class HelpCatalogOverlay:
             cell_cx = start_x + i * cell_w + cell_w // 2
             iy      = cy + 9
 
-            if sprite_key == "stairs":
-                spr = self._get_stair_tile()
+            if sprite_key == "elevator":
+                spr = self._get_elevator_tile()
             else:
                 spr = procedural_sprites.get(sprite_key)
             screen.blit(spr, (cell_cx - spr_size // 2, iy))
@@ -477,27 +483,6 @@ class HelpCatalogOverlay:
                         (cell_cx - lbl_surf.get_width() // 2, iy + spr_size + 3))
 
         return panel_h
-
-    def _get_stair_tile(self) -> pygame.Surface:
-        """Lazy-load the stair tile from the Dithart tileset.
-
-        Stairs are a plain non-wall tile — tile index 47 is blitted directly
-        (no floor underneath; that is only needed for wall face tiles).
-        """
-        if self._stair_tile is None:
-            from dungeoneer.rendering.spritesheet import SpriteSheet
-            path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "assets", "tiles", "dithart_scifi.png"
-            )
-            try:
-                sheet = SpriteSheet(path, 32, 32)
-                surf  = sheet.get_tile_surface(47)
-                self._stair_tile = surf
-            except Exception:
-                surf = pygame.Surface((32, 32), pygame.SRCALPHA)
-                pygame.draw.rect(surf, (0, 180, 160), (0, 0, 32, 32))
-                self._stair_tile = surf
-        return self._stair_tile
 
     # ------------------------------------------------------------------
     # Aiming illustration — arc with labelled zones

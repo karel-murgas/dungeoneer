@@ -114,6 +114,7 @@ class WaitAction(Action):
 
 
 class StairAction(Action):
+    """Legacy stair action — kept for compatibility."""
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         from dungeoneer.world.tile import TileType
         return floor.dungeon_map.get_type(actor.x, actor.y) == TileType.STAIR_DOWN
@@ -121,6 +122,27 @@ class StairAction(Action):
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         from dungeoneer.core.event_bus import bus, StairEvent
         bus.post(StairEvent())
+        return ActionResult(True, t("log.descend"), (80, 220, 180))
+
+
+class ElevatorAction(Action):
+    """Use an adjacent elevator — player must be cardinally adjacent to ELEVATOR_CLOSED."""
+    def __init__(self) -> None:
+        self.elevator_pos: tuple[int, int] | None = None
+
+    def validate(self, actor: "Actor", floor: "Floor") -> bool:
+        from dungeoneer.world.tile import TileType
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nx, ny = actor.x + dx, actor.y + dy
+            if floor.dungeon_map.in_bounds(nx, ny):
+                if floor.dungeon_map.get_type(nx, ny) == TileType.ELEVATOR_CLOSED:
+                    self.elevator_pos = (nx, ny)
+                    return True
+        return False
+
+    def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
+        from dungeoneer.core.event_bus import bus, ElevatorEvent
+        bus.post(ElevatorEvent(elevator_x=self.elevator_pos[0], elevator_y=self.elevator_pos[1]))
         return ActionResult(True, t("log.descend"), (80, 220, 180))
 
 

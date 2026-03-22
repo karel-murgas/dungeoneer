@@ -75,7 +75,7 @@ def make_smg() -> Weapon:
         description=t("item.smg.desc"),
         item_type=ItemType.WEAPON,
         range_type=RangeType.RANGED,
-        damage_min=2, damage_max=4,
+        damage_min=2, damage_max=5,
         ammo_capacity=24, ammo_current=24,
         range_tiles=7,
         ammo_type="9mm",

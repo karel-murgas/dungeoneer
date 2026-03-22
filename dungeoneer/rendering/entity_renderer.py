@@ -20,6 +20,8 @@ _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
 
 def _loot_sprite_key(item: "Item") -> str:  # type: ignore[name-defined]
     """Return the procedural-sprite key appropriate for *item*."""
+    if item.item_type == ItemType.CREDITS:
+        return "item_hack_credits"
     if item.item_type == ItemType.AMMO:
         return "item_loot_ammo"
     if item.item_type == ItemType.CONSUMABLE:
@@ -86,12 +88,29 @@ class EntityRenderer:
                 key = "container_open" if container.opened else "container_closed"
             screen.blit(procedural_sprites.get(key), (sx, sy))
 
-        # Draw item entities first (so actors render on top)
+        # Draw item entities first (so actors render on top).
+        # Credits sharing a tile with other loot are drawn smaller and offset
+        # so both icons remain visible; alone they render at normal size.
+        credit_entities: list = []
+        non_credit_tiles: set = set()
         for item_e in floor.item_entities:
             if not floor.dungeon_map.visible[item_e.y, item_e.x]:
                 continue
+            if item_e.item.item_type == ItemType.CREDITS:
+                credit_entities.append(item_e)
+                continue
+            non_credit_tiles.add((item_e.x, item_e.y))
             sx, sy = camera.world_to_screen(item_e.x, item_e.y)
             screen.blit(procedural_sprites.get(_loot_sprite_key(item_e.item)), (sx, sy))
+        for item_e in credit_entities:
+            sx, sy = camera.world_to_screen(item_e.x, item_e.y)
+            sprite = procedural_sprites.get("item_hack_credits")
+            if (item_e.x, item_e.y) in non_credit_tiles:
+                # Stacked with other loot — shrink and nudge to top-right
+                small = pygame.transform.scale(sprite, (ts * 2 // 3, ts * 2 // 3))
+                screen.blit(small, (sx + ts // 3, sy - ts // 4))
+            else:
+                screen.blit(sprite, (sx, sy))
 
         # Draw actors
         for actor in floor.actors:

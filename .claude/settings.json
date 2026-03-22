@@ -20,7 +20,13 @@
       "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Python-Dungeoneer-dungeoneer/**)",
       "Bash(find /c/Users/karel/Documents/Python/Dungeoneer/dungeoneer/dungeoneer/audio -type f -name *.py)",
       "Read(//c/Users/karel/.claude/projects/c--Users-karel-Documents-Programming-Dungeoneer-dungeoneer/memory/**)",
-      "Read(//c/Users/karel/Documents/Programming/Dungeoneer/dungeoneer/**)"
+      "Read(//c/Users/karel/Documents/Programming/Dungeoneer/dungeoneer/**)",
+      "Read(//c/Users/karel/AppData/Local/Temp/**)",
+      "Bash(python3 -c \":*)",
+      "Bash(for d:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/karel/Documents/Python/Dungeoneer/dungeoneer/dungeoneer/**)",
+      "Bash(done)"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",

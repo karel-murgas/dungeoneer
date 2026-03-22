@@ -29,6 +29,7 @@ class GameOverScene(Scene):
         use_aim_minigame: bool = True,
         credits_earned: int = 0,
         audio=None,
+        map_size: str = "large",
     ) -> None:
         super().__init__(app)
         self.victory             = victory
@@ -36,6 +37,7 @@ class GameOverScene(Scene):
         self._difficulty         = difficulty
         self._use_minigame       = use_minigame
         self._use_aim_minigame   = use_aim_minigame
+        self._map_size           = map_size
         self._credits_earned  = credits_earned
         self._audio           = audio
         self._font_big   = pygame.font.SysFont("consolas", 52, bold=True)
@@ -139,6 +141,7 @@ class GameOverScene(Scene):
                 difficulty=self._difficulty if self._difficulty is not None else NORMAL,
                 use_minigame=self._use_minigame,
                 use_aim_minigame=self._use_aim_minigame,
+                map_size=self._map_size,
                 language=get_language(),
             )
         )

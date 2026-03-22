@@ -48,6 +48,7 @@ set_language("cs")
 | `exit_confirm.*` | Main menu exit confirmation dialog (quit the game) |
 | `overheal_confirm.*` | In-game overheal warning dialog (all items exceed threshold) |
 | `settings.*` | SettingsOverlay: title, section headers, row labels, footer |
+| `minimap.*` | MinimapOverlay: title, legend labels, close hint |
 | `help_catalog.*` | HelpCatalogOverlay: title, tab names, section headers, bullet content |
 
 ## Key naming convention
@@ -65,7 +66,7 @@ set_language("cs")
 | `item.*` | Item names + descriptions (weapons, consumables, ammo, armor) |
 | `entity.*` | Entity names (player, guard, drone, crate, corp_vault) |
 | `log.*` | Gameplay log messages (combat, pickup, containers, healing, equip, reload, drop, descent, credits_drop, action-denied feedback) |
-| `hint.*` | In-world contextual hints (e.g. `hint.stair_descend` — shown above player on STAIR_DOWN tile) |
+| `hint.*` | In-world contextual hints (e.g. `hint.elevator_descend` — shown above player when adjacent to elevator) |
 | `hack.status.*` | HackScene footer status bar text |
 | `hack.overlay.*` | HackScene security/loot overlay banners (title + sub) |
 | `hack.result.*` | HackScene final result overlay |
@@ -78,7 +79,8 @@ set_language("cs")
 | `heal.help.*` | HealOverlay F1 help + HelpCatalog HEALING tab (mechanic h1, scoring h2: s1–s3, controls h3: key1–key4) |
 | `heal.overlay.*` | HealOverlay runtime labels (title, hint, quality results) |
 | `overheal_confirm.*` | Overheal warning dialog reusing QuitConfirmDialog (title, question, confirm, cancel) |
-| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `menu.heal.threshold_pct` |
+| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `settings.gameplay.map_size`, `menu.map_size.large/small`, `menu.heal.threshold_pct` |
+| `minimap.*` | MinimapOverlay (title, legend labels: player/enemy/container/elevator, hint_close) |
 | `help_catalog.*` | HelpCatalogOverlay (title, 6 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Healing) |
 | `tutorial.*` | TutorialOverlay: `tutorial.<step>.title`, `tutorial.<step>.body` (steps: movement/enemy/container/ammo/medipack), `tutorial.continue`, `menu.tutorial_on/off` |
 

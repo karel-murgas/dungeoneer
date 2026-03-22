@@ -166,7 +166,9 @@ class AudioManager:
             "defeat":      self._to_sound(self._gen_defeat()),
             "heart_du":      self._to_sound(self._gen_heart_du()),
             "heart_dum":     self._to_sound(self._gen_heart_dum()),
-            "action_denied": self._to_sound(self._gen_action_denied()),
+            "action_denied":  self._to_sound(self._gen_action_denied()),
+            "elevator_open":  self._to_sound(self._gen_elevator_open()),
+            "elevator_close": self._to_sound(self._gen_elevator_close()),
         }
 
     def _gen_footstep(self) -> np.ndarray:
@@ -296,3 +298,17 @@ class AudioManager:
     def _gen_action_denied(self) -> np.ndarray:
         # Short descending buzz — action not permitted
         return self._tone(220, 90, vol=0.45, freq_end=110, waveform="square", exp=1.0)
+
+    def _gen_elevator_open(self) -> np.ndarray:
+        # Mechanical sliding doors opening — rising hiss + metallic slide
+        hiss  = self._noise(250, vol=0.25, exp=0.6)
+        slide = self._tone(180, 200, vol=0.35, freq_end=320, exp=0.8)
+        ding  = self._tone(880, 80, vol=0.30, exp=2.0)
+        return self._concat(self._mix(hiss, slide), ding)
+
+    def _gen_elevator_close(self) -> np.ndarray:
+        # Doors closing — descending hiss + low thud at end
+        hiss  = self._noise(200, vol=0.25, exp=0.6)
+        slide = self._tone(320, 180, vol=0.35, freq_end=160, exp=0.8)
+        thud  = self._tone(80, 80, vol=0.45, exp=1.5)
+        return self._concat(self._mix(hiss, slide), thud)

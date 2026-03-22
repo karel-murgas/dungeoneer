@@ -5,7 +5,7 @@ Two public classes:
   TutorialOverlay  — renders the tutorial panel over the game screen.
 
 Steps (in typical encounter order):
-  "movement"  — game start: WASD / arrows + stairs ([E] descend)
+  "movement"  — game start: WASD / arrows + elevator ([E] descend)
   "enemy"     — first enemy visible: shooting (F) + aim minigame arc
   "container" — first container in FOV: hack minigame intro (Q escape, timer, nodes)
   "ammo"      — first empty clip or extra ranged weapon: C switch, R reload
@@ -42,12 +42,13 @@ _PAD = 22
 _IMG_W = 240
 _IMG_H = 280
 
-# Stair tile index in tileset_for_free.png (verified from tile_renderer.py)
-_STAIR_TILE_INDEX = 47
+# Elevator tile indices in tileset_for_free.png (verified from tile_renderer.py)
+_ELEVATOR_CLOSED_INDEX = 36
+_FLOOR_INDEX = 112
 
 
 # ---------------------------------------------------------------------------
-# Lazy tileset loader (used for the stair tile illustration)
+# Lazy tileset loader (used for the elevator tile illustration)
 # ---------------------------------------------------------------------------
 
 _tileset: object = None
@@ -232,7 +233,7 @@ def _draw_placeholder(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
-    """WASD key cross (top) + stair tile from tileset (bottom)."""
+    """WASD key cross (top) + elevator tile from tileset (bottom)."""
     pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
 
     # --- WASD cross (upper portion) ---
@@ -254,31 +255,32 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
         screen.blit(s, (r.centerx - s.get_width() // 2,
                         r.centery - s.get_height() // 2))
     hint_font = pygame.font.SysFont("consolas", 11)
-    h = hint_font.render("or  arrow  keys", True, (50, 100, 90))
+    h = hint_font.render(t("tutorial.img.arrow_keys"), True, (50, 100, 90))
     screen.blit(h, (rect.centerx - h.get_width() // 2, cy + step + 10))
 
     # --- Separator ---
     sep_y = cy + step + 28
     pygame.draw.line(screen, (25, 50, 45), (rect.left + 12, sep_y), (rect.right - 12, sep_y))
 
-    # --- Stair tile (bottom portion) ---
-    stair_y = sep_y + 10
+    # --- Elevator tile (bottom portion) ---
+    elev_y = sep_y + 10
     ts = _get_tileset()
     scale = 3   # render at 3× (96×96 px)
     tile_px = 32 * scale
     tx = rect.centerx - tile_px // 2
-    ty = stair_y
+    ty = elev_y
 
     if ts is not None:
         try:
-            stair_surf = ts.get_tile_surface(_STAIR_TILE_INDEX)
-            stair_big  = pygame.transform.scale(stair_surf, (tile_px, tile_px))
-            screen.blit(stair_big, (tx, ty))
+            floor_surf = ts.get_tile_surface(_FLOOR_INDEX)
+            ts.blit_tile(floor_surf, _ELEVATOR_CLOSED_INDEX, 0, 0)
+            elev_big = pygame.transform.scale(floor_surf, (tile_px, tile_px))
+            screen.blit(elev_big, (tx, ty))
         except Exception:
             ts = None  # fall through to procedural
 
     if ts is None:
-        # Procedural fallback: cyan square with down-arrow
+        # Procedural fallback: teal square with down-arrow
         pygame.draw.rect(screen, (30, 80, 75), (tx, ty, tile_px, tile_px), border_radius=4)
         pygame.draw.rect(screen, (80, 200, 180), (tx, ty, tile_px, tile_px), 2, border_radius=4)
         fa = pygame.font.SysFont("consolas", 32, bold=True)
@@ -288,7 +290,7 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # Label under the tile
     lbl_font = pygame.font.SysFont("consolas", 12, bold=True)
-    lbl = lbl_font.render("[E]  Stairs down", True, (0, 200, 160))
+    lbl = lbl_font.render(t("tutorial.img.elevator"), True, (0, 200, 160))
     screen.blit(lbl, (rect.centerx - lbl.get_width() // 2, ty + tile_px + 6))
 
 
@@ -331,8 +333,8 @@ def _draw_enemy(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # Small "far" arc example — tiny green zone
     font_s = pygame.font.SysFont("consolas", 10)
-    lbl_close = font_s.render("close = big zone", True, (0, 160, 80))
-    lbl_far   = font_s.render("far = small zone", True, (160, 80, 80))
+    lbl_close = font_s.render(t("tutorial.img.close_zone"), True, (0, 160, 80))
+    lbl_far   = font_s.render(t("tutorial.img.far_zone"), True, (160, 80, 80))
     screen.blit(lbl_close, (rect.centerx - lbl_close.get_width() // 2, cy + 32))
     screen.blit(lbl_far,   (rect.centerx - lbl_far.get_width()   // 2, cy + 46))
 
@@ -346,7 +348,7 @@ def _draw_container(screen: pygame.Surface, rect: pygame.Rect) -> None:
     by = rect.top  + 12
     bw = rect.width - 32
     font_s = pygame.font.SysFont("consolas", 11, bold=True)
-    t_lbl  = font_s.render("TIME", True, (160, 120, 0))
+    t_lbl  = font_s.render(t("tutorial.img.time"), True, (160, 120, 0))
     screen.blit(t_lbl, (bx, by - t_lbl.get_height() - 1))
     pygame.draw.rect(screen, (30, 60, 55), (bx, by, bw, 10), border_radius=3)
     pygame.draw.rect(screen, (200, 160, 0), (bx, by, round(bw * 0.45), 10),
@@ -378,7 +380,7 @@ def _draw_container(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # [Q] label — large, amber, prominent
     font_q = pygame.font.SysFont("consolas", 14, bold=True)
-    q = font_q.render("[Q]  escape!", True, (240, 180, 0))
+    q = font_q.render(t("tutorial.img.escape"), True, (240, 180, 0))
     qy = rect.bottom - 28
     # amber background strip
     qbg = pygame.Surface((rect.width - 4, 20), pygame.SRCALPHA)
@@ -404,8 +406,8 @@ def _draw_ammo(screen: pygame.Surface, rect: pygame.Rect) -> None:
     ammo   = font.render("0 / 60", True, (220, 80, 80))   # show empty clip
     screen.blit(ammo, (cx - ammo.get_width() // 2, cy + 36))
     font_s = pygame.font.SysFont("consolas", 12, bold=True)
-    lbl_c  = font_s.render("[C] switch weapon", True, (0, 200, 160))
-    lbl_r  = font_s.render("[R] reload",        True, (0, 200, 160))
+    lbl_c  = font_s.render(t("tutorial.img.switch_weapon"), True, (0, 200, 160))
+    lbl_r  = font_s.render(t("tutorial.img.reload"),        True, (0, 200, 160))
     screen.blit(lbl_c, (cx - lbl_c.get_width() // 2, cy + 56))
     screen.blit(lbl_r, (cx - lbl_r.get_width() // 2, cy + 74))
 
