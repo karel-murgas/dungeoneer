@@ -146,6 +146,16 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.help":               "This help screen",
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Close menu / Quit",
+        "help.key.minimap":             "M",
+        "help.desc.minimap":            "Minimap",
+
+        # --- Minimap overlay ---
+        "minimap.title":                "MINIMAP",
+        "minimap.legend.player":        "You",
+        "minimap.legend.enemy":         "Enemy",
+        "minimap.legend.container":     "Chest",
+        "minimap.legend.elevator":      "Elevator / Vault",
+        "minimap.hint_close":           "[M] / [Esc] Close",
 
         # --- Cheat / debug menu (F11) ---
         "cheat.title":                  "CHEAT MENU  [F11]",
@@ -199,6 +209,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.stim_pack.desc":          "Combat stimulant. Restores 10 HP.",
         "item.medkit.name":             "Med Kit",
         "item.medkit.desc":             "Full trauma kit. Restores 20 HP.",
+        "item.credits.name":            "\u00a5{n}",
+        "item.credits.desc":            "Credits.",
         "item.ammo_9mm.name":           "9mm Ammo \u00d7{n}",
         "item.ammo_9mm.desc":           "{n} rounds of 9mm ammunition.",
         "item.ammo_rifle.name":         "Rifle Ammo \u00d7{n}",
@@ -242,6 +254,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.heal_cancel":              "Heal cancelled.",
         "log.no_exit":                  "Nothing to interact with here.",
         "hint.stair_descend":           "[E] Descend deeper",
+        "hint.elevator_descend":        "[E] Use elevator",
         "log.no_heals":                 "No healing items.",
         "log.full_hp":                  "Already at full health.",
         "log.reload_full":              "Magazine is full.",
@@ -424,10 +437,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h2":         "FIELD OF VIEW",
         "help_catalog.expl.2.1":        "Sight radius: 10 tiles from your position",
         "help_catalog.expl.2.2":        "Explored areas visible in dark \u2014 enemies not tracked",
-        "help_catalog.expl.h3":         "STAIRS & CONTAINERS",
-        "help_catalog.expl.3.1":        "E \u2014 descend stairs or open a container",
+        "help_catalog.expl.h3":         "ELEVATOR & CONTAINERS",
+        "help_catalog.expl.3.1":        "E \u2014 use elevator (adjacent) or open a container",
         "help_catalog.expl.3.2":        "Containers may hold items, weapons, or credits",
         "help_catalog.expl.3.3":        "All containers trigger the hack minigame for bonus loot (if enabled)",
+        "help_catalog.expl.h4":         "MINIMAP",
+        "help_catalog.expl.4.1":        "M \u2014 toggle fullscreen minimap showing explored areas",
+        "help_catalog.expl.4.2":        "Shows chests (yellow), elevator/vault (blue), visible enemies (red)",
 
         # Combat tab
         "help_catalog.comb.h1":         "MELEE COMBAT",
@@ -481,7 +497,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         # Exploration illustration labels
         "help_catalog.expl.icon.container": "Container",
         "help_catalog.expl.icon.ammo":      "Ammo",
-        "help_catalog.expl.icon.stairs":    "Stairs",
+        "help_catalog.expl.icon.stairs":    "Elevator",
         "help_catalog.expl.icon.vault":     "Vault",
 
         # Hack node illustration labels
@@ -542,8 +558,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.gameplay.tutorial":           "Tutorial",
         "menu.tutorial_on":                     "ON",
         "menu.tutorial_off":                    "OFF",
+        "settings.gameplay.map_size":           "Map",
+        "menu.map_size.large":                  "Large",
+        "menu.map_size.small":                  "Small",
         "tutorial.movement.title":              "Movement",
-        "tutorial.movement.body":               "Move with WASD or Arrow keys.\nEach step uses one turn — enemies react after you.\nExplore the dungeon, find enemies and containers.\nFind the staircase and press [E] to descend to the next floor.",
+        "tutorial.movement.body":               "Move with WASD or Arrow keys.\nEach step uses one turn — enemies react after you.\nExplore the dungeon, find enemies and containers.\nPress [M] to toggle the minimap for a quick overview of explored areas.\nFind the elevator in the wall and press [E] to descend to the next floor.",
         "tutorial.enemy.title":                 "Enemy Spotted!",
         "tutorial.enemy.body":                  "Press F to attack the nearest enemy.\nFor ranged weapons a targeting minigame will launch — stop the needle inside the GREEN zone to hit.\nThe closer the enemy, the wider the green zone — easier to hit!\nTab cycles between visible targets.",
         "tutorial.container.title":             "Container",
@@ -552,6 +571,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.ammo.body":                   "C — switch equipped weapon\nR — reload current weapon\nAmmo is shown in the HUD (top-right): current / reserves.\nDifferent weapons use different ammo types.",
         "tutorial.medipack.title":              "Med Kit Found",
         "tutorial.medipack.body":               "H — use a healing item.\nWith the minigame enabled a rhythm overlay appears:\nWatch two heartbeats (du-dum, du-dum), then press and hold H on the third beat — release on the second thump.\nBetter timing = more HP restored.",
+        # --- Tutorial illustration labels ---
+        "tutorial.img.arrow_keys":              "or  arrow  keys",
+        "tutorial.img.elevator":                "[E]  Elevator",
+        "tutorial.img.close_zone":              "close = big zone",
+        "tutorial.img.far_zone":                "far = small zone",
+        "tutorial.img.time":                    "TIME",
+        "tutorial.img.escape":                  "[Q]  escape!",
+        "tutorial.img.switch_weapon":           "[C] switch weapon",
+        "tutorial.img.reload":                  "[R] reload",
     },
 
     "cs": {
@@ -654,6 +682,16 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.help":               "Tato n\u00e1pov\u011bda",
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Zav\u0159\u00edt menu / Ukon\u010dit hru",
+        "help.key.minimap":             "M",
+        "help.desc.minimap":            "Minimapa",
+
+        # --- Minimap overlay ---
+        "minimap.title":                "MINIMAPA",
+        "minimap.legend.player":        "Vy",
+        "minimap.legend.enemy":         "Nep\u0159\u00edtel",
+        "minimap.legend.container":     "Truhla",
+        "minimap.legend.elevator":      "V\u00fdtah / Trezor",
+        "minimap.hint_close":           "[M] / [Esc] Zav\u0159\u00edt",
 
         # --- Cheat / debug menu (F11) ---
         "cheat.title":                  "CHEAT MENU  [F11]",
@@ -707,6 +745,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.stim_pack.desc":          "Bojov\u00fd stimulant. Obnov\u00ed 10 HP.",
         "item.medkit.name":             "L\u00e9k\u00e1rni\u010dka",
         "item.medkit.desc":             "Z\u00e1chransk\u00e1 souprava. Obnov\u00ed 20 HP.",
+        "item.credits.name":            "\u00a5{n}",
+        "item.credits.desc":            "Kredity.",
         "item.ammo_9mm.name":           "9mm Munice \u00d7{n}",
         "item.ammo_9mm.desc":           "{n} n\u00e1boj\u016f 9mm munice.",
         "item.ammo_rifle.name":         "N\u00e1boje do pu\u0161ky \u00d7{n}",
@@ -750,6 +790,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.heal_cancel":              "L\u00e9\u010den\u00ed zru\u0161eno.",
         "log.no_exit":                  "Zde není nic, s čím by šlo interagovat.",
         "hint.stair_descend":           "[E] Sestoupit hlouběji",
+        "hint.elevator_descend":        "[E] Použít výtah",
         "log.no_heals":                 "\u017d\u00e1dn\u00e9 l\u00e9\u010div\u00e9 p\u0159edm\u011bty.",
         "log.full_hp":                  "Pln\u00e9 \u017eivoty.",
         "log.reload_full":              "Zásobník je plný.",
@@ -927,7 +968,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         # Exploration illustration labels
         "help_catalog.expl.icon.container": "Kontejner",
         "help_catalog.expl.icon.ammo":      "Munice",
-        "help_catalog.expl.icon.stairs":    "Schody",
+        "help_catalog.expl.icon.stairs":    "Výtah",
         "help_catalog.expl.icon.vault":     "Trezor",
 
         # Hack node illustration labels
@@ -945,10 +986,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h2":         "ZORN\u00c9 POLE",
         "help_catalog.expl.2.1":        "Dosah vid\u011bn\u00ed: 10 dla\u017edic od tv\u00e9 pozice",
         "help_catalog.expl.2.2":        "Prozkoumaná oblast viditelná ve tm\u011b \u2014 nep\u0159\u00e1tel\u00e9 nejsou sledov\u00e1ni",
-        "help_catalog.expl.h3":         "SCHODY & KONTEJNERY",
-        "help_catalog.expl.3.1":        "E \u2014 schody dol\u016f nebo otev\u0159\u00edt kontejner",
+        "help_catalog.expl.h3":         "VÝTAH & KONTEJNERY",
+        "help_catalog.expl.3.1":        "E \u2014 použít výtah (vedle) nebo otevřít kontejner",
         "help_catalog.expl.3.2":        "Kontejnery mohou obsahovat p\u0159edm\u011bty, zbran\u011b nebo kredity",
         "help_catalog.expl.3.3":        "V\u0161echny kontejnery spust\u00ed hackov\u00e1n\u00ed pro bonus (pokud je povoleno)",
+        "help_catalog.expl.h4":         "MINIMAPA",
+        "help_catalog.expl.4.1":        "M \u2014 p\u0159epnout minimapu na cel\u00e9 obrazovce s prozkouman\u00fdmi oblastmi",
+        "help_catalog.expl.4.2":        "Zobraz\u00ed truhly (\u017elut\u011b), v\u00fdtah/trezor (mod\u0159e), viditeln\u00e9 nep\u0159\u00e1tele (\u010derven\u011b)",
 
         # Combat tab
         "help_catalog.comb.h1":         "BOJ ZBLÍZKA",
@@ -1050,8 +1094,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.gameplay.tutorial":           "Tutoriál",
         "menu.tutorial_on":                     "ZAP",
         "menu.tutorial_off":                    "VYP",
+        "settings.gameplay.map_size":           "Mapa",
+        "menu.map_size.large":                  "Velká",
+        "menu.map_size.small":                  "Malá",
         "tutorial.movement.title":              "Pohyb",
-        "tutorial.movement.body":               "Pohybuj se klávesami WASD nebo šipkami.\nKaždý krok spotřebuje jeden tah — nepřátelé reagují.\nProzkoumat dungeon, najdi nepřátele a truhly.\nNajdi schody a stiskni [E] pro sestup do dalšího patra.",
+        "tutorial.movement.body":               "Pohybuj se klávesami WASD nebo šipkami.\nKaždý krok spotřebuje jeden tah — nepřátelé reagují.\nProzkoumat dungeon, najdi nepřátele a truhly.\nStiskni [M] pro zapnutí minimapy s přehledem prozkoumaných oblastí.\nNajdi výtah ve zdi a stiskni [E] pro sestup do dalšího patra.",
         "tutorial.enemy.title":                 "Nepřítel!",
         "tutorial.enemy.body":                  "Stiskni F pro útok na nejbližšího nepřítele.\nPro zbraně na dálku se spustí minihra mířování — zastav ručičku uvnitř ZELENÉ zóny pro zásah.\nČím blíže nepřítel, tím širší zelená zóna — snazší zásah!\nTab přepíná mezi viditelnými cíli.",
         "tutorial.container.title":             "Truhla",
@@ -1060,6 +1107,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.ammo.body":                   "C — přepnutí vybavené zbraně\nR — přebití aktuální zbraně\nNáboje jsou v HUD (vpravo nahoře): aktuální / zásoby.\nRůzné zbraně používají různé typy nábojů.",
         "tutorial.medipack.title":              "Lékárnička!",
         "tutorial.medipack.body":               "H — použít léčivý předmět.\nPokud je minihra zapnuta, zobrazí se rytmický panel:\nSleduj dva tepy (du-dum, du-dum), pak stiskni a drž H na třetím tepu — pusť na druhý úder.\nLepší načasování = více HP.",
+        # --- Tutorial illustration labels ---
+        "tutorial.img.arrow_keys":              "nebo  šipky",
+        "tutorial.img.elevator":                "[E]  Výtah",
+        "tutorial.img.close_zone":              "blízko = velká zóna",
+        "tutorial.img.far_zone":                "daleko = malá zóna",
+        "tutorial.img.time":                    "ČAS",
+        "tutorial.img.escape":                  "[Q]  útěk!",
+        "tutorial.img.switch_weapon":           "[C] přepnout zbraň",
+        "tutorial.img.reload":                  "[R] přebít",
     },
 
     "es": {
@@ -1162,6 +1218,16 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help.desc.help":               "Esta pantalla de ayuda",
         "help.key.escape":              "Esc",
         "help.desc.escape":             "Cerrar men\u00fa / Salir",
+        "help.key.minimap":             "M",
+        "help.desc.minimap":            "Minimapa",
+
+        # --- Minimap overlay ---
+        "minimap.title":                "MINIMAPA",
+        "minimap.legend.player":        "T\u00fa",
+        "minimap.legend.enemy":         "Enemigo",
+        "minimap.legend.container":     "Cofre",
+        "minimap.legend.elevator":      "Ascensor / B\u00f3veda",
+        "minimap.hint_close":           "[M] / [Esc] Cerrar",
 
         # --- Cheat / debug menu (F11) ---
         "cheat.title":                  "CHEAT MENU  [F11]",
@@ -1215,6 +1281,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.stim_pack.desc":          "Estimulante de combate. Restaura 10 HP.",
         "item.medkit.name":             "Botiquin",
         "item.medkit.desc":             "Kit de trauma completo. Restaura 20 HP.",
+        "item.credits.name":            "\u00a5{n}",
+        "item.credits.desc":            "Cr\u00e9ditos.",
         "item.ammo_9mm.name":           "Mun. 9mm \u00d7{n}",
         "item.ammo_9mm.desc":           "{n} rondas de munición 9mm.",
         "item.ammo_rifle.name":         "Mun. fusil \u00d7{n}",
@@ -1258,6 +1326,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.heal_cancel":              "Curaci\u00f3n cancelada.",
         "log.no_exit":                  "No hay nada con lo que interactuar aquí.",
         "hint.stair_descend":           "[E] Descender más profundo",
+        "hint.elevator_descend":        "[E] Usar ascensor",
         "log.no_heals":                 "No hay objetos de curaci\u00f3n.",
         "log.full_hp":                  "Ya tienes salud completa.",
         "log.reload_full":              "El cargador está lleno.",
@@ -1435,7 +1504,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         # Exploration illustration labels
         "help_catalog.expl.icon.container": "Contenedor",
         "help_catalog.expl.icon.ammo":      "Muni\u00f3n",
-        "help_catalog.expl.icon.stairs":    "Escaleras",
+        "help_catalog.expl.icon.stairs":    "Ascensor",
         "help_catalog.expl.icon.vault":     "B\u00f3veda",
 
         # Hack node illustration labels
@@ -1453,10 +1522,13 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.expl.h2":         "CAMPO DE VISI\u00d3N",
         "help_catalog.expl.2.1":        "Radio de visi\u00f3n: 10 casillas desde tu posici\u00f3n",
         "help_catalog.expl.2.2":        "\u00c1reas exploradas visibles en oscuro \u2014 enemigos no rastreados",
-        "help_catalog.expl.h3":         "ESCALERAS Y CONTENEDORES",
-        "help_catalog.expl.3.1":        "E \u2014 bajar escaleras o abrir un contenedor",
+        "help_catalog.expl.h3":         "ASCENSOR Y CONTENEDORES",
+        "help_catalog.expl.3.1":        "E \u2014 usar ascensor (adyacente) o abrir un contenedor",
         "help_catalog.expl.3.2":        "Los contenedores pueden tener objetos, armas o cr\u00e9ditos",
         "help_catalog.expl.3.3":        "Todos los contenedores activan el minijuego de hackeo (si est\u00e1 habilitado)",
+        "help_catalog.expl.h4":         "MINIMAPA",
+        "help_catalog.expl.4.1":        "M \u2014 alternar minimapa a pantalla completa con \u00e1reas exploradas",
+        "help_catalog.expl.4.2":        "Muestra cofres (amarillo), ascensor/b\u00f3veda (azul), enemigos visibles (rojo)",
 
         # Combat tab
         "help_catalog.comb.h1":         "COMBATE CUERPO A CUERPO",
@@ -1558,8 +1630,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings.gameplay.tutorial":           "Tutorial",
         "menu.tutorial_on":                     "ON",
         "menu.tutorial_off":                    "OFF",
+        "settings.gameplay.map_size":           "Mapa",
+        "menu.map_size.large":                  "Grande",
+        "menu.map_size.small":                  "Pequeño",
         "tutorial.movement.title":              "Movimiento",
-        "tutorial.movement.body":               "Muévete con WASD o las teclas de flecha.\nCada paso usa un turno — los enemigos reaccionan.\nExplora el dungeon, encuentra enemigos y cofres.\nEncuentra la escalera y pulsa [E] para bajar al siguiente piso.",
+        "tutorial.movement.body":               "Muévete con WASD o las teclas de flecha.\nCada paso usa un turno — los enemigos reaccionan.\nExplora el dungeon, encuentra enemigos y cofres.\nPulsa [M] para alternar el minimapa con las áreas exploradas.\nEncuentra el ascensor en la pared y pulsa [E] para bajar al siguiente piso.",
         "tutorial.enemy.title":                 "¡Enemigo!",
         "tutorial.enemy.body":                  "Pulsa F para atacar al enemigo más cercano.\nCon armas a distancia aparece el minijuego de puntería — detén la aguja en la zona VERDE para acertar.\nCuanto más cerca el enemigo, más grande la zona verde — ¡más fácil!\nTab cambia entre objetivos visibles.",
         "tutorial.container.title":             "Cofre",
@@ -1568,6 +1643,15 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.ammo.body":                   "C — cambiar arma equipada\nR — recargar arma actual\nLa munición se muestra en el HUD (arriba-derecha): actual / reservas.\nDiferentes armas usan distintos tipos de munición.",
         "tutorial.medipack.title":              "¡Botiquín!",
         "tutorial.medipack.body":               "H — usar un objeto de curación.\nCon el minijuego activo aparece un panel de ritmo:\nObserva dos latidos (du-dum, du-dum), luego pulsa y mantén H en el tercer latido — suéltalo en el segundo golpe.\nMejor ritmo = más HP restaurado.",
+        # --- Tutorial illustration labels ---
+        "tutorial.img.arrow_keys":              "o  teclas  de  flecha",
+        "tutorial.img.elevator":                "[E]  Ascensor",
+        "tutorial.img.close_zone":              "cerca = zona grande",
+        "tutorial.img.far_zone":                "lejos = zona pequeña",
+        "tutorial.img.time":                    "TIEMPO",
+        "tutorial.img.escape":                  "[Q]  ¡escapar!",
+        "tutorial.img.switch_weapon":           "[C] cambiar arma",
+        "tutorial.img.reload":                  "[R] recargar",
     },
 }
 

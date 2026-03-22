@@ -80,6 +80,7 @@ dungeoneer/
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
 │       ├── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
+│       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
 │       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 5 steps, procedural illustrations)
 │
 ├── audio/
@@ -104,19 +105,15 @@ dungeoneer/
 │   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
 │   └── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
 │
-├── cyberware/           — (stub, not integrated)
-├── skills/              — (stub, empty)
-├── meta/                — (stub)
-│
 main.py                  — entry point
 main_hack.py             — standalone hack minigame entry point (dev/test)
 ```
 
 ## Key Action Subclasses (combat/action.py)
-`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
+`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` (legacy) | `ElevatorAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
 
 ## Key Events (core/event_bus.py)
-`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` | `ObjectiveEvent` | `LogMessageEvent`
+`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` (legacy) | `ElevatorEvent(elevator_x, elevator_y)` | `ObjectiveEvent` | `LogMessageEvent`
 
 ## Scene Lifecycle (core/scene.py)
 `on_enter()` → `handle_events(events)` → `update(dt)` → `render(screen)` → `on_exit()`

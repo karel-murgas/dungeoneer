@@ -42,8 +42,14 @@ class TurnEndEvent(Event):
 
 @dataclass
 class StairEvent(Event):
-    """Player stepped on exit stairs."""
+    """Player stepped on exit stairs (legacy)."""
     pass
+
+@dataclass
+class ElevatorEvent(Event):
+    """Player activated an adjacent elevator."""
+    elevator_x: int = 0
+    elevator_y: int = 0
 
 @dataclass
 class ObjectiveEvent(Event):

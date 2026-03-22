@@ -12,11 +12,15 @@ TITLE = "Dungeoneer"
 
 # Tiles
 TILE_SIZE = 32          # pixels per tile
-MAP_WIDTH = 60          # tiles wide
-MAP_HEIGHT = 40         # tiles tall
+MAP_WIDTH = 50          # tiles wide
+MAP_HEIGHT = 50         # tiles tall
 
 # Dungeon generation
 STAIR_FARTHEST_CANDIDATES = 5   # stairs/vault placed in one of N farthest rooms from start
+
+# Map size presets  ("large" = current default, "small" = compact ~60 % area)
+MAP_WIDTH_SMALL  = 32
+MAP_HEIGHT_SMALL = 32
 
 # Audio volumes (0.0 – 1.0); adjusted from settings overlay
 MASTER_VOLUME: float = 1.0    # overall multiplier applied to all audio

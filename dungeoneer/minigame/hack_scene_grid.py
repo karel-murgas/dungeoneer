@@ -246,12 +246,13 @@ class HackGridScene(Scene):
                     self._show_help = False
                 continue
 
-            if key in (pygame.K_q, pygame.K_ESCAPE):
-                if self._state == _State.HACKING:
-                    self._state  = _State.IDLE
-                    self._status = t("hack.status.cancelled")
-                elif self._state == _State.IDLE:
-                    self._finish(success=True)
+            if key == pygame.K_ESCAPE and self._state == _State.HACKING:
+                self._state  = _State.IDLE
+                self._status = t("hack.status.cancelled")
+                continue
+
+            if key in (pygame.K_q, pygame.K_ESCAPE) and self._state == _State.IDLE:
+                self._finish(success=True)
                 continue
 
             direction = _DIR_MAP.get(key)

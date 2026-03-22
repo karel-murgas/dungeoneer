@@ -36,6 +36,7 @@ _SECTIONS = [
         ("help.key.swap",      "help.desc.swap"),
     ]),
     ("help.section.general", [
+        ("help.key.minimap",   "help.desc.minimap"),
         ("help.key.help",      "help.desc.help"),
         ("help.key.escape",    "help.desc.escape"),
     ]),
