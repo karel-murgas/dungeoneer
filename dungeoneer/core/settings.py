@@ -12,11 +12,15 @@ TITLE = "Dungeoneer"
 
 # Tiles
 TILE_SIZE = 32          # pixels per tile
-MAP_WIDTH = 60          # tiles wide
-MAP_HEIGHT = 40         # tiles tall
+MAP_WIDTH = 50          # tiles wide
+MAP_HEIGHT = 50         # tiles tall
 
 # Dungeon generation
 STAIR_FARTHEST_CANDIDATES = 5   # stairs/vault placed in one of N farthest rooms from start
+
+# Map size presets  ("large" = current default, "small" = compact ~60 % area)
+MAP_WIDTH_SMALL  = 32
+MAP_HEIGHT_SMALL = 32
 
 # Audio volumes (0.0 – 1.0); adjusted from settings overlay
 MASTER_VOLUME: float = 1.0    # overall multiplier applied to all audio
@@ -72,3 +76,13 @@ HEAL_BEAT_FLASH_MS:   int   = 110   # visual flash duration (ms)
 HEAL_ACCURACY_WINDOW: float = 0.25  # ±window in seconds (full accuracy at 0, none at ±window/2)
 HEAL_RESULT_PAUSE:    float = 0.9   # seconds to show result before closing
 HEAL_RANGE:           float = 0.20  # ±20% modifier range (0.8× to 1.2× base)
+
+# Melee power-charge minigame
+MELEE_FREQ1:          float = 1.1    # Hz — primary oscillation frequency
+MELEE_FREQ2:          float = 0.7    # Hz — secondary frequency (creates beating pattern)
+MELEE_FREQ_ACCEL:     float = 0.0    # Hz/s — kept for compatibility; oscillation no longer accelerates
+MELEE_TIMEOUT:        float = 3.0    # seconds before auto-release
+MELEE_CRIT_THRESHOLD: float = 0.92   # power >= this = critical hit
+MELEE_RESULT_PAUSE:   float = 0.35   # seconds to display result
+MELEE_BAR_W:          int   = 120    # power bar width in pixels
+MELEE_BAR_H:          int   = 12     # power bar height in pixels

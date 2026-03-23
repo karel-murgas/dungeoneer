@@ -44,6 +44,10 @@ Outer convex corner tiles (mask=0, one diagonal floor neighbor):
 - NE floor → tile 24  (outer bottom-left corner)
 - NW floor → tile 28  (outer bottom-right corner)
 
-**Why:** Identified by pixel-matching the `godot_minimal_3x3_autotile.png` positions against the main tileset, and using template centroid analysis to determine floor direction.
+Elevator tiles:
+- Closed elevator → tile 36  (row 4, col 4 — teal glass doors)
+- Open elevator   → tile 44  (row 5, col 4 — doors retracted, mostly transparent)
+
+**Why:** Identified by pixel-matching the `godot_minimal_3x3_autotile.png` positions against the main tileset, and using template centroid analysis to determine floor direction. Elevator tiles identified by teal pixel count analysis.
 
 **How to apply:** Whenever a wall tile looks wrong in-game, use the PIL pixel-matching script to re-derive the correct index from the autotile template rather than guessing.

@@ -74,13 +74,14 @@ dungeoneer/
 │       ├── combat_log.py  — CombatLog: scrolling message log
 │       ├── inventory_ui.py— InventoryUI: 8-slot grid overlay
 │       ├── weapon_picker.py — WeaponPickerUI (key C): keyboard+mouse weapon swap
-│       ├── help_screen.py — HelpScreen (F1): localised key-binding overlay
+│       ├── help_screen.py — HelpScreen: legacy key-binding overlay (unused, kept for reference)
 │       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       ├── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
-│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 5 steps, procedural illustrations)
+│       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing); open_tab(idx) for context-specific tab; used in MainMenu + GameScene + HackGridScene
+│       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 6 steps incl. melee, procedural illustrations)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
@@ -90,33 +91,30 @@ dungeoneer/
 ├── assets/audio/music/  — calm.mp3, action.mp3, hacking.mp3, menu.mp3 (copied from sources/music/)
 │
 ├── scenes/
-│   ├── main_menu_scene.py — MainMenuScene(Scene): hub with Start/Quit + ⚙ Settings + ? Help icons; all config in SettingsOverlay
-│   ├── game_scene.py    — GameScene(Scene): main game loop scene; params: difficulty, use_minigame
+│   ├── main_menu_scene.py — MainMenuScene(Scene): hub with Start/Quit + ⚙ Settings + ? Help icons; all config in SettingsOverlay; ? opens HelpCatalogOverlay
+│   ├── game_scene.py    — GameScene(Scene): main game loop scene; params: difficulty, use_minigame; F1/? HUD button opens HelpCatalogOverlay (Exploration tab)
 │   └── game_over_scene.py — GameOverScene: victory/defeat screen; "Main Menu [R]" → MainMenuScene
 │
 ├── minigame/
 │   ├── hack_node.py         — LootKind (incl. ARMOR, MYSTERY), SecurityKind enums (shared)
 │   ├── hack_audio.py        — HackAudio: minigame-specific sound effects
-│   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) hacking minigame (only variant)
+│   ├── hack_scene_grid.py   — HackGridScene(Scene): maze-grid (PCB/circuit-board) hacking minigame (only variant); F1 opens HelpCatalogOverlay on Hacking tab
 │   ├── hack_grid_generator.py — generate_grid_map(params) → HackGridMap; HackGridParams.for_difficulty()
 │   ├── hack_grid_map.py     — HackGridMap, GridCell, GridCellType; physical 2× grid model
 │   ├── hack_common.py       — shared colours (neon palette), draw helpers (corner bracket, glow circle), make_loot_item()
 │   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
-│   └── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
-│
-├── cyberware/           — (stub, not integrated)
-├── skills/              — (stub, empty)
-├── meta/                — (stub)
+│   ├── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
+│   └── melee_scene.py       — MeleeOverlay (plain class, NOT a Scene): in-world power bar overlay; 2-phase (IDLE→CHARGING); compound sine oscillation (no accel); timer countdown in CHARGING; on_complete(float power)
 │
 main.py                  — entry point
 main_hack.py             — standalone hack minigame entry point (dev/test)
 ```
 
 ## Key Action Subclasses (combat/action.py)
-`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
+`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` (legacy) | `ElevatorAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
 
 ## Key Events (core/event_bus.py)
-`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` | `ObjectiveEvent` | `LogMessageEvent`
+`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` (legacy) | `ElevatorEvent(elevator_x, elevator_y)` | `ObjectiveEvent` | `LogMessageEvent`
 
 ## Scene Lifecycle (core/scene.py)
 `on_enter()` → `handle_events(events)` → `update(dt)` → `render(screen)` → `on_exit()`
@@ -125,3 +123,14 @@ main_hack.py             — standalone hack minigame entry point (dev/test)
 - File: `dungeoneer/assets/tileset_for_free.png` — 8 cols × 15 rows of 32×32 tiles, 0-indexed
 - Autotile: 8-bit neighbour mask (cardinal + diagonal bits) → wall tile index
 - Procedural fallback sprites when tileset unavailable
+
+## TileType enum (world/tile.py)
+`WALL` | `FLOOR` | `STAIR_DOWN` (compat) | `DOOR` | `ELEVATOR_CLOSED` (descent, blue on minimap) | `ELEVATOR_OPEN` | `ELEVATOR_ENTRY` (entry/arrival, dim grey-blue on minimap, "no way back")
+
+## Entry elevator (arrival animation)
+- `ELEVATOR_ENTRY` placed in start room by dungeon generator; `GenerationResult.entry_pos` is its (x,y)
+- Adjacent floor tile blocked from container placement
+- On floors 2+: arrival animation plays — closed→open+hero→hero steps out→closed (same timing as descent)
+- `_arrival_phase` state machine in `GameScene.update()`; input blocked during animation
+- Pressing E near ELEVATOR_ENTRY posts `hint.elevator_no_return` log message, no turn consumed
+- Hint shown above player when adjacent to ELEVATOR_ENTRY; dim amber text (vs yellow for descent elevator)

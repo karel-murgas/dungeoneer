@@ -18,7 +18,7 @@ class Difficulty:
     # Player starting stats
     player_max_hp:        int  = 30
     player_attack:        int  = 4
-    player_defence:       int  = 1
+    player_defence:       int  = 0
     starting_ammo:        dict = field(default_factory=dict)   # empty = only what's in the gun
 
     # Credits reward for securing the mission objective (final floor)
@@ -29,6 +29,9 @@ class Difficulty:
 
     # Player aim_skill used by simulate_aim_enemy when aim minigame is OFF
     player_aim_skill: float = 2.5
+
+    # Melee minigame — oscillation frequency multiplier
+    melee_freq_mult: float = 1.0
 
     # Healing minigame — timing thresholds (ms).
     # Quality tier = first threshold the sum |press_off| + |release_off| falls below.
@@ -51,6 +54,7 @@ EASY = Difficulty(
     objective_credits=360,
     aim_needle_speed_mult=0.65,
     player_aim_skill=4.0,   # mostly hits when minigame is OFF
+    melee_freq_mult=0.75,
     heal_timing_thresholds=(100, 200, 300, 400),
 )
 
@@ -72,9 +76,9 @@ HARD = Difficulty(
     drones_per_floor=4,
     containers_per_floor=2,
     player_max_hp=25,
-    player_defence=0,
     # 7g×10 + 4d×15 + 2c×15 = 160/floor × 3 floors = 480
     objective_credits=480,
     aim_needle_speed_mult=1.35,
     player_aim_skill=1.5,   # more misses when minigame is OFF
+    melee_freq_mult=1.3,
 )

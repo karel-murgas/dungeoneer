@@ -140,7 +140,6 @@ class HealOverlay:
         self._t         = 0.0
         self._state     = _State.WATCHING
         self._completed = False
-        self._show_help = False
 
         # Beat flash animation
         self._flash_dur   = HEAL_BEAT_FLASH_MS / 1000.0
@@ -184,14 +183,6 @@ class HealOverlay:
     # ------------------------------------------------------------------
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
-            self._show_help = not self._show_help
-            return
-        if self._show_help:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self._show_help = False
-            return
-
         if self._state == _State.WATCHING:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self._cancel()
@@ -253,8 +244,6 @@ class HealOverlay:
     def update(self, dt: float) -> None:
         if self._completed:
             return
-        if self._show_help:
-            return   # freeze everything while help is visible
 
         self._t += dt
 
@@ -337,12 +326,6 @@ class HealOverlay:
         # Progress dots
         self._render_dots(screen, cx, py + ph - 30)
 
-        # F1 hint
-        hint_s = self._font_small.render(t("aim.help.hint"), True, _TEXT_DIM)
-        screen.blit(hint_s, (cx - hint_s.get_width() // 2, py + ph - 16))
-
-        if self._show_help:
-            self._draw_help_overlay(screen)
 
     # ------------------------------------------------------------------
     # Drawing helpers
@@ -547,69 +530,3 @@ class HealOverlay:
             col = _DOT_ON if i < filled else _DOT_OFF
             pygame.draw.circle(screen, col, (dx, y), dot_r)
 
-    # ------------------------------------------------------------------
-    # Help overlay (F1)
-    # ------------------------------------------------------------------
-
-    def _draw_help_overlay(self, screen: pygame.Surface) -> None:
-        sw, sh = screen.get_size()
-
-        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 200))
-        screen.blit(dim, (0, 0))
-
-        _BG2 = (8,  14,  22)
-        _CYN = (0, 200, 190)
-
-        pw = min(sw - 60, 500)
-        ph = 360
-        bx = (sw - pw) // 2
-        by = (sh - ph) // 2
-
-        pygame.draw.rect(screen, _BG2, (bx, by, pw, ph))
-        pygame.draw.rect(screen, _CYN, (bx, by, pw, ph), 1)
-
-        title_s = self._font_big.render(t("heal.overlay.title"), True, _CYN)
-        screen.blit(title_s, (sw // 2 - title_s.get_width() // 2, by + 10))
-        sep_y = by + 10 + title_s.get_height() + 6
-        pygame.draw.line(screen, _CYN, (bx + 20, sep_y), (bx + pw - 20, sep_y), 1)
-
-        y  = sep_y + 12
-        lh = 18
-        lx = bx + 24
-
-        def _section(key: str) -> None:
-            nonlocal y
-            s = self._font_med.render(t(key), True, _CYN)
-            screen.blit(s, (lx, y))
-            y += 22
-
-        def _bullet(key: str) -> None:
-            nonlocal y
-            dot = self._font_small.render("\u2022 ", True, _TEXT_DIM)
-            txt = self._font_small.render(t(key), True, _TEXT)
-            screen.blit(dot, (lx, y))
-            screen.blit(txt, (lx + dot.get_width(), y))
-            y += lh
-
-        _section("heal.help.h1")
-        _bullet("heal.help.1")
-        _bullet("heal.help.2")
-        _bullet("heal.help.3")
-        _bullet("heal.help.4")
-        y += 8
-
-        _section("heal.help.h2")
-        _bullet("heal.help.s1")
-        _bullet("heal.help.s2")
-        _bullet("heal.help.s3")
-        y += 8
-
-        _section("heal.help.h3")
-        _bullet("heal.help.key1")
-        _bullet("heal.help.key2")
-        _bullet("heal.help.key3")
-        _bullet("heal.help.key4")
-
-        close_s = self._font_small.render(t("aim.help.close"), True, _TEXT_DIM)
-        screen.blit(close_s, (sw // 2 - close_s.get_width() // 2, by + ph - 18))

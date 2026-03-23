@@ -37,6 +37,7 @@ class InventoryUI:
         # Populated during draw(); used for mouse hit-testing
         self._item_rects: dict[int, pygame.Rect] = {}   # abs_index → row rect
         self._btn_rects:  dict[str, pygame.Rect] = {}   # "use"|"close" → rect
+        self.help_btn_rect: pygame.Rect | None = None   # [?] items help button
 
     # ------------------------------------------------------------------
     # Keyboard input
@@ -80,10 +81,13 @@ class InventoryUI:
                 self._selected = idx
                 break
         hov = None
-        for name, rect in self._btn_rects.items():
-            if rect.collidepoint(pos):
-                hov = name
-                break
+        if self.help_btn_rect and self.help_btn_rect.collidepoint(pos):
+            hov = "help"
+        else:
+            for name, rect in self._btn_rects.items():
+                if rect.collidepoint(pos):
+                    hov = name
+                    break
         self._hovered_btn = hov
 
     def handle_mouse_button(self, event: pygame.event.Event, player: "Player"):  # type: ignore[name-defined]
@@ -94,6 +98,9 @@ class InventoryUI:
         n     = len(items)
 
         if event.button == 1:  # left click
+            # Help button
+            if self.help_btn_rect and self.help_btn_rect.collidepoint(event.pos):
+                return "help"
             # Footer buttons take priority
             for name, rect in self._btn_rects.items():
                 if rect.collidepoint(event.pos):
@@ -241,3 +248,14 @@ class InventoryUI:
             col = (180, 220, 200) if is_hov else _COL_KEY
             screen.blit(self._font.render(label, True, col), (bx + 7, footer_y))
             bx += btn_w + 8
+
+        # --- Help button [?] on the right side of footer ---
+        help_w = self._font.size("?")[0] + 14
+        help_rect = pygame.Rect(ox + _W - _PAD - help_w, footer_y - 2, help_w, 22)
+        self.help_btn_rect = help_rect
+        is_hov = self._hovered_btn == "help"
+        pygame.draw.rect(screen, _BTN_HOV if is_hov else _BTN_NRM, help_rect)
+        pygame.draw.rect(screen, _BORDER if is_hov else (45, 70, 60), help_rect, 1)
+        col = (180, 220, 200) if is_hov else _COL_KEY
+        screen.blit(self._font.render("?", True, col),
+                    (help_rect.x + 7, footer_y))

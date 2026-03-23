@@ -5,7 +5,7 @@ Two public classes:
   TutorialOverlay  — renders the tutorial panel over the game screen.
 
 Steps (in typical encounter order):
-  "movement"  — game start: WASD / arrows + stairs ([E] descend)
+  "movement"  — game start: WASD / arrows + elevator ([E] descend)
   "enemy"     — first enemy visible: shooting (F) + aim minigame arc
   "container" — first container in FOV: hack minigame intro (Q escape, timer, nodes)
   "ammo"      — first empty clip or extra ranged weapon: C switch, R reload
@@ -42,12 +42,13 @@ _PAD = 22
 _IMG_W = 240
 _IMG_H = 280
 
-# Stair tile index in tileset_for_free.png (verified from tile_renderer.py)
-_STAIR_TILE_INDEX = 47
+# Elevator tile indices in tileset_for_free.png (verified from tile_renderer.py)
+_ELEVATOR_CLOSED_INDEX = 36
+_FLOOR_INDEX = 112
 
 
 # ---------------------------------------------------------------------------
-# Lazy tileset loader (used for the stair tile illustration)
+# Lazy tileset loader (used for the elevator tile illustration)
 # ---------------------------------------------------------------------------
 
 _tileset: object = None
@@ -77,7 +78,7 @@ def _get_tileset():
 class TutorialManager:
     """Tracks which tutorial steps have been shown this run."""
 
-    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack")
+    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee")
 
     def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
@@ -107,8 +108,12 @@ class TutorialOverlay:
         self._font_body   = pygame.font.SysFont("consolas", 14)
         self._font_body_b = pygame.font.SysFont("consolas", 14, bold=True)
         self._font_hint   = pygame.font.SysFont("consolas", 13)
+        self._font_close  = pygame.font.SysFont("consolas", 15, bold=True)
         self._step: str | None = None
         self._on_close: Callable | None = None
+        self._panel_rect: pygame.Rect | None = None
+        self._close_rect: pygame.Rect | None = None
+        self._close_hovered = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -130,8 +135,16 @@ class TutorialOverlay:
             if event.key in (pygame.K_SPACE, pygame.K_RETURN,
                              pygame.K_KP_ENTER, pygame.K_ESCAPE):
                 close = True
+        elif event.type == pygame.MOUSEMOTION:
+            self._close_hovered = bool(
+                self._close_rect and self._close_rect.collidepoint(event.pos)
+            )
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            close = True
+            # Close on X button click or click outside panel
+            if self._close_rect and self._close_rect.collidepoint(event.pos):
+                close = True
+            elif self._panel_rect and not self._panel_rect.collidepoint(event.pos):
+                close = True
         if close:
             cb = self._on_close
             self._step     = None
@@ -160,6 +173,24 @@ class TutorialOverlay:
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
         pygame.draw.rect(screen, _BORDER, (ox, oy, _W, _H), 2, border_radius=6)
+        self._panel_rect = pygame.Rect(ox, oy, _W, _H)
+
+        # Close button [x] — top-right corner
+        close_size = 20
+        self._close_rect = pygame.Rect(
+            ox + _W - _PAD - close_size, oy + _PAD // 2,
+            close_size, close_size,
+        )
+        if self._close_hovered:
+            pygame.draw.rect(screen, (60, 30, 30), self._close_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
+        x_surf = self._font_close.render(
+            "x", True, (180, 60, 60) if self._close_hovered else _COL_HINT,
+        )
+        screen.blit(x_surf, (
+            self._close_rect.centerx - x_surf.get_width() // 2,
+            self._close_rect.centery - x_surf.get_height() // 2,
+        ))
 
         # Title
         title_surf = self._font_title.render(
@@ -232,7 +263,7 @@ def _draw_placeholder(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
-    """WASD key cross (top) + stair tile from tileset (bottom)."""
+    """WASD key cross (top) + elevator tile from tileset (bottom)."""
     pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
 
     # --- WASD cross (upper portion) ---
@@ -254,31 +285,32 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
         screen.blit(s, (r.centerx - s.get_width() // 2,
                         r.centery - s.get_height() // 2))
     hint_font = pygame.font.SysFont("consolas", 11)
-    h = hint_font.render("or  arrow  keys", True, (50, 100, 90))
+    h = hint_font.render(t("tutorial.img.arrow_keys"), True, (50, 100, 90))
     screen.blit(h, (rect.centerx - h.get_width() // 2, cy + step + 10))
 
     # --- Separator ---
     sep_y = cy + step + 28
     pygame.draw.line(screen, (25, 50, 45), (rect.left + 12, sep_y), (rect.right - 12, sep_y))
 
-    # --- Stair tile (bottom portion) ---
-    stair_y = sep_y + 10
+    # --- Elevator tile (bottom portion) ---
+    elev_y = sep_y + 10
     ts = _get_tileset()
     scale = 3   # render at 3× (96×96 px)
     tile_px = 32 * scale
     tx = rect.centerx - tile_px // 2
-    ty = stair_y
+    ty = elev_y
 
     if ts is not None:
         try:
-            stair_surf = ts.get_tile_surface(_STAIR_TILE_INDEX)
-            stair_big  = pygame.transform.scale(stair_surf, (tile_px, tile_px))
-            screen.blit(stair_big, (tx, ty))
+            floor_surf = ts.get_tile_surface(_FLOOR_INDEX)
+            ts.blit_tile(floor_surf, _ELEVATOR_CLOSED_INDEX, 0, 0)
+            elev_big = pygame.transform.scale(floor_surf, (tile_px, tile_px))
+            screen.blit(elev_big, (tx, ty))
         except Exception:
             ts = None  # fall through to procedural
 
     if ts is None:
-        # Procedural fallback: cyan square with down-arrow
+        # Procedural fallback: teal square with down-arrow
         pygame.draw.rect(screen, (30, 80, 75), (tx, ty, tile_px, tile_px), border_radius=4)
         pygame.draw.rect(screen, (80, 200, 180), (tx, ty, tile_px, tile_px), 2, border_radius=4)
         fa = pygame.font.SysFont("consolas", 32, bold=True)
@@ -288,7 +320,7 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # Label under the tile
     lbl_font = pygame.font.SysFont("consolas", 12, bold=True)
-    lbl = lbl_font.render("[E]  Stairs down", True, (0, 200, 160))
+    lbl = lbl_font.render(t("tutorial.img.elevator"), True, (0, 200, 160))
     screen.blit(lbl, (rect.centerx - lbl.get_width() // 2, ty + tile_px + 6))
 
 
@@ -331,8 +363,8 @@ def _draw_enemy(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # Small "far" arc example — tiny green zone
     font_s = pygame.font.SysFont("consolas", 10)
-    lbl_close = font_s.render("close = big zone", True, (0, 160, 80))
-    lbl_far   = font_s.render("far = small zone", True, (160, 80, 80))
+    lbl_close = font_s.render(t("tutorial.img.close_zone"), True, (0, 160, 80))
+    lbl_far   = font_s.render(t("tutorial.img.far_zone"), True, (160, 80, 80))
     screen.blit(lbl_close, (rect.centerx - lbl_close.get_width() // 2, cy + 32))
     screen.blit(lbl_far,   (rect.centerx - lbl_far.get_width()   // 2, cy + 46))
 
@@ -346,7 +378,7 @@ def _draw_container(screen: pygame.Surface, rect: pygame.Rect) -> None:
     by = rect.top  + 12
     bw = rect.width - 32
     font_s = pygame.font.SysFont("consolas", 11, bold=True)
-    t_lbl  = font_s.render("TIME", True, (160, 120, 0))
+    t_lbl  = font_s.render(t("tutorial.img.time"), True, (160, 120, 0))
     screen.blit(t_lbl, (bx, by - t_lbl.get_height() - 1))
     pygame.draw.rect(screen, (30, 60, 55), (bx, by, bw, 10), border_radius=3)
     pygame.draw.rect(screen, (200, 160, 0), (bx, by, round(bw * 0.45), 10),
@@ -378,7 +410,7 @@ def _draw_container(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
     # [Q] label — large, amber, prominent
     font_q = pygame.font.SysFont("consolas", 14, bold=True)
-    q = font_q.render("[Q]  escape!", True, (240, 180, 0))
+    q = font_q.render(t("tutorial.img.escape"), True, (240, 180, 0))
     qy = rect.bottom - 28
     # amber background strip
     qbg = pygame.Surface((rect.width - 4, 20), pygame.SRCALPHA)
@@ -404,8 +436,8 @@ def _draw_ammo(screen: pygame.Surface, rect: pygame.Rect) -> None:
     ammo   = font.render("0 / 60", True, (220, 80, 80))   # show empty clip
     screen.blit(ammo, (cx - ammo.get_width() // 2, cy + 36))
     font_s = pygame.font.SysFont("consolas", 12, bold=True)
-    lbl_c  = font_s.render("[C] switch weapon", True, (0, 200, 160))
-    lbl_r  = font_s.render("[R] reload",        True, (0, 200, 160))
+    lbl_c  = font_s.render(t("tutorial.img.switch_weapon"), True, (0, 200, 160))
+    lbl_r  = font_s.render(t("tutorial.img.reload"),        True, (0, 200, 160))
     screen.blit(lbl_c, (cx - lbl_c.get_width() // 2, cy + 56))
     screen.blit(lbl_r, (cx - lbl_r.get_width() // 2, cy + 74))
 
@@ -456,6 +488,74 @@ def _draw_medipack(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Melee illustration — oscillating power bar
+# ---------------------------------------------------------------------------
+
+def _draw_melee(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Draw a power-bar illustration for the melee tutorial."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    cx = rect.centerx
+    bar_w, bar_h = 170, 16
+    bx = cx - bar_w // 2
+    crit_start = 0.92
+    font_s = pygame.font.SysFont("consolas", 11)
+
+    # --- Timer bar ---
+    timer_h = 4
+    timer_by = rect.y + 36
+    pygame.draw.rect(screen, (25, 35, 45), (bx, timer_by, bar_w, timer_h))
+    pygame.draw.rect(screen, (100, 185, 165), (bx, timer_by, round(0.55 * bar_w), timer_h))
+    t_lbl = font_s.render("1.6s", True, (100, 185, 165))
+    screen.blit(t_lbl, (bx + bar_w + 3, timer_by - 1))
+
+    # --- Power bar ---
+    by = timer_by + timer_h + 5
+    pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
+    for i in range(bar_w):
+        ratio = i / bar_w
+        if ratio >= crit_start:
+            c = (255, 240, 80)
+        elif ratio >= 0.6:
+            t_val = (ratio - 0.6) / (crit_start - 0.6)
+            c = (
+                round(210 + (40  - 210) * t_val),
+                round(165 + (200 - 165) * t_val),
+                round( 25 + ( 80 -  25) * t_val),
+            )
+        elif ratio >= 0.3:
+            t_val = (ratio - 0.3) / 0.3
+            c = (
+                round(200 + (210 - 200) * t_val),
+                round( 40 + (165 -  40) * t_val),
+                round( 40 + ( 25 -  40) * t_val),
+            )
+        else:
+            c = (200, 40, 40)
+        pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
+    pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
+
+    # Example marker
+    mx = bx + round(0.72 * bar_w)
+    pygame.draw.line(screen, (240, 240, 255), (mx, by - 2), (mx, by + bar_h + 1), 2)
+
+    # --- Zone labels ---
+    crit_x = bx + round(crit_start * bar_w)
+    for lbl, col, x in [
+        ("WEAK", (200,  50,  50), bx),
+        ("HIT",  (  0, 210,  80), bx + round(0.38 * bar_w)),
+        ("CRIT", (255, 240,  80), crit_x - 2),
+    ]:
+        screen.blit(font_s.render(lbl, True, col), (x, by + bar_h + 3))
+
+    # --- Key hint ---
+    font_k = pygame.font.SysFont("consolas", 13, bold=True)
+    key_lbl = font_k.render("[F] / LMB  hold & release", True, (0, 240, 200))
+    screen.blit(key_lbl, (cx - key_lbl.get_width() // 2, by + bar_h + 22))
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -465,4 +565,5 @@ _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "container": _draw_container,
     "ammo":      _draw_ammo,
     "medipack":  _draw_medipack,
+    "melee":     _draw_melee,
 }

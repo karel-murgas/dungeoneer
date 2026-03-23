@@ -37,6 +37,7 @@ from dungeoneer.minigame.hack_grid_generator import HackGridParams, generate_gri
 from dungeoneer.minigame.hack_audio import HackAudio
 from dungeoneer.minigame import hack_common as _hc
 from dungeoneer.rendering import procedural_sprites
+from dungeoneer.rendering.ui.help_catalog import HelpCatalogOverlay, _TAB_HACKING
 
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
@@ -167,7 +168,9 @@ class HackGridScene(Scene):
 
         self._status: str = t("hack.status.initial")
         self._log:    str = ""
-        self._show_help:  bool = False
+        self._help_open: bool = False
+        self._help_catalog = HelpCatalogOverlay()
+        self._help_catalog.open_tab(_TAB_HACKING)
 
         # Cache which connections to draw (avoid redrawing both directions)
         self._wire_pairs: List[Tuple[Pos, Pos]] = []
@@ -228,6 +231,18 @@ class HackGridScene(Scene):
             return
 
         for event in events:
+            # Help catalog takes priority while open
+            if self._help_open:
+                if event.type == pygame.MOUSEMOTION:
+                    self._help_catalog.handle_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self._help_catalog.handle_click(event.pos):
+                        self._help_open = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1 or self._help_catalog.handle_key(event.key):
+                        self._help_open = False
+                continue
+
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self._state == _State.IDLE:
                     self._handle_click(event.pos)
@@ -238,20 +253,17 @@ class HackGridScene(Scene):
             key = event.key
 
             if key == pygame.K_F1:
-                self._show_help = not self._show_help
+                self._help_catalog.open_tab(_TAB_HACKING)
+                self._help_open = True
                 continue
 
-            if self._show_help:
-                if key == pygame.K_ESCAPE:
-                    self._show_help = False
+            if key == pygame.K_ESCAPE and self._state == _State.HACKING:
+                self._state  = _State.IDLE
+                self._status = t("hack.status.cancelled")
                 continue
 
-            if key in (pygame.K_q, pygame.K_ESCAPE):
-                if self._state == _State.HACKING:
-                    self._state  = _State.IDLE
-                    self._status = t("hack.status.cancelled")
-                elif self._state == _State.IDLE:
-                    self._finish(success=True)
+            if key in (pygame.K_q, pygame.K_ESCAPE) and self._state == _State.IDLE:
+                self._finish(success=True)
                 continue
 
             direction = _DIR_MAP.get(key)
@@ -293,13 +305,13 @@ class HackGridScene(Scene):
             if self._loot_overlay["timer"] <= 0:
                 self._loot_overlay = None
 
-        if self._timer_started and not self._show_help and self._sec_overlay is None:
+        if self._timer_started and not self._help_open and self._sec_overlay is None:
             self._time_remaining = max(0.0, self._time_remaining - dt)
             if self._time_remaining == 0.0:
                 self._finish(success=False)
                 return
 
-        if self._timer_started and not self._show_help and self._time_remaining <= 3.0:
+        if self._timer_started and not self._help_open and self._time_remaining <= 3.0:
             self._tick_cooldown -= dt
             if self._tick_cooldown <= 0:
                 self._audio.play("timer_tick", volume=0.6)
@@ -338,8 +350,8 @@ class HackGridScene(Scene):
         if self._state == _State.DONE:
             self._draw_result_overlay(screen)
 
-        if self._show_help:
-            self._draw_help_overlay(screen)
+        if self._help_open:
+            self._help_catalog.draw(screen)
 
     # ------------------------------------------------------------------
     # State machine
@@ -1126,115 +1138,3 @@ class HackGridScene(Scene):
             s = self._font_sm.render(t("hack.result.drone"), True, _NEON_RED)
             screen.blit(s, (sw // 2 - s.get_width() // 2, y))
 
-    def _draw_help_overlay(self, screen: pygame.Surface) -> None:
-        sw, sh = screen.get_size()
-
-        # Dim background
-        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 210))
-        screen.blit(dim, (0, 0))
-
-        # Panel
-        pw = min(sw - 60, 860)
-        ph = 440
-        px = (sw - pw) // 2
-        py = (sh - ph) // 2
-        pygame.draw.rect(screen, _PANEL_BG, (px, py, pw, ph))
-        pygame.draw.rect(screen, _NEON_CYAN, (px, py, pw, ph), 1)
-        _draw_corner_bracket(screen, px,      py,      50, 14, _NEON_CYAN, 1)
-        _draw_corner_bracket(screen, px + pw, py,      50, 14, _NEON_CYAN, 1, flip_x=True)
-        _draw_corner_bracket(screen, px,      py + ph, 50, 14, _NEON_CYAN, 1, flip_y=True)
-        _draw_corner_bracket(screen, px + pw, py + ph, 50, 14, _NEON_CYAN, 1, flip_x=True, flip_y=True)
-
-        # Title
-        title_s = self._font_lg.render(t("hack.help.title"), True, _NEON_CYAN)
-        screen.blit(title_s, (sw // 2 - title_s.get_width() // 2, py + 14))
-        sep_y = py + 14 + title_s.get_height() + 6
-        pygame.draw.line(screen, _NEON_CYAN, (px + 20, sep_y), (px + pw - 20, sep_y), 1)
-
-        col_l = px + 26
-        col_r = px + pw // 2 + 14
-        y_l   = sep_y + 14
-        y_r   = sep_y + 14
-        lh    = 17
-        lh2   = 13
-        font  = self._font_sm
-
-        def _section(x: int, y: int, text: str) -> int:
-            s = self._font_md.render(text, True, _NEON_CYAN)
-            screen.blit(s, (x, y))
-            return y + 20
-
-        def _aligned(x: int, y: int,
-                     items: list) -> int:
-            if not items:
-                return y
-            gap    = 10
-            col_dx = max(font.size(lbl)[0] for lbl, _, _ in items) + gap
-            for lbl, lc, desc in items:
-                screen.blit(font.render(lbl,  True, lc),    (x,          y))
-                screen.blit(font.render(desc, True, _TEXT), (x + col_dx, y))
-                y += lh
-            return y
-
-        def _two_line(x: int, y: int, items: list) -> int:
-            for name, nc, desc in items:
-                pygame.draw.rect(screen, nc, (x, y + 4, 5, 5))
-                screen.blit(font.render(name, True, nc),        (x + 9,  y))
-                screen.blit(font.render(desc, True, _TEXT_DIM), (x + 9, y + lh - 2))
-                y += lh + lh2
-            return y
-
-        def _bullets(x: int, y: int, items: list) -> int:
-            for bc, text in items:
-                b = font.render("• ", True, bc)
-                screen.blit(b, (x, y))
-                screen.blit(font.render(text, True, _TEXT), (x + b.get_width(), y))
-                y += lh
-            return y
-
-        # ── Left column — node types ──────────────────────────────────
-        y_l = _section(col_l, y_l, t("hack.help.node_types"))
-        y_l = _aligned(col_l, y_l, [
-            (t("hack.help.node.entry.lbl"), _NEON_CYAN,         t("hack.help.node.entry.desc")),
-            (t("hack.help.node.cache.lbl"), _NEON_GREEN,        t("hack.help.node.cache.desc")),
-            (t("hack.help.node.empty.lbl"), _COL_NODE_EMPTY_RIM, t("hack.help.node.empty.desc")),
-            (t("hack.help.node.ice.lbl"),   _TEXT_DIM,           t("hack.help.node.ice.desc")),
-        ])
-        y_l += 10
-
-        y_l = _section(col_l, y_l, t("hack.help.ice_section"))
-        y_l = _two_line(col_l, y_l, [
-            (t("hack.help.ice.time.lbl"),    _NEON_RED, t("hack.help.ice.time.desc")),
-            (t("hack.help.ice.corrupt.lbl"), _NEON_RED, t("hack.help.ice.corrupt.desc")),
-            (t("hack.help.ice.blocked.lbl"), _NEON_RED,    t("hack.help.ice.blocked.desc")),
-        ])
-
-        # ── Right column — loot & controls ───────────────────────────
-        y_r = _section(col_r, y_r, t("hack.help.timer"))
-        y_r = _bullets(col_r, y_r, [
-            (_TEXT_DIM,         t("hack.help.timer.1")),
-            (_TEXT_DIM,         t("hack.help.timer.2")),
-            ((80, 180, 255),    t("hack.help.timer.3")),
-            (_TEXT_DIM,         t("hack.help.timer.4")),
-        ])
-        y_r += 10
-
-        y_r = _section(col_r, y_r, t("hack.help.controls"))
-        y_r = _aligned(col_r, y_r, [
-            (t("hack.help.ctrl.wasd.key"),   _NEON_YELLOW, t("hack.help.ctrl.wasd.desc")),
-            (t("hack.help.ctrl.arrows.key"), _NEON_YELLOW, t("hack.help.ctrl.arrows.desc")),
-            (t("hack.help.ctrl.esc.key"),    _NEON_YELLOW, t("hack.help.ctrl.esc.desc")),
-            (t("hack.help.ctrl.f1.key"),     _NEON_YELLOW, t("hack.help.ctrl.f1.desc")),
-        ])
-        y_r += 10
-        y_r = _section(col_r, y_r, t("hack.help.grid_section"))
-        y_r = _bullets(col_r, y_r, [
-            (_NEON_CYAN, t("hack.help.grid.automove")),
-            (_NEON_CYAN, t("hack.help.grid.stop")),
-            (_TEXT_DIM,  t("hack.help.grid.lit")),
-        ])
-
-        # Close hint
-        close_s = font.render(t("hack.help.close"), True, _TEXT_DIM)
-        screen.blit(close_s, (sw // 2 - close_s.get_width() // 2, py + ph - 22))

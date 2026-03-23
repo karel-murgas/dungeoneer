@@ -31,7 +31,8 @@ class GenerationResult:
     dungeon_map: DungeonMap
     rooms: list[Room]
     spawns: list[SpawnDesc]
-    stair_pos: tuple[int, int]
+    stair_pos: tuple[int, int]   # elevator position (legacy name kept for compat)
+    entry_pos: tuple[int, int]   # entry elevator position in start room
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +106,13 @@ class DungeonGenerator:
         px, py = start_room.cx, start_room.cy
         spawns.append(SpawnDesc("player", px, py))
 
-        # Stairs in one of the N farthest rooms from the start room
+        # Entry elevator in the start room wall (the elevator the player came from)
+        entry_x, entry_y = self._find_elevator_wall(start_room, dungeon_map)
+        dungeon_map.set_type(entry_x, entry_y, TileType.ELEVATOR_ENTRY)
+
+        # Elevator in one of the N farthest rooms from the start room.
+        # Placed on a wall tile that has exactly one cardinal floor neighbour
+        # (so the player can only approach from one side).
         other_rooms = rooms[1:]
         other_rooms_sorted = sorted(
             other_rooms,
@@ -113,8 +120,8 @@ class DungeonGenerator:
             reverse=True,
         )
         end_room = self._rng.choice(other_rooms_sorted[:STAIR_FARTHEST_CANDIDATES])
-        sx, sy = end_room.cx, end_room.cy
-        dungeon_map.set_type(sx, sy, TileType.STAIR_DOWN)
+        sx, sy = self._find_elevator_wall(end_room, dungeon_map)
+        dungeon_map.set_type(sx, sy, TileType.ELEVATOR_CLOSED)
 
         # Distribute enemies in middle rooms (not start or end room)
         middle_rooms = [r for r in rooms if r is not start_room and r is not end_room]
@@ -139,13 +146,20 @@ class DungeonGenerator:
         # Containers in random rooms (any room, including start/end)
         # Avoid doorway tiles, stairs, and already-placed chests.
         container_rooms = self._rng.choices(rooms, k=containers)
-        blocked: set[tuple[int, int]] = {(sx, sy)}
+        blocked: set[tuple[int, int]] = {(sx, sy), (px, py), (entry_x, entry_y)}
+        # Block the floor tile adjacent to the entry elevator so the player can exit
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            if dungeon_map.is_walkable(entry_x + dx, entry_y + dy):
+                blocked.add((entry_x + dx, entry_y + dy))
+                break
+        for sp in spawns:
+            blocked.add((sp.x, sp.y))
         for room in container_rooms:
             cx, cy = self._safe_container_pos(room, room_tile_set, dungeon_map, blocked)
             spawns.append(SpawnDesc("container", cx, cy))
             blocked.add((cx, cy))
 
-        return GenerationResult(dungeon_map, rooms, spawns, (sx, sy))
+        return GenerationResult(dungeon_map, rooms, spawns, (sx, sy), (entry_x, entry_y))
 
     # ------------------------------------------------------------------
     # BSP splitting
@@ -299,3 +313,44 @@ class DungeonGenerator:
             if dungeon_map.is_walkable(nx, ny) and (nx, ny) not in room_tile_set:
                 return True
         return False
+
+    # ------------------------------------------------------------------
+    # Elevator placement
+    # ------------------------------------------------------------------
+
+    def _find_elevator_wall(
+        self, room: Room, dungeon_map: DungeonMap
+    ) -> tuple[int, int]:
+        """Find a wall tile on the room perimeter with exactly one cardinal floor neighbour.
+
+        This guarantees the elevator is embedded in a wall and accessible from
+        only one side.  Falls back to room centre (as floor tile) if no suitable
+        wall tile is found.
+        """
+        candidates: list[tuple[int, int]] = []
+        # Scan the four walls of the room (one tile outside the inner area)
+        for x in range(room.inner_x, room.inner_x + room.inner_w):
+            for y in (room.y, room.y + room.h - 1):  # top and bottom walls
+                if dungeon_map.get_type(x, y) == TileType.WALL:
+                    if self._exactly_one_floor_neighbour(x, y, dungeon_map):
+                        candidates.append((x, y))
+        for y in range(room.inner_y, room.inner_y + room.inner_h):
+            for x in (room.x, room.x + room.w - 1):  # left and right walls
+                if dungeon_map.get_type(x, y) == TileType.WALL:
+                    if self._exactly_one_floor_neighbour(x, y, dungeon_map):
+                        candidates.append((x, y))
+        if candidates:
+            return self._rng.choice(candidates)
+        # Fallback: place elevator at room centre as a FLOOR-like tile
+        return room.cx, room.cy
+
+    @staticmethod
+    def _exactly_one_floor_neighbour(
+        x: int, y: int, dungeon_map: DungeonMap
+    ) -> bool:
+        """True when (x, y) has exactly one cardinal neighbour that is walkable."""
+        count = 0
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            if dungeon_map.is_walkable(x + dx, y + dy):
+                count += 1
+        return count == 1

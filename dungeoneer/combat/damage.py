@@ -35,6 +35,27 @@ def calc_melee(attacker: "Actor", target: "Actor") -> DamageResult:  # type: ign
     return DamageResult(raw, actual, is_crit)
 
 
+def calc_melee_aimed(
+    attacker: "Actor",  # type: ignore[name-defined]
+    target: "Actor",    # type: ignore[name-defined]
+    power: float,
+) -> DamageResult:
+    """Damage from the melee power-charge minigame. power ∈ [0.0, 1.0]."""
+    from dungeoneer.core.settings import MELEE_CRIT_THRESHOLD
+    from dungeoneer.items.item import RangeType
+
+    weapon = getattr(attacker, "equipped_weapon", None)
+    if weapon and weapon.range_type == RangeType.MELEE:
+        dmg_range = weapon.damage_max - weapon.damage_min
+        raw = weapon.damage_min + round(power * dmg_range)
+    else:
+        raw = round(1 + power * 3)  # unarmed fallback: 1–4
+
+    is_crit = power >= MELEE_CRIT_THRESHOLD
+    actual = target.take_damage(raw)
+    return DamageResult(raw, actual, is_crit)
+
+
 def calc_ranged_aimed(
     attacker: "Actor",  # type: ignore[name-defined]
     target: "Actor",    # type: ignore[name-defined]

@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -25,7 +25,7 @@ from dungeoneer.combat.action_resolver import ActionResolver
 from dungeoneer.combat.turn_manager import TurnManager
 from dungeoneer.combat.action import (
     MoveAction, MeleeAttackAction, RangedAttackAction,
-    WaitAction, ReloadAction, StairAction,
+    WaitAction, ReloadAction, StairAction, ElevatorAction,
     EquipAction, UseItemAction, OpenContainerAction,
 )
 from dungeoneer.items.item import RangeType
@@ -37,11 +37,15 @@ from dungeoneer.rendering.ui.hud import HUD
 from dungeoneer.rendering.ui.combat_log import CombatLog
 from dungeoneer.rendering.ui.inventory_ui import InventoryUI
 from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
-from dungeoneer.rendering.ui.help_screen import HelpScreen
+from dungeoneer.rendering.ui.help_catalog import (
+    HelpCatalogOverlay, _TAB_EXPLORATION, _TAB_AIMING, _TAB_MELEE, _TAB_HEALING,
+    _TAB_ITEMS,
+)
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
 from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
+from dungeoneer.rendering.ui.minimap_overlay import MinimapOverlay
 from dungeoneer.audio.audio_manager import AudioManager
 from dungeoneer.audio.music_manager import MusicManager
 
@@ -59,15 +63,19 @@ class GameScene(Scene):
         use_minigame: bool = True,
         use_aim_minigame: bool = True,
         use_heal_minigame: bool = True,
+        use_melee_minigame: bool = True,
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
+        map_size: str = "large",
     ) -> None:
         super().__init__(app)
         self.difficulty          = difficulty
         self.use_minigame        = use_minigame
         self.use_aim_minigame    = use_aim_minigame
         self.use_heal_minigame   = use_heal_minigame
+        self.use_melee_minigame  = use_melee_minigame
         self.heal_threshold_pct  = heal_threshold_pct
+        self.map_size            = map_size
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -75,12 +83,13 @@ class GameScene(Scene):
         self.combat_log     = CombatLog()
         self.inventory_ui   = InventoryUI()
         self.weapon_picker  = WeaponPickerUI()
-        self.help_screen    = HelpScreen()
+        self.help_catalog   = HelpCatalogOverlay()
         self.quit_confirm     = QuitConfirmDialog()
         self.overheal_confirm = QuitConfirmDialog(key_prefix="overheal_confirm")
         self.cheat_menu       = CheatMenuOverlay()
         self.tutorial_manager = TutorialManager(enabled=use_tutorial)
         self.tutorial_overlay = TutorialOverlay()
+        self.minimap          = MinimapOverlay()
         self.alert_banner   = AlertBanner()
         self.audio          = AudioManager()
         self.music          = MusicManager()
@@ -96,6 +105,7 @@ class GameScene(Scene):
         self._overheal_confirm_open = False
         self._overheal_pending: "Consumable | None" = None
         self._cheat_menu_open    = False
+        self._minimap_open       = False
         self._tutorial_open      = False                # tutorial overlay active
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
         self._heal_overlay       = None                 # HealOverlay instance when healing
@@ -108,6 +118,16 @@ class GameScene(Scene):
         self._move_hold_timer: float    = 0.0    # seconds until next auto-repeat step
         self._aim_target: Enemy | None = None   # currently highlighted ranged target
         self._aim_overlay = None                # AimOverlay instance when aiming
+        self._melee_overlay = None              # MeleeOverlay instance when charging melee
+        # Elevator animation state machine: None | "opening" | "entering" | "closing" | "descending"
+        self._elevator_phase: str | None = None
+        self._elevator_timer: float = 0.0
+        self._elevator_pos: tuple[int, int] | None = None  # (x, y) of elevator tile
+        # Arrival animation (reverse): None | "arrive_closed" | "arrive_open" | "arrive_exit" | "arrive_closing"
+        self._arrival_phase: str | None = None
+        self._arrival_timer: float = 0.0
+        self._arrival_elevator_pos: tuple[int, int] | None = None
+        self._arrival_spawn_pos: tuple[int, int] | None = None
         self._hint_font   = pygame.font.SysFont("consolas", 14, bold=True)
 
     def on_enter(self) -> None:
@@ -128,7 +148,14 @@ class GameScene(Scene):
     def on_resume(self) -> None:
         """Called when a scene pushed on top of this one (e.g. HackScene) pops."""
         self.music.resume()
-        self._aim_target  = None  # clear targeting highlight whenever we resume
+        # Keep _aim_target if enemy is still alive and visible
+        tgt = self._aim_target
+        if tgt is not None and (
+            not tgt.alive
+            or self.floor is None
+            or not self.floor.dungeon_map.visible[tgt.y, tgt.x]
+        ):
+            self._aim_target = None
         self._aim_overlay = None  # discard any stale overlay
 
         if self._hack_just_completed and not self._game_over:
@@ -151,16 +178,18 @@ class GameScene(Scene):
 
     def _subscribe_events(self) -> None:
         if not self._subscribed:
-            bus.subscribe(DeathEvent,   self._on_death)
-            bus.subscribe(StairEvent,   self._on_stair)
+            bus.subscribe(DeathEvent,     self._on_death)
+            bus.subscribe(StairEvent,     self._on_stair)
+            bus.subscribe(ElevatorEvent,  self._on_elevator)
             bus.subscribe(ObjectiveEvent, self._on_objective)
-            bus.subscribe(DamageEvent,  self._on_damage)
-            bus.subscribe(MissEvent,    self._on_miss)
+            bus.subscribe(DamageEvent,    self._on_damage)
+            bus.subscribe(MissEvent,      self._on_miss)
             self._subscribed = True
 
     def _unsubscribe_events(self) -> None:
-        bus.unsubscribe(DeathEvent,   self._on_death)
-        bus.unsubscribe(StairEvent,   self._on_stair)
+        bus.unsubscribe(DeathEvent,     self._on_death)
+        bus.unsubscribe(StairEvent,     self._on_stair)
+        bus.unsubscribe(ElevatorEvent,  self._on_elevator)
         bus.unsubscribe(ObjectiveEvent, self._on_objective)
         bus.unsubscribe(DamageEvent,  self._on_damage)
         bus.unsubscribe(MissEvent,    self._on_miss)
@@ -172,9 +201,13 @@ class GameScene(Scene):
 
     def _load_floor(self, depth: int, existing_player: Player | None = None) -> None:
         log.info("_load_floor  depth=%d  reusing_player=%s", depth, existing_player is not None)
+        if self.map_size == "small":
+            mw, mh = settings.MAP_WIDTH_SMALL, settings.MAP_HEIGHT_SMALL
+        else:
+            mw, mh = settings.MAP_WIDTH, settings.MAP_HEIGHT
         gen    = DungeonGenerator()
         result = gen.generate(
-            settings.MAP_WIDTH, settings.MAP_HEIGHT,
+            mw, mh,
             floor_depth=depth,
             guards=self.difficulty.guards_per_floor,
             drones=self.difficulty.drones_per_floor,
@@ -201,22 +234,51 @@ class GameScene(Scene):
             elif spawn.kind == "container":
                 self.floor.add_container(self._make_container(spawn.x, spawn.y))
 
-        # On the final floor replace the exit stair with the mission objective
+        # On the final floor replace the elevator with the mission objective.
+        # The vault is placed on the walkable floor tile adjacent to the elevator.
         if depth == FLOORS_PER_RUN:
-            sx, sy = result.stair_pos
-            self.floor.dungeon_map.set_type(sx, sy, TileType.FLOOR)
+            ex, ey = result.stair_pos  # elevator position
+            self.floor.dungeon_map.set_type(ex, ey, TileType.WALL)  # revert to wall
+            # Find the adjacent floor tile (the one side the elevator was accessible from)
+            vault_x, vault_y = ex, ey
+            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                if self.floor.dungeon_map.is_walkable(ex + dx, ey + dy):
+                    vault_x, vault_y = ex + dx, ey + dy
+                    break
             obj_credits = self.difficulty.objective_credits
             self.floor.add_container(
-                ContainerEntity(sx, sy, credits=obj_credits, is_objective=True, name=t("entity.corp_vault.name"))
+                ContainerEntity(vault_x, vault_y, credits=obj_credits, is_objective=True, name=t("entity.corp_vault.name"))
             )
 
-        compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+        # Start the arrival animation from the entry elevator on every floor
+        # (floor 1: game start; floors 2+: descending from above).
+        # Player is temporarily placed at the elevator tile (hidden); after the
+        # animation they step out to the adjacent spawn position.
+        self._arrival_phase = None
+        self._arrival_elevator_pos = None
+        self._arrival_spawn_pos = None
+        entry_ex, entry_ey = result.entry_pos
+        # Find the walkable tile adjacent to the entry elevator
+        entry_spawn_x, entry_spawn_y = entry_ex, entry_ey
+        for adx, ady in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            if self.floor.dungeon_map.is_walkable(entry_ex + adx, entry_ey + ady):
+                entry_spawn_x, entry_spawn_y = entry_ex + adx, entry_ey + ady
+                break
+        # Move player into elevator tile for the animation start
+        self.player.x, self.player.y = entry_ex, entry_ey
+        self._arrival_elevator_pos = (entry_ex, entry_ey)
+        self._arrival_spawn_pos = (entry_spawn_x, entry_spawn_y)
+        self._arrival_phase = "arrive_closed"
+        self._arrival_timer = 0.35
+        fov_x, fov_y = entry_spawn_x, entry_spawn_y
+
+        compute_fov(fov_x, fov_y, self.floor.dungeon_map)
         self.turn_manager.build_queue(self.floor)
         self._had_visible_enemies = False
 
         log.info(
-            "Floor %d loaded  actors=%s  stair=%s",
-            depth, [a.name for a in self.floor.actors], result.stair_pos,
+            "Floor %d loaded  actors=%s  stair=%s  entry=%s",
+            depth, [a.name for a in self.floor.actors], result.stair_pos, result.entry_pos,
         )
         self.combat_log.add(t("log.floor_enter").format(n=depth), (80, 200, 180))
 
@@ -236,10 +298,12 @@ class GameScene(Scene):
 
     def _drop_loot(self, enemy: Enemy) -> None:
         assert self.player is not None
-        # Award credits from enemy
+        # Drop credits on floor (chance-based)
+        enemy.roll_credits()
         if enemy.credits_drop > 0:
-            self.player.credits += enemy.credits_drop
-            bus.post(LogMessageEvent(t("log.credits_drop").format(n=enemy.credits_drop), (180, 220, 100)))
+            from dungeoneer.items.credits import make_credits
+            credit_item = make_credits(enemy.credits_drop)
+            self.floor.add_item_entity(ItemEntity(enemy.x, enemy.y, credit_item))
             log.info("Credits drop: %d from %s", enemy.credits_drop, enemy.name)
         # Drop item if any
         item = enemy.drop_loot()
@@ -275,6 +339,28 @@ class GameScene(Scene):
             self.turn_manager.build_queue(self.floor)
             self.music.to_calm()
 
+    def _on_elevator(self, event: ElevatorEvent) -> None:
+        """Start elevator animation: open → enter → close → descend."""
+        self._elevator_pos = (event.elevator_x, event.elevator_y)
+        self._elevator_phase = "opening"
+        self._elevator_timer = 0.35  # time to show doors opening
+        # Open the elevator doors
+        self.floor.dungeon_map.set_type(event.elevator_x, event.elevator_y, TileType.ELEVATOR_OPEN)
+        self.audio.play("elevator_open", 0.5)
+        log.info("Elevator animation started at (%d,%d)", event.elevator_x, event.elevator_y)
+
+    def _elevator_descend(self) -> None:
+        """Complete the elevator sequence — load next floor or trigger victory."""
+        assert self.player is not None
+        next_depth = self.player.floor_depth + 1
+        log.info("_elevator_descend  next_depth=%d  FLOORS_PER_RUN=%d", next_depth, FLOORS_PER_RUN)
+        if next_depth > FLOORS_PER_RUN:
+            self._trigger_game_over(victory=True)
+        else:
+            self._load_floor(next_depth, existing_player=self.player)
+            self.turn_manager.build_queue(self.floor)
+            self.music.to_calm()
+
     def _trigger_game_over(self, *, victory: bool) -> None:
         log.info("_trigger_game_over  victory=%s  already=%s", victory, self._game_over)
         if self._game_over:
@@ -287,7 +373,9 @@ class GameScene(Scene):
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
             use_aim_minigame=self.use_aim_minigame,
+            use_melee_minigame=self.use_melee_minigame,
             credits_earned=credits, audio=self.audio,
+            map_size=self.map_size,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
 
@@ -300,7 +388,9 @@ class GameScene(Scene):
                 difficulty=self.difficulty,
                 use_minigame=self.use_minigame,
                 use_aim_minigame=self.use_aim_minigame,
+                use_melee_minigame=self.use_melee_minigame,
                 use_tutorial=self.tutorial_manager.enabled,
+                map_size=self.map_size,
                 language=get_language(),
             )
         )
@@ -324,6 +414,33 @@ class GameScene(Scene):
             elif event.type == pygame.KEYUP and event.key == self._held_move_key:
                 self._held_move_key = None
 
+        # Help catalog takes priority over all overlays (F1 always works)
+        if self._help_open:
+            for event in events:
+                if event.type == pygame.MOUSEMOTION:
+                    self.help_catalog.handle_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.help_catalog.handle_click(event.pos):
+                        self._help_open = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1 or self.help_catalog.handle_key(event.key):
+                        self._help_open = False
+            return
+
+        # F1 opens help with a context-sensitive tab
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                if self._aim_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_AIMING)
+                elif self._melee_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_MELEE)
+                elif self._heal_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_HEALING)
+                else:
+                    self.help_catalog.open_tab(_TAB_EXPLORATION)
+                self._help_open = True
+                return
+
         # Aim overlay takes exclusive input while active
         if self._aim_overlay is not None:
             for event in events:
@@ -334,6 +451,12 @@ class GameScene(Scene):
         if self._heal_overlay is not None:
             for event in events:
                 self._heal_overlay.handle_event(event)
+            return
+
+        # Melee overlay takes exclusive input while active
+        if self._melee_overlay is not None:
+            for event in events:
+                self._melee_overlay.handle_event(event)
             return
 
         # Tutorial overlay takes exclusive input while active
@@ -407,23 +530,18 @@ class GameScene(Scene):
                         self._overheal_pending = None
                 continue  # absorb all input while overheal dialog is open
 
-            if self._help_open:
-                if event.type == pygame.MOUSEMOTION:
-                    self.help_screen.handle_mouse_motion(event.pos)
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.help_screen.handle_mouse_button(event):
-                        self._help_open = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_F1 or self.help_screen.handle_key(event.key):
-                        self._help_open = False
+            if self._minimap_open:
+                if event.type == pygame.KEYDOWN:
+                    if event.key in (pygame.K_m, pygame.K_ESCAPE):
+                        self._minimap_open = False
                 continue
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F1:
-                    self._help_open = True
-                    return
                 if event.key == pygame.K_F11:
                     self._cheat_menu_open = not self._cheat_menu_open
+                    return
+                if event.key == pygame.K_m:
+                    self._minimap_open = True
                     return
                 if event.key == pygame.K_ESCAPE:
                     if self._inventory_open:
@@ -450,8 +568,9 @@ class GameScene(Scene):
                     return
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                wp_r = self.hud.weapon_rect if self.hud else None
-                hl_r = self.hud.heal_rect   if self.hud else None
+                wp_r = self.hud.weapon_rect   if self.hud else None
+                hl_r = self.hud.heal_rect     if self.hud else None
+                hb_r = self.hud.help_btn_rect if self.hud else None
                 if wp_r and wp_r.collidepoint(event.pos):
                     if self._weapon_picker_open:
                         self._weapon_picker_open = False
@@ -463,9 +582,14 @@ class GameScene(Scene):
                 if hl_r and hl_r.collidepoint(event.pos):
                     self._launch_heal()
                     return
+                if hb_r and hb_r.collidepoint(event.pos):
+                    self.help_catalog.open_tab(_TAB_EXPLORATION)
+                    self._help_open = True
+                    return
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
-                or self._heal_overlay is not None):
+                or self._minimap_open or self._heal_overlay is not None
+                or self._melee_overlay is not None):
             return
 
         if self._inventory_open:
@@ -493,6 +617,10 @@ class GameScene(Scene):
 
             if action == "close":
                 self._inventory_open = False
+                return
+            if action == "help":
+                self.help_catalog.open_tab(_TAB_ITEMS)
+                self._help_open = True
                 return
             if action is None:
                 continue
@@ -543,12 +671,19 @@ class GameScene(Scene):
 
             if outcome.success:
                 self._weapon_picker_open = False
+                # Tutorial: show melee tutorial when player equips a melee weapon
+                if isinstance(action, EquipAction):
+                    w = self.player.equipped_weapon
+                    if w and w.range_type == RangeType.MELEE:
+                        self._maybe_show_tutorial("melee")
                 self._schedule_advance()
             break
 
     def _handle_player_input(self, events: List[pygame.event.Event]) -> None:
         if self.alert_banner.is_blocking:
             return
+        if self._elevator_phase is not None or self._arrival_phase is not None:
+            return  # block all input during elevator animations
         self._check_tutorial_triggers()
         if self._tutorial_open:
             return
@@ -580,6 +715,9 @@ class GameScene(Scene):
                         diag  = w.diagonal    if w else False
                         action = MeleeAttackAction(enemy, range_tiles=reach, diagonal=diag)
                         if action.validate(self.player, self.floor):
+                            if self.use_melee_minigame:
+                                self._launch_melee(enemy)
+                                break
                             result = action.execute(self.player, self.floor, self.resolver)
                             if result.message:
                                 bus.post(LogMessageEvent(result.message, result.msg_colour))
@@ -624,7 +762,7 @@ class GameScene(Scene):
             )
 
             if not action.validate(self.player, self.floor):
-                if isinstance(action, StairAction):
+                if isinstance(action, (StairAction, ElevatorAction)):
                     bus.post(LogMessageEvent(t("log.no_exit"), (180, 80, 80)))
                     self.audio.play("action_denied")
                 elif isinstance(action, OpenContainerAction):
@@ -662,6 +800,13 @@ class GameScene(Scene):
                     dist = abs(self.player.x - action.target.x) + abs(self.player.y - action.target.y)
                     shots = getattr(w, "shots", 1) if w else 1
                     action.accuracy_values = [simulate_aim_enemy(dist, self.player.aim_skill) for _ in range(shots)]
+
+            # Melee attack (from [F] key) — intercept for power-charge minigame
+            if isinstance(action, MeleeAttackAction):
+                if self.use_melee_minigame:
+                    self._launch_melee(action.target)
+                    break
+                # else: fall through to normal random-roll execution
 
             result = action.execute(self.player, self.floor, self.resolver)
             if result.message:
@@ -763,7 +908,8 @@ class GameScene(Scene):
             nx, ny = self.player.x + dx, self.player.y + dy
             target = self.floor.get_actor_at(nx, ny)
             if target and target is not self.player:
-                return MeleeAttackAction(target)
+                bus.post(LogMessageEvent(t("log.tile_occupied"), (180, 120, 80)))
+                return None
             container = self.floor.get_container_at(nx, ny)
             if container:
                 return OpenContainerAction(container)
@@ -774,11 +920,16 @@ class GameScene(Scene):
         if key == pygame.K_r:
             return ReloadAction()
         if key in (pygame.K_GREATER, pygame.K_KP_ENTER, pygame.K_e):
-            # E also opens adjacent containers (same key as stairs/interact)
+            # E also opens adjacent containers (same key as elevator/interact)
             container = self._find_adjacent_container()
             if container:
                 return OpenContainerAction(container)
-            return StairAction()
+            # Entry elevator: show "no way back" and consume the keypress
+            if self._adjacent_entry_elevator_pos() is not None:
+                bus.post(LogMessageEvent(t("hint.elevator_no_return"), (160, 130, 90)))
+                self.audio.play("action_denied")
+                return None
+            return ElevatorAction()
         if key == pygame.K_f:
             w = self.player.equipped_weapon
             if w and w.range_type == RangeType.MELEE:
@@ -880,6 +1031,28 @@ class GameScene(Scene):
                 continue
             if abs(self.player.x - c.x) <= 1 and abs(self.player.y - c.y) <= 1:
                 return c
+        return None
+
+    def _adjacent_elevator_pos(self) -> tuple[int, int] | None:
+        """Return (x, y) of a cardinally adjacent ELEVATOR_CLOSED tile, or None."""
+        if self.player is None or self.floor is None:
+            return None
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nx, ny = self.player.x + dx, self.player.y + dy
+            if self.floor.dungeon_map.in_bounds(nx, ny):
+                if self.floor.dungeon_map.get_type(nx, ny) == TileType.ELEVATOR_CLOSED:
+                    return (nx, ny)
+        return None
+
+    def _adjacent_entry_elevator_pos(self) -> tuple[int, int] | None:
+        """Return (x, y) of a cardinally adjacent ELEVATOR_ENTRY tile, or None."""
+        if self.player is None or self.floor is None:
+            return None
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nx, ny = self.player.x + dx, self.player.y + dy
+            if self.floor.dungeon_map.in_bounds(nx, ny):
+                if self.floor.dungeon_map.get_type(nx, ny) == TileType.ELEVATOR_ENTRY:
+                    return (nx, ny)
         return None
 
     # ------------------------------------------------------------------
@@ -1045,6 +1218,52 @@ class GameScene(Scene):
                 self._burst_queue.append((i * self._BURST_INTERVAL, ev))
             self._schedule_advance(extra_delay=(len(burst) - 1) * self._BURST_INTERVAL)
         else:
+            self._schedule_advance()
+
+        now_visible = self._any_enemy_visible()
+        if now_visible and not self._had_visible_enemies:
+            self.alert_banner.trigger()
+            self.music.to_action(fast=True)
+            self._maybe_show_tutorial("enemy")
+        self._had_visible_enemies = now_visible
+
+    # ------------------------------------------------------------------
+    # Melee minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_melee(self, target: Enemy) -> None:
+        from dungeoneer.minigame.melee_scene import MeleeOverlay
+
+        assert self.player is not None
+        w = self.player.equipped_weapon
+
+        def on_complete(power: float) -> None:
+            self._on_melee_complete(target, power)
+
+        self._melee_overlay = MeleeOverlay(
+            weapon=w, player=self.player, target=target,
+            on_complete=on_complete,
+            freq_mult=self.difficulty.melee_freq_mult,
+        )
+
+    def _on_melee_complete(self, target: Enemy, power: float) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        if power < 0.0:
+            return  # cancelled — no turn spent
+
+        w = self.player.equipped_weapon
+        reach = w.range_tiles if w else 1
+        diag  = w.diagonal    if w else False
+        action = MeleeAttackAction(target, range_tiles=reach, diagonal=diag, power=power)
+        if not action.validate(self.player, self.floor):
+            return
+
+        result = action.execute(self.player, self.floor, self.resolver)
+        if result.message:
+            bus.post(LogMessageEvent(result.message, result.msg_colour))
+        if result.success:
             self._schedule_advance()
 
         now_visible = self._any_enemy_visible()
@@ -1298,7 +1517,8 @@ class GameScene(Scene):
         w = self.player.equipped_weapon
         if w is None or w.range_type != RangeType.RANGED:
             bus.post(LogMessageEvent(t("log.no_ranged"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         visible_enemies = [
             a for a in self.floor.actors
@@ -1307,7 +1527,8 @@ class GameScene(Scene):
         ]
         if not visible_enemies:
             bus.post(LogMessageEvent(t("log.no_target"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         nearest = min(
             visible_enemies,
@@ -1336,7 +1557,8 @@ class GameScene(Scene):
         ]
         if not in_reach:
             bus.post(LogMessageEvent(t("log.no_melee"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         return MeleeAttackAction(min(in_reach, key=dist), range_tiles=reach, diagonal=diag)
 
@@ -1349,17 +1571,82 @@ class GameScene(Scene):
         self.floating_nums.update(dt)
         self.music.update(dt)
 
+        # Elevator animation state machine (descent)
+        if self._elevator_phase is not None:
+            self._elevator_timer -= dt
+            if self._elevator_timer <= 0.0:
+                ex, ey = self._elevator_pos
+                if self._elevator_phase == "opening":
+                    # Move player into the elevator
+                    self.player.x, self.player.y = ex, ey
+                    self._elevator_phase = "entering"
+                    self._elevator_timer = 0.25
+                elif self._elevator_phase == "entering":
+                    # Close the elevator doors
+                    self.floor.dungeon_map.set_type(ex, ey, TileType.ELEVATOR_CLOSED)
+                    self.audio.play("elevator_close", 0.5)
+                    self._elevator_phase = "closing"
+                    self._elevator_timer = 0.4
+                elif self._elevator_phase == "closing":
+                    # Descend to next floor
+                    self._elevator_phase = None
+                    self._elevator_pos = None
+                    self._elevator_descend()
+
+        # Arrival animation state machine (ascending from elevator on a new floor)
+        # Sequence: closed → open (hero inside) → hero steps out → closed
+        if self._arrival_phase is not None:
+            self._arrival_timer -= dt
+            if self._arrival_timer <= 0.0:
+                aex, aey = self._arrival_elevator_pos
+                asx, asy = self._arrival_spawn_pos
+                if self._arrival_phase == "arrive_closed":
+                    # Open the elevator doors, reveal player inside
+                    self.floor.dungeon_map.set_type(aex, aey, TileType.ELEVATOR_OPEN)
+                    self.audio.play("elevator_open", 0.5)
+                    self._arrival_phase = "arrive_open"
+                    self._arrival_timer = 0.25
+                elif self._arrival_phase == "arrive_open":
+                    # Player steps out next to the elevator
+                    self.player.x, self.player.y = asx, asy
+                    self._arrival_phase = "arrive_exit"
+                    self._arrival_timer = 0.35
+                elif self._arrival_phase == "arrive_exit":
+                    # Close the elevator doors
+                    self.floor.dungeon_map.set_type(aex, aey, TileType.ELEVATOR_ENTRY)
+                    self.audio.play("elevator_close", 0.5)
+                    self._arrival_phase = "arrive_closing"
+                    self._arrival_timer = 0.4
+                elif self._arrival_phase == "arrive_closing":
+                    # Animation done — recompute FOV from player's actual position
+                    self._arrival_phase = None
+                    self._arrival_elevator_pos = None
+                    self._arrival_spawn_pos = None
+                    compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+
         if self._aim_overlay is not None:
             self._aim_overlay.update(dt)
             if not self._aim_overlay.is_active:
                 self._aim_overlay = None
-                self._aim_target  = None
+                # Keep _aim_target if enemy is still alive and visible
+                tgt = self._aim_target
+                if tgt is not None and (
+                    not tgt.alive
+                    or self.floor is None
+                    or not self.floor.dungeon_map.visible[tgt.y, tgt.x]
+                ):
+                    self._aim_target = None
 
         if self._heal_overlay is not None:
             _ho = self._heal_overlay
             _ho.update(dt)
             if not _ho.is_active:
                 self._heal_overlay = None
+
+        if self._melee_overlay is not None:
+            self._melee_overlay.update(dt)
+            if not self._melee_overlay.is_active:
+                self._melee_overlay = None
 
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
@@ -1389,6 +1676,9 @@ class GameScene(Scene):
                     and self.turn_manager.is_player_turn()
                     and self._aim_overlay is None
                     and self._heal_overlay is None
+                    and self._melee_overlay is None
+                    and self._elevator_phase is None
+                    and self._arrival_phase is None
                     and not self._inventory_open
                     and not self._weapon_picker_open
                     and not self._help_open
@@ -1421,29 +1711,46 @@ class GameScene(Scene):
 
     def render(self, screen: pygame.Surface) -> None:
         if self.floor and self.player:
+            hide_player = (
+                self._elevator_phase == "closing"
+                or self._arrival_phase == "arrive_closed"
+            )
             self.renderer.draw(
                 screen, self.floor, self.player,
                 hud=self.hud,
                 combat_log=self.combat_log,
+                hide_player=hide_player,
             )
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
-            # Stair hint — shown when player stands on a STAIR_DOWN tile
-            if (
-                self.floor.dungeon_map.get_type(self.player.x, self.player.y) == TileType.STAIR_DOWN
+            # Elevator / entry-elevator hints
+            _no_overlay = (
+                self._elevator_phase is None
+                and self._arrival_phase is None
                 and not self._inventory_open
                 and not self._weapon_picker_open
                 and not self._help_open
                 and not self._quit_confirm_open
                 and not self._overheal_confirm_open
                 and not self._cheat_menu_open
+                and not self._minimap_open
                 and self._aim_overlay is None
                 and self._heal_overlay is None
-            ):
+                and self._melee_overlay is None
+            )
+            _hint_text: str | None = None
+            _hint_col: tuple = (220, 220, 100)
+            if _no_overlay:
+                if self._adjacent_elevator_pos() is not None:
+                    _hint_text = t("hint.elevator_descend")
+                elif self._adjacent_entry_elevator_pos() is not None:
+                    _hint_text = t("hint.elevator_no_return")
+                    _hint_col  = (160, 130, 90)
+            if _hint_text is not None:
                 cam = self.renderer.camera
                 ts  = settings.TILE_SIZE
                 sx, sy = cam.world_to_screen(self.player.x, self.player.y)
-                hint_surf = self._hint_font.render(t("hint.stair_descend"), True, (220, 220, 100))
+                hint_surf = self._hint_font.render(_hint_text, True, _hint_col)
                 hw = hint_surf.get_width()
                 hh = hint_surf.get_height()
                 pad = 4
@@ -1468,17 +1775,23 @@ class GameScene(Scene):
             # Heal overlay (centred panel, no scene push)
             if self._heal_overlay is not None:
                 self._heal_overlay.render(screen)
+            # Melee overlay (in-world power bar, no scene push)
+            if self._melee_overlay is not None:
+                cam = self.renderer.camera
+                self._melee_overlay.render(screen, cam.offset_x, cam.offset_y)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:
                 self.weapon_picker.draw(screen, self.player)
             if self._help_open:
-                self.help_screen.draw(screen)
+                self.help_catalog.draw(screen)
             if self._quit_confirm_open:
                 self.quit_confirm.draw(screen)
             if self._overheal_confirm_open:
                 self.overheal_confirm.draw(screen)
             if self._cheat_menu_open:
                 self.cheat_menu.draw(screen)
+            if self._minimap_open:
+                self.minimap.draw(screen, self.floor, self.player)
             if self._tutorial_open:
                 self.tutorial_overlay.draw(screen)

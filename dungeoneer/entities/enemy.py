@@ -24,6 +24,8 @@ class Enemy(Actor):
         is_drone: bool = False,
         aim_skill: float = 2.5,
         loot_table: list[tuple[float, str]] | None = None,
+        credits_range: tuple[int, int] = (0, 0),
+        credits_chance: float = 0.0,
     ) -> None:
         super().__init__(
             x, y, name, render_colour,
@@ -33,18 +35,27 @@ class Enemy(Actor):
         self.aim_skill    = aim_skill  # controls ranged accuracy sigma; higher = more consistent
         self.ai_brain     = AIBrain()
         self.ai_brain.attach(self)
-        self.credits_drop = 15 if is_drone else 10
+        self._credits_range = credits_range
+        self._credits_chance = credits_chance
+        self.credits_drop = 0  # rolled on death via roll_credits()
         # loot_table: list of (probability, item_id) pairs, evaluated in order
         self._loot_table  = loot_table or []
 
+    def roll_credits(self) -> int:
+        """Roll credit drop: chance for a random amount in range."""
+        if self._credits_chance > 0 and random.random() < self._credits_chance:
+            self.credits_drop = random.randint(*self._credits_range)
+        else:
+            self.credits_drop = 0
+        return self.credits_drop
+
     def drop_loot(self) -> Optional[Item]:
         """Roll the loot table. Returns an Item instance or None."""
-        from dungeoneer.items.weapon import make_combat_knife, make_shotgun, make_energy_sword
+        from dungeoneer.items.weapon import make_shotgun, make_energy_sword
         from dungeoneer.items.consumable import make_stim_pack, make_medkit
         from dungeoneer.items.ammo import make_9mm_ammo
 
         _factories = {
-            "combat_knife":  make_combat_knife,
             "shotgun":       make_shotgun,
             "energy_sword":  make_energy_sword,
             "stim_pack":     make_stim_pack,
@@ -77,10 +88,11 @@ def make_guard(x: int, y: int) -> Enemy:
         aim_skill=2.5,   # ~5% miss at d=1, ~23% miss at d=8
         loot_table=[
             (0.25, "ammo_9mm"),
-            (0.20, "combat_knife"),
             (0.15, "stim_pack"),
             (0.05, "energy_sword"),
         ],
+        credits_range=(3, 10),
+        credits_chance=0.50,
     )
     enemy.equipped_weapon = make_combat_knife()
     return enemy
@@ -99,6 +111,8 @@ def make_drone(x: int, y: int) -> Enemy:
             (0.30, "stim_pack"),
             (0.10, "medkit"),
         ],
+        credits_range=(8, 18),
+        credits_chance=0.50,
     )
     enemy.equipped_weapon = make_pistol()
     return enemy

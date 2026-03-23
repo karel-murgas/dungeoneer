@@ -40,8 +40,15 @@ class ActionResolver:
         from dungeoneer.core.event_bus import bus, LogMessageEvent
         from dungeoneer.items.ammo import AmmoPickup
         from dungeoneer.items.armor import Armor
+        from dungeoneer.items.credits import CreditPickup
         from dungeoneer.items.weapon import Weapon
         from dungeoneer.items.item import RangeType
+        # --- Credits → straight to player wallet ---
+        if isinstance(item, CreditPickup):
+            player.credits += item.amount
+            log.info("Credits pickup: %d", item.amount)
+            bus.post(LogMessageEvent(t("log.credits_drop").format(n=item.amount), (180, 220, 100)))
+            return True
         # --- Ammo → straight to reserves ---
         if isinstance(item, AmmoPickup):
             player.ammo_reserves[item.ammo_type] = (
@@ -111,7 +118,11 @@ class ActionResolver:
         from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent
 
         target = action.target
-        result = calc_melee(actor, target)
+        if action.power is not None:
+            from dungeoneer.combat.damage import calc_melee_aimed
+            result = calc_melee_aimed(actor, target, action.power)
+        else:
+            result = calc_melee(actor, target)
 
         crit_str = t("log.crit") if result.is_crit else ""
         colour   = (255, 100, 100) if result.is_crit else (220, 120, 80)

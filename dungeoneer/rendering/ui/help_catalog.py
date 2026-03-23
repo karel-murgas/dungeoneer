@@ -3,10 +3,10 @@
 Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 ◄ ► arrow keys or by clicking tab labels.  Close with Esc / Enter.
 
-Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING | HEALING
+Tabs:  EXPLORATION | COMBAT | AIMING | MELEE | HEALING | HACKING | ITEMS
 
 Each tab can have an illustration drawn at the top of the content area:
-  - Exploration: sprite icons for container / ammo / stairs / vault
+  - Exploration: sprite icons for container / ammo / elevator / vault
   - Aiming:      arc diagram with MISS / HIT / CRITICAL zones
   - Hacking:     node-type legend + loot icon examples
 
@@ -84,44 +84,32 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.expl.3.2",
             "help_catalog.expl.3.3",
         ]),
+        ("help_catalog.expl.h4", [
+            "help_catalog.expl.4.1",
+            "help_catalog.expl.4.2",
+        ]),
+        ("help_catalog.expl.h5", [
+            "help_catalog.expl.5.1",
+            "help_catalog.expl.5.2",
+        ]),
     ]),
     ("help_catalog.tab.combat", [
+        ("help_catalog.comb.intro", [
+            "help_catalog.comb.intro.1",
+            "help_catalog.comb.intro.2",
+            "help_catalog.comb.intro.3",
+            "help_catalog.comb.intro.4",
+        ]),
         ("help_catalog.comb.h1", [
             "help_catalog.comb.1.1",
             "help_catalog.comb.1.2",
             "help_catalog.comb.1.3",
         ]),
-        ("help_catalog.comb.h2", [
-            "help_catalog.comb.2.1",
-            "help_catalog.comb.2.2",
-            "help_catalog.comb.2.3",
-        ]),
-        ("help_catalog.comb.h3", [
-            "help_catalog.comb.3.1",
-            "help_catalog.comb.3.2",
-            "help_catalog.comb.3.3",
-        ]),
-    ]),
-    ("help_catalog.tab.shooting", [
         ("help_catalog.shoot.h1", [
             "help_catalog.shoot.1.1",
             "help_catalog.shoot.1.2",
             "help_catalog.shoot.1.3",
             "help_catalog.shoot.1.4",
-        ]),
-        ("help_catalog.shoot.h2", [
-            "help_catalog.shoot.2.1",
-            "help_catalog.shoot.2.2",
-            "help_catalog.shoot.2.3",
-            "help_catalog.shoot.2.4",
-        ]),
-        ("help_catalog.shoot.h3", [
-            "help_catalog.shoot.3.1",
-            "help_catalog.shoot.3.2",
-            "help_catalog.shoot.3.3",
-            "help_catalog.shoot.3.4",
-            "help_catalog.shoot.3.5",
-            "help_catalog.shoot.3.6",
         ]),
     ]),
     ("help_catalog.tab.aiming", [
@@ -141,6 +129,43 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.aim.3.1",
             "help_catalog.aim.3.2",
             "help_catalog.aim.3.3",
+        ]),
+    ]),
+    ("help_catalog.tab.melee", [
+        ("help_catalog.melee.h1", [
+            "help_catalog.melee.1.1",
+            "help_catalog.melee.1.2",
+            "help_catalog.melee.1.3",
+            "help_catalog.melee.1.4",
+        ]),
+        ("help_catalog.melee.h2", [
+            "help_catalog.melee.2.1",
+            "help_catalog.melee.2.2",
+            "help_catalog.melee.2.3",
+        ]),
+        ("help_catalog.melee.h3", [
+            "help_catalog.melee.3.1",
+            "help_catalog.melee.3.2",
+            "help_catalog.melee.3.3",
+        ]),
+    ]),
+    ("help_catalog.tab.healing", [
+        ("heal.help.h1", [
+            "heal.help.1",
+            "heal.help.2",
+            "heal.help.3",
+            "heal.help.4",
+        ]),
+        ("heal.help.h2", [
+            "heal.help.s1",
+            "heal.help.s2",
+            "heal.help.s3",
+        ]),
+        ("heal.help.h3", [
+            "heal.help.key1",
+            "heal.help.key2",
+            "heal.help.key3",
+            "heal.help.key4",
         ]),
     ]),
     ("help_catalog.tab.hacking", [
@@ -164,33 +189,39 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.hack.4.1",
             "help_catalog.hack.4.2",
             "help_catalog.hack.4.3",
+            "help_catalog.hack.4.4",
         ]),
     ]),
-    ("help_catalog.tab.healing", [
-        ("heal.help.h1", [
-            "heal.help.1",
-            "heal.help.2",
-            "heal.help.3",
-            "heal.help.4",
+    ("help_catalog.tab.items", [
+        ("help_catalog.items.h1", [
+            "help_catalog.shoot.3.1",
+            "help_catalog.shoot.3.2",
+            "help_catalog.shoot.3.3",
+            "help_catalog.shoot.3.4",
+            "help_catalog.shoot.3.5",
+            "help_catalog.shoot.3.6",
         ]),
-        ("heal.help.h2", [
-            "heal.help.s1",
-            "heal.help.s2",
-            "heal.help.s3",
+        ("help_catalog.shoot.h2", [
+            "help_catalog.shoot.2.1",
+            "help_catalog.shoot.2.2",
+            "help_catalog.shoot.2.3",
+            "help_catalog.shoot.2.4",
         ]),
-        ("heal.help.h3", [
-            "heal.help.key1",
-            "heal.help.key2",
-            "heal.help.key3",
-            "heal.help.key4",
+        ("help_catalog.comb.h2", [
+            "help_catalog.comb.2.1",
+            "help_catalog.comb.2.2",
+            "help_catalog.comb.2.3",
+            "help_catalog.comb.2.4",
         ]),
     ]),
 ]
 
 _TAB_EXPLORATION = 0
-_TAB_AIMING      = 3
-_TAB_HACKING     = 4
-_TAB_HEALING     = 5
+_TAB_AIMING      = 2
+_TAB_MELEE       = 3
+_TAB_HEALING     = 4
+_TAB_HACKING     = 5
+_TAB_ITEMS       = 6
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -240,7 +271,9 @@ class HelpCatalogOverlay:
         self._tab_idx   = 0
         self._hovered_tab: int | None = None
         self._tab_rects: list[pygame.Rect] = []
-        self._stair_tile: pygame.Surface | None = None   # lazy-loaded
+        # Fixed y-offset from tab bottom used for ALL labels — never varies with text.
+        self._tab_text_bottom = self._font_tab.get_height() + 3
+        self._elevator_tile: pygame.Surface | None = None   # lazy-loaded
         self._panel_rect: pygame.Rect | None = None
         self._close_rect: pygame.Rect | None = None
         self._close_hovered = False
@@ -248,6 +281,10 @@ class HelpCatalogOverlay:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def open_tab(self, idx: int) -> None:
+        """Open the overlay pre-selected on a specific tab index."""
+        self._tab_idx = max(0, min(idx, len(_TABS) - 1))
 
     def handle_key(self, key: int) -> bool:
         """Return True to close."""
@@ -350,8 +387,9 @@ class HelpCatalogOverlay:
             pygame.draw.rect(screen, bg,  rect, border_radius=4)
             pygame.draw.rect(screen, bdr, rect, 1, border_radius=4)
             lbl = self._font_tab.render(t(tab_key), True, col)
-            screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
-                               rect.centery - lbl.get_height() // 2))
+            bounds = lbl.get_bounding_rect()
+            y = rect.bottom - 6 - bounds.bottom
+            screen.blit(lbl, (rect.centerx - lbl.get_width() // 2, y))
             tx += widths[i] + tab_gap
 
         return cy + tab_h + 4
@@ -415,6 +453,8 @@ class HelpCatalogOverlay:
             return self._draw_aim_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HACKING:
             return self._draw_hack_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_MELEE:
+            return self._draw_melee_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HEALING:
             return self._draw_heal_illustration(screen, ox, cy, pw)
         return 0
@@ -423,21 +463,23 @@ class HelpCatalogOverlay:
     # Exploration illustration — sprite icons row
     # ------------------------------------------------------------------
 
-    def _get_stair_tile(self) -> pygame.Surface:
-        """Lazy-load and cache the tileset stair tile (floor + stair blended)."""
-        if self._stair_tile is None:
+    def _get_elevator_tile(self) -> pygame.Surface:
+        """Lazy-load and cache the closed elevator tile (floor + elevator blended)."""
+        if self._elevator_tile is None:
             from dungeoneer.rendering.spritesheet import SpriteSheet
+            path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "tiles", "dithart_scifi.png"
+            )
             try:
-                sheet = SpriteSheet(_TILESET_PATH, 32, 32)
-                surf  = sheet.get_tile_surface(_TILE_FLOOR)   # floor base
-                sheet.blit_tile(surf, _TILE_STAIR, 0, 0)      # stair on top
-                self._stair_tile = surf
+                sheet = SpriteSheet(path, 32, 32)
+                surf  = sheet.get_tile_surface(112)   # floor base
+                sheet.blit_tile(surf, 36, 0, 0)       # closed elevator on top
+                self._elevator_tile = surf
             except Exception:
-                # Fallback: plain coloured square if tileset unavailable
                 surf = pygame.Surface((32, 32), pygame.SRCALPHA)
                 pygame.draw.rect(surf, (0, 180, 160), (0, 0, 32, 32))
-                self._stair_tile = surf
-        return self._stair_tile
+                self._elevator_tile = surf
+        return self._elevator_tile
 
     def _draw_expl_illustration(self, screen: pygame.Surface,
                                   ox: int, cy: int, pw: int) -> int:
@@ -446,7 +488,7 @@ class HelpCatalogOverlay:
         items = [
             ("container_closed", t("help_catalog.expl.icon.container")),
             ("item_loot_ammo",   t("help_catalog.expl.icon.ammo")),
-            ("stairs",           t("help_catalog.expl.icon.stairs")),
+            ("elevator",         t("help_catalog.expl.icon.stairs")),
             ("vault_closed",     t("help_catalog.expl.icon.vault")),
         ]
 
@@ -466,8 +508,8 @@ class HelpCatalogOverlay:
             cell_cx = start_x + i * cell_w + cell_w // 2
             iy      = cy + 9
 
-            if sprite_key == "stairs":
-                spr = self._get_stair_tile()
+            if sprite_key == "elevator":
+                spr = self._get_elevator_tile()
             else:
                 spr = procedural_sprites.get(sprite_key)
             screen.blit(spr, (cell_cx - spr_size // 2, iy))
@@ -477,27 +519,6 @@ class HelpCatalogOverlay:
                         (cell_cx - lbl_surf.get_width() // 2, iy + spr_size + 3))
 
         return panel_h
-
-    def _get_stair_tile(self) -> pygame.Surface:
-        """Lazy-load the stair tile from the Dithart tileset.
-
-        Stairs are a plain non-wall tile — tile index 47 is blitted directly
-        (no floor underneath; that is only needed for wall face tiles).
-        """
-        if self._stair_tile is None:
-            from dungeoneer.rendering.spritesheet import SpriteSheet
-            path = os.path.join(
-                os.path.dirname(__file__), "..", "..", "assets", "tiles", "dithart_scifi.png"
-            )
-            try:
-                sheet = SpriteSheet(path, 32, 32)
-                surf  = sheet.get_tile_surface(47)
-                self._stair_tile = surf
-            except Exception:
-                surf = pygame.Surface((32, 32), pygame.SRCALPHA)
-                pygame.draw.rect(surf, (0, 180, 160), (0, 0, 32, 32))
-                self._stair_tile = surf
-        return self._stair_tile
 
     # ------------------------------------------------------------------
     # Aiming illustration — arc with labelled zones
@@ -733,6 +754,79 @@ class HelpCatalogOverlay:
         for i, bx in enumerate([ox + _PAD + 30, x1 + 20, x2 + 20]):
             lbl = font_s.render(str(i + 1), True, _COL_DIM)
             screen.blit(lbl, (bx, cy + 6))
+
+        return IH
+
+    # ------------------------------------------------------------------
+    # Melee illustration — power bar with zones
+    # ------------------------------------------------------------------
+
+    def _draw_melee_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        IH = 86
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, IH)
+        pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        bar_w = pw - _PAD * 4 - 40
+        bar_h = 16
+        bx = ox + _PAD + 20
+        by = cy + 32   # leave room for timer bar above
+
+        # --- Timer bar (thin strip above power bar) ---
+        timer_h = 5
+        timer_by = by - timer_h - 5
+        pygame.draw.rect(screen, (25, 35, 45), (bx, timer_by, bar_w, timer_h))
+        # Show ~60% remaining as example
+        pygame.draw.rect(screen, (100, 185, 165), (bx, timer_by, round(0.60 * bar_w), timer_h))
+        font_s = self._font_ill
+        t_lbl = font_s.render("1.8s", True, (100, 185, 165))
+        screen.blit(t_lbl, (bx + bar_w + 4, timer_by - 1))
+
+        # --- Bar background ---
+        pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
+
+        # --- Color gradient fill (full bar showing all zones) ---
+        crit_start = 0.92
+        for i in range(bar_w):
+            ratio = i / bar_w
+            if ratio >= crit_start:
+                c = (255, 240, 80)    # bright vivid yellow — critical
+            elif ratio >= 0.6:
+                t_val = (ratio - 0.6) / (crit_start - 0.6)
+                c = (
+                    round(210 + (40 - 210) * t_val),
+                    round(165 + (200 - 165) * t_val),
+                    round(25  + (80  -  25) * t_val),
+                )
+            elif ratio >= 0.3:
+                t_val = (ratio - 0.3) / 0.3
+                c = (
+                    round(200 + (210 - 200) * t_val),
+                    round( 40 + (165 -  40) * t_val),
+                    round( 40 + ( 25 -  40) * t_val),
+                )
+            else:
+                c = (200, 40, 40)     # deep red — weak
+            pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
+
+        # --- Crit zone border highlight ---
+        crit_x = bx + round(crit_start * bar_w)
+        pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
+
+        # --- Zone labels below bar ---
+        label_y = by + bar_h + 3
+        for lbl, col, x in [
+            ("WEAK",  (200,  50,  50), bx + 2),
+            ("HIT",   (  0, 210,  80), bx + round(0.38 * bar_w)),
+            ("CRIT",  (255, 240,  80), crit_x - 2),
+        ]:
+            s = font_s.render(lbl, True, col)
+            screen.blit(s, (x, label_y))
+
+        # --- Example marker (strong hit, not crit) ---
+        mx = bx + round(0.74 * bar_w)
+        pygame.draw.line(screen, (240, 240, 255), (mx, by - 3), (mx, by + bar_h + 2), 2)
 
         return IH
 
