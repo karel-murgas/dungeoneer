@@ -241,6 +241,7 @@ class AimOverlay:
         if self._hp_remaining <= 0 or shots_done >= self._weapon.ammo_current:
             self._stop_early = True
 
+
     # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
@@ -325,6 +326,7 @@ class AimOverlay:
         if len(crit_pts) >= 3:
             pygame.draw.polygon(surf, _CRIT_ZONE_FILL, crit_pts)
             pygame.draw.polygon(surf, _CRIT_ZONE_EDGE, crit_pts, 2)
+
 
         screen.blit(surf, (cx - size // 2, cy - size // 2))
 

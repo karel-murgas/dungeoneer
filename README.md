@@ -97,6 +97,7 @@ The standalone launcher is also available:
 python main_hack.py [easy|normal|hard]
 ```
 
+
 ## Difficulty
 
 Select at launch from the main menu, or edit `dungeoneer/core/difficulty.py`.
