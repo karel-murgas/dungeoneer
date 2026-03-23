@@ -79,9 +79,9 @@ dungeoneer/
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       ├── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Healing)
+│       ├── help_catalog.py — HelpCatalogOverlay: tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing)
 │       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
-│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 5 steps, procedural illustrations)
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 6 steps incl. melee, procedural illustrations)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
@@ -103,7 +103,8 @@ dungeoneer/
 │   ├── hack_grid_map.py     — HackGridMap, GridCell, GridCellType; physical 2× grid model
 │   ├── hack_common.py       — shared colours (neon palette), draw helpers (corner bracket, glow circle), make_loot_item()
 │   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
-│   └── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
+│   ├── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
+│   └── melee_scene.py       — MeleeOverlay (plain class, NOT a Scene): in-world power bar overlay; hold+release sinusoidal oscillation; on_complete(float power)
 │
 main.py                  — entry point
 main_hack.py             — standalone hack minigame entry point (dev/test)

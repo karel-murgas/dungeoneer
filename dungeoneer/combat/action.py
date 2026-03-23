@@ -61,10 +61,12 @@ class MoveAction(Action):
 
 
 class MeleeAttackAction(Action):
-    def __init__(self, target: "Actor", range_tiles: int = 1, diagonal: bool = False) -> None:
+    def __init__(self, target: "Actor", range_tiles: int = 1, diagonal: bool = False,
+                 power: "float | None" = None) -> None:
         self.target      = target
         self.range_tiles = range_tiles
         self.diagonal    = diagonal
+        self.power       = power       # None = random roll, 0.0–1.0 = minigame result
 
     def validate(self, actor: "Actor", floor: "Floor") -> bool:
         dx = abs(actor.x - self.target.x)

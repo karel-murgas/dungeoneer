@@ -177,6 +177,11 @@ class SettingsOverlay:
              ("heal_off", t("menu.aim_minigame_off"), not s._use_heal_minigame)],
             btn_w=_BTN_W_SM)
         cy += _ROW_H
+        self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.melee"),
+            [("melee_on",  t("menu.aim_minigame_on"),  s._use_melee_minigame),
+             ("melee_off", t("menu.aim_minigame_off"), not s._use_melee_minigame)],
+            btn_w=_BTN_W_SM)
+        cy += _ROW_H
         self._draw_labeled_row(screen, ox, cy, pw, t("settings.gameplay.tutorial"),
             [("tutorial_on",  t("menu.tutorial_on"),  s._use_tutorial),
              ("tutorial_off", t("menu.tutorial_off"), not s._use_tutorial)],
@@ -389,6 +394,8 @@ class SettingsOverlay:
         elif hit == "aim_off":   s._use_aim_minigame = False
         elif hit == "heal_on":        s._use_heal_minigame = True
         elif hit == "heal_off":       s._use_heal_minigame = False
+        elif hit == "melee_on":       s._use_melee_minigame = True
+        elif hit == "melee_off":      s._use_melee_minigame = False
         elif hit == "tutorial_on":    s._use_tutorial = True
         elif hit == "tutorial_off":   s._use_tutorial = False
         elif hit == "map_large":      s._map_size = "large"

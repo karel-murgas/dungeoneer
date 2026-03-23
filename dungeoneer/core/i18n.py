@@ -266,6 +266,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.no_ranged":                "No ranged weapon equipped.",
         "log.no_target":                "No target in sight.",
         "log.no_melee":                 "No enemy in melee range.",
+        "log.tile_occupied":             "Tile occupied — press [F] to attack.",
 
         # --- Action resolver log messages ---
         "log.pickup_ammo":              "Picked up {item}.",
@@ -553,6 +554,41 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.poor":            "Weak",
         "heal.overlay.miss":            "Poor",
 
+        # --- Melee power-charge minigame ---
+        "melee.hint_release":           "[Release] to strike!",
+        "melee.result.crit":            "CRITICAL!",
+        "melee.result.hit":             "HIT!",
+        "melee.result.weak":            "Weak...",
+        "melee.help.title":             "Power Strike",
+        "melee.help.1":                 "Hold [F] or LMB to charge the power bar.",
+        "melee.help.2":                 "The bar pulses unevenly — not every peak reaches the top.",
+        "melee.help.3":                 "Read the rhythm and release when a HIGH peak comes!",
+        "melee.help.4":                 "The gold zone = CRITICAL. The pattern speeds up over time.",
+        "melee.help.controls_header":   "CONTROLS",
+        "melee.help.key_release":       "[F] / LMB release — lock in power",
+        "melee.help.key_cancel":        "[Esc] — cancel (no attack)",
+        "melee.help.key_help":          "[F1] — toggle this help",
+        "melee.help.close":             "[F1 / Esc] close",
+        "settings.gameplay.melee":      "Melee",
+        "tutorial.melee.title":         "Melee Combat",
+        "tutorial.melee.body":          "You equipped a melee weapon!\nPress F or click an adjacent enemy to attack.\nA power bar will appear — hold and release at the peak for maximum damage.\nThe gold zone at the right end is the critical hit zone.\n>> The bar speeds up — time your strike carefully!",
+
+        # Help catalog — melee tab
+        "help_catalog.tab.melee":       "MELEE",
+        "help_catalog.melee.h1":        "Power Strike",
+        "help_catalog.melee.1.1":       "Press [F] or click an adjacent enemy to begin a melee strike.",
+        "help_catalog.melee.1.2":       "A power bar oscillates above your character.",
+        "help_catalog.melee.1.3":       "Release [F] or LMB at the crest for maximum damage.",
+        "help_catalog.melee.1.4":       "The bar accelerates — waiting is riskier.",
+        "help_catalog.melee.h2":        "Damage & Crits",
+        "help_catalog.melee.2.1":       "Bar position maps directly to weapon damage range.",
+        "help_catalog.melee.2.2":       "The narrow gold zone at the peak = CRITICAL HIT.",
+        "help_catalog.melee.2.3":       "Crits deal maximum weapon damage.",
+        "help_catalog.melee.h3":        "Controls",
+        "help_catalog.melee.3.1":       "[F] / LMB — release to strike",
+        "help_catalog.melee.3.2":       "[Esc] — cancel attack (no turn spent)",
+        "help_catalog.melee.3.3":       "[F1] — toggle in-game help",
+
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Space / Enter ]  Continue",
         "settings.gameplay.tutorial":           "Tutorial",
@@ -802,6 +838,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.no_ranged":                "\u017d\u00e1dn\u00e1 st\u0159eln\u00e1 zbra\u0148.",
         "log.no_target":                "\u017d\u00e1dn\u00fd c\u00edl v dohledu.",
         "log.no_melee":                 "\u017d\u00e1dn\u00fd nep\u0159\u00edtel v dosahu.",
+        "log.tile_occupied":             "Pole obsazeno \u2014 pro \u00fatok stiskni [F].",
 
         # --- Action resolver log messages ---
         "log.pickup_ammo":              "Sebr\u00e1no: {item}.",
@@ -1089,6 +1126,41 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.poor":            "Slab\u011b",
         "heal.overlay.miss":            "\u0160patn\u011b",
 
+        # --- Melee power-charge minigame ---
+        "melee.hint_release":           "[Pus\u0165] pro \u00fader!",
+        "melee.result.crit":            "KRITICK\u00dd!",
+        "melee.result.hit":             "Z\u00c1SAH!",
+        "melee.result.weak":            "Slab\u00fd...",
+        "melee.help.title":             "Silov\u00fd \u00fader",
+        "melee.help.1":                 "Dr\u017e [F] nebo LMB pro nab\u00edjen\u00ed s\u00edly.",
+        "melee.help.2":                 "Bar pulzuje nerovnom\u011brn\u011b \u2014 ne ka\u017ed\u00fd peak dos\u00e1hne vrcholu.",
+        "melee.help.3":                 "\u010cti rytmus a pus\u0165 kdy\u017e p\u0159ijde VYSOK\u00dd peak!",
+        "melee.help.4":                 "Zlat\u00e1 z\u00f3na = KRIT. Pattern se zrychluje.",
+        "melee.help.controls_header":   "OVL\u00c1D\u00c1N\u00cd",
+        "melee.help.key_release":       "[F] / LMB pu\u0161t\u011bn\u00ed \u2014 zamkne s\u00edlu",
+        "melee.help.key_cancel":        "[Esc] \u2014 zru\u0161it (\u017e\u00e1dn\u00fd \u00fatok)",
+        "melee.help.key_help":          "[F1] \u2014 p\u0159epnout n\u00e1pov\u011bdu",
+        "melee.help.close":             "[F1 / Esc] zav\u0159\u00edt",
+        "settings.gameplay.melee":      "Melee",
+        "tutorial.melee.title":         "Boj na bl\u00edzko",
+        "tutorial.melee.body":          "Vybavil jsi zbra\u0148 na bl\u00edzko!\nStiskni F nebo klikni na sousedn\u00edho nep\u0159\u00edtele pro \u00fatok.\nObjev\u00ed se ukazatel s\u00edly \u2014 dr\u017e a pus\u0165 na vrcholu pro maxim\u00e1ln\u00ed po\u0161kozen\u00ed.\nZlat\u00e1 z\u00f3na vpravo je z\u00f3na kritick\u00e9ho z\u00e1sahu.\n>> Bar se zrychluje \u2014 na\u010dasuj \u00fader pe\u010dliv\u011b!",
+
+        # Help catalog — melee tab
+        "help_catalog.tab.melee":       "MELEE",
+        "help_catalog.melee.h1":        "Silov\u00fd \u00fader",
+        "help_catalog.melee.1.1":       "Stiskni [F] nebo klikni na sousedn\u00edho nep\u0159\u00edtele pro \u00fatok.",
+        "help_catalog.melee.1.2":       "Nad postavou se objev\u00ed osciluj\u00edc\u00ed ukazatel s\u00edly.",
+        "help_catalog.melee.1.3":       "Pus\u0165 [F] nebo LMB na vrcholu pro maxim\u00e1ln\u00ed po\u0161kozen\u00ed.",
+        "help_catalog.melee.1.4":       "Bar se zrychluje \u2014 \u010dek\u00e1n\u00ed je riskant\u011bj\u0161\u00ed.",
+        "help_catalog.melee.h2":        "Po\u0161kozen\u00ed a krity",
+        "help_catalog.melee.2.1":       "Pozice na baru odpov\u00edd\u00e1 rozsahu po\u0161kozen\u00ed zbran\u011b.",
+        "help_catalog.melee.2.2":       "\u00dazk\u00e1 zlat\u00e1 z\u00f3na na vrcholu = KRITICK\u00dd Z\u00c1SAH.",
+        "help_catalog.melee.2.3":       "Krity zp\u016fsob\u00ed maxim\u00e1ln\u00ed po\u0161kozen\u00ed zbran\u011b.",
+        "help_catalog.melee.h3":        "Ovl\u00e1d\u00e1n\u00ed",
+        "help_catalog.melee.3.1":       "[F] / LMB \u2014 pus\u0165 pro \u00fader",
+        "help_catalog.melee.3.2":       "[Esc] \u2014 zru\u0161it \u00fatok (\u017e\u00e1dn\u00fd tah)",
+        "help_catalog.melee.3.3":       "[F1] \u2014 p\u0159epnout n\u00e1pov\u011bdu ve h\u0159e",
+
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Mezerník / Enter ]  Pokračovat",
         "settings.gameplay.tutorial":           "Tutoriál",
@@ -1338,6 +1410,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.no_ranged":                "Sin arma a distancia equipada.",
         "log.no_target":                "Sin objetivo a la vista.",
         "log.no_melee":                 "Sin enemigo al alcance.",
+        "log.tile_occupied":             "Casilla ocupada \u2014 pulsa [F] para atacar.",
 
         # --- Action resolver log messages ---
         "log.pickup_ammo":              "Recogido: {item}.",
@@ -1624,6 +1697,41 @@ _STRINGS: dict[str, dict[str, str]] = {
         "heal.overlay.good":            "Bien",
         "heal.overlay.poor":            "D\u00e9bil",
         "heal.overlay.miss":            "Pobre",
+
+        # --- Melee power-charge minigame ---
+        "melee.hint_release":           "\u00a1[Suelta] para golpear!",
+        "melee.result.crit":            "\u00a1CR\u00cdTICO!",
+        "melee.result.hit":             "\u00a1GOLPE!",
+        "melee.result.weak":            "D\u00e9bil...",
+        "melee.help.title":             "Golpe de Poder",
+        "melee.help.1":                 "Mant\u00e9n [F] o LMB para cargar la barra de poder.",
+        "melee.help.2":                 "La barra pulsa irregularmente \u2014 no todos los picos llegan arriba.",
+        "melee.help.3":                 "\u00a1Lee el ritmo y suelta cuando venga un pico ALTO!",
+        "melee.help.4":                 "Zona dorada = CR\u00cdTICO. El patr\u00f3n se acelera.",
+        "melee.help.controls_header":   "CONTROLES",
+        "melee.help.key_release":       "[F] / LMB soltar \u2014 fijar poder",
+        "melee.help.key_cancel":        "[Esc] \u2014 cancelar (sin ataque)",
+        "melee.help.key_help":          "[F1] \u2014 alternar esta ayuda",
+        "melee.help.close":             "[F1 / Esc] cerrar",
+        "settings.gameplay.melee":      "Melee",
+        "tutorial.melee.title":         "Combate cuerpo a cuerpo",
+        "tutorial.melee.body":          "\u00a1Has equipado un arma cuerpo a cuerpo!\nPulsa F o haz clic en un enemigo adyacente para atacar.\nAparecer\u00e1 una barra de poder \u2014 mant\u00e9n y suelta en el pico para da\u00f1o m\u00e1ximo.\nLa zona dorada a la derecha es la zona de golpe cr\u00edtico.\n>> La barra se acelera \u2014 \u00a1sincroniza tu golpe con cuidado!",
+
+        # Help catalog — melee tab
+        "help_catalog.tab.melee":       "MELEE",
+        "help_catalog.melee.h1":        "Golpe de Poder",
+        "help_catalog.melee.1.1":       "Pulsa [F] o haz clic en un enemigo adyacente para atacar.",
+        "help_catalog.melee.1.2":       "Una barra de poder oscila sobre tu personaje.",
+        "help_catalog.melee.1.3":       "Suelta [F] o LMB en la cresta para da\u00f1o m\u00e1ximo.",
+        "help_catalog.melee.1.4":       "La barra se acelera \u2014 esperar es m\u00e1s arriesgado.",
+        "help_catalog.melee.h2":        "Da\u00f1o y cr\u00edticos",
+        "help_catalog.melee.2.1":       "La posici\u00f3n en la barra corresponde al rango de da\u00f1o del arma.",
+        "help_catalog.melee.2.2":       "La estrecha zona dorada en el pico = GOLPE CR\u00cdTICO.",
+        "help_catalog.melee.2.3":       "Los cr\u00edticos causan el da\u00f1o m\u00e1ximo del arma.",
+        "help_catalog.melee.h3":        "Controles",
+        "help_catalog.melee.3.1":       "[F] / LMB \u2014 soltar para golpear",
+        "help_catalog.melee.3.2":       "[Esc] \u2014 cancelar ataque (sin turno)",
+        "help_catalog.melee.3.3":       "[F1] \u2014 alternar ayuda en el juego",
 
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Espacio / Enter ]  Continuar",

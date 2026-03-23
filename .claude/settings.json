@@ -26,7 +26,10 @@
       "Bash(for d:*)",
       "Bash(do echo:*)",
       "Read(//c/Users/karel/Documents/Python/Dungeoneer/dungeoneer/dungeoneer/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(git rm:*)",
+      "Bash(git push:*)",
+      "Bash(git stash:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",

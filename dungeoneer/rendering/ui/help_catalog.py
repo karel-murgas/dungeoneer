@@ -170,6 +170,24 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.hack.4.3",
         ]),
     ]),
+    ("help_catalog.tab.melee", [
+        ("help_catalog.melee.h1", [
+            "help_catalog.melee.1.1",
+            "help_catalog.melee.1.2",
+            "help_catalog.melee.1.3",
+            "help_catalog.melee.1.4",
+        ]),
+        ("help_catalog.melee.h2", [
+            "help_catalog.melee.2.1",
+            "help_catalog.melee.2.2",
+            "help_catalog.melee.2.3",
+        ]),
+        ("help_catalog.melee.h3", [
+            "help_catalog.melee.3.1",
+            "help_catalog.melee.3.2",
+            "help_catalog.melee.3.3",
+        ]),
+    ]),
     ("help_catalog.tab.healing", [
         ("heal.help.h1", [
             "heal.help.1",
@@ -194,7 +212,8 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
 _TAB_EXPLORATION = 0
 _TAB_AIMING      = 3
 _TAB_HACKING     = 4
-_TAB_HEALING     = 5
+_TAB_MELEE       = 5
+_TAB_HEALING     = 6
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -419,6 +438,8 @@ class HelpCatalogOverlay:
             return self._draw_aim_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HACKING:
             return self._draw_hack_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_MELEE:
+            return self._draw_melee_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HEALING:
             return self._draw_heal_illustration(screen, ox, cy, pw)
         return 0
@@ -718,6 +739,58 @@ class HelpCatalogOverlay:
         for i, bx in enumerate([ox + _PAD + 30, x1 + 20, x2 + 20]):
             lbl = font_s.render(str(i + 1), True, _COL_DIM)
             screen.blit(lbl, (bx, cy + 6))
+
+        return IH
+
+    # ------------------------------------------------------------------
+    # Melee illustration — power bar with zones
+    # ------------------------------------------------------------------
+
+    def _draw_melee_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        IH = 70
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, IH)
+        pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        bar_w = pw - _PAD * 4 - 40
+        bar_h = 16
+        bx = ox + _PAD + 20
+        by = cy + 24
+
+        # Bar background
+        pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
+
+        # Color gradient fill
+        for i in range(bar_w):
+            ratio = i / bar_w
+            if ratio < 0.3:
+                c = (200, 55, 55)
+            elif ratio < 0.6:
+                c = (180, 160, 40)
+            else:
+                c = (40, 170, 70)
+            pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
+
+        # Crit zone
+        crit_x = bx + int(0.95 * bar_w)
+        crit_w = bar_w - int(0.95 * bar_w)
+        pygame.draw.rect(screen, (200, 170, 0), (crit_x, by, crit_w, bar_h))
+        pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
+
+        # Zone labels
+        font_s = self._font_ill
+        for lbl, col, x in [
+            ("MISS", _LABEL_MISS, bx + 4),
+            ("HIT", _LABEL_HIT, bx + int(0.45 * bar_w)),
+            ("CRIT", _LABEL_CRIT, crit_x - 2),
+        ]:
+            s = font_s.render(lbl, True, col)
+            screen.blit(s, (x, by + bar_h + 3))
+
+        # Marker showing "lock here" example
+        mx = bx + int(0.72 * bar_w)
+        pygame.draw.line(screen, (240, 240, 255), (mx, by - 3), (mx, by + bar_h + 2), 2)
 
         return IH
 

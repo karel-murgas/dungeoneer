@@ -157,6 +157,41 @@ Integration: `GameScene._launch_aim(target)` → creates AimOverlay → `_on_aim
 Statistical simulation (enemies / minigame OFF): `simulate_aim(weapon, distance)` in `combat/damage.py`.
 Formula: `hit_chance = min(1.0, zone / AIM_ARC_DEGREES)` (corrected from old zone/(ARC/2)).
 
+## Melee overlay (melee_scene.py)
+
+```python
+class MeleeOverlay:
+    """In-world power bar — NOT a Scene, no push/pop.
+    GameScene owns _melee_overlay: MeleeOverlay | None directly.
+    """
+    def __init__(weapon: Weapon, player: Player, target: Enemy,
+                 on_complete: Callable[[float], None], freq_mult: float = 1.0)
+    # on_complete(power) — power ∈ [0.0, 1.0], or -1.0 if cancelled
+    # power maps to damage_min..damage_max via calc_melee_aimed()
+
+    def handle_event(event) -> None   # routes F-release/LMB-release/Esc; consumes all events
+    def update(dt) -> None
+    def render(screen, cam_offset_x, cam_offset_y) -> None
+    @property is_active -> bool       # False once on_complete has been called
+```
+
+Constants (all in `core/settings.py`):
+- `MELEE_FREQ1 = 1.1`, `MELEE_FREQ2 = 0.7` — Hz, two frequencies for compound beat
+- `MELEE_FREQ_ACCEL = 0.25` — Hz/s, frequency drift over time
+- `MELEE_TIMEOUT = 3.0` — seconds before auto-release
+- `MELEE_CRIT_THRESHOLD = 0.92` — power >= this = crit
+- `MELEE_RESULT_PAUSE = 0.35` — seconds to display result
+- `MELEE_BAR_W = 120`, `MELEE_BAR_H = 12` — bar dimensions in pixels
+
+Visual: horizontal bar above player (world-space). Gradient: red→yellow→green→gold(crit).
+Oscillation: `power = 0.5 + 0.5 * sin(f1*t) * sin(f2*t)` — compound beat pattern.
+Amplitude varies — not every cycle peaks high; player must READ the pattern.
+
+**Bump-to-attack disabled**: walking into enemy shows "tile occupied" log msg. Melee only via F key.
+
+Integration: `GameScene._launch_melee(target)` → creates MeleeOverlay → `_on_melee_complete(target, power)` → `MeleeAttackAction(target, power=power)` + `_schedule_advance()`.
+Enemies / minigame OFF: use `calc_melee()` (random roll, same as before).
+
 ## Integration Notes
 - Launched as a `Scene` via `SceneManager` — push HackScene, it calls `on_complete` callback, then pops itself
 - `on_complete(success: bool, items: List[Item], credits: int)` — credits are from hacked nodes

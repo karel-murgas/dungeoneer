@@ -78,7 +78,7 @@ def _get_tileset():
 class TutorialManager:
     """Tracks which tutorial steps have been shown this run."""
 
-    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack")
+    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee")
 
     def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
@@ -108,8 +108,12 @@ class TutorialOverlay:
         self._font_body   = pygame.font.SysFont("consolas", 14)
         self._font_body_b = pygame.font.SysFont("consolas", 14, bold=True)
         self._font_hint   = pygame.font.SysFont("consolas", 13)
+        self._font_close  = pygame.font.SysFont("consolas", 15, bold=True)
         self._step: str | None = None
         self._on_close: Callable | None = None
+        self._panel_rect: pygame.Rect | None = None
+        self._close_rect: pygame.Rect | None = None
+        self._close_hovered = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -131,8 +135,16 @@ class TutorialOverlay:
             if event.key in (pygame.K_SPACE, pygame.K_RETURN,
                              pygame.K_KP_ENTER, pygame.K_ESCAPE):
                 close = True
+        elif event.type == pygame.MOUSEMOTION:
+            self._close_hovered = bool(
+                self._close_rect and self._close_rect.collidepoint(event.pos)
+            )
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            close = True
+            # Close on X button click or click outside panel
+            if self._close_rect and self._close_rect.collidepoint(event.pos):
+                close = True
+            elif self._panel_rect and not self._panel_rect.collidepoint(event.pos):
+                close = True
         if close:
             cb = self._on_close
             self._step     = None
@@ -161,6 +173,24 @@ class TutorialOverlay:
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
         pygame.draw.rect(screen, _BORDER, (ox, oy, _W, _H), 2, border_radius=6)
+        self._panel_rect = pygame.Rect(ox, oy, _W, _H)
+
+        # Close button [x] — top-right corner
+        close_size = 20
+        self._close_rect = pygame.Rect(
+            ox + _W - _PAD - close_size, oy + _PAD // 2,
+            close_size, close_size,
+        )
+        if self._close_hovered:
+            pygame.draw.rect(screen, (60, 30, 30), self._close_rect, border_radius=3)
+            pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
+        x_surf = self._font_close.render(
+            "x", True, (180, 60, 60) if self._close_hovered else _COL_HINT,
+        )
+        screen.blit(x_surf, (
+            self._close_rect.centerx - x_surf.get_width() // 2,
+            self._close_rect.centery - x_surf.get_height() // 2,
+        ))
 
         # Title
         title_surf = self._font_title.render(
@@ -458,6 +488,92 @@ def _draw_medipack(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Melee illustration — oscillating power bar
+# ---------------------------------------------------------------------------
+
+def _draw_melee(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Draw a power-bar illustration for the melee tutorial."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    cx = rect.centerx
+    cy = rect.y + 60
+
+    # Player icon
+    pygame.draw.rect(screen, (0, 200, 180), (cx - 12, cy - 12, 24, 24), border_radius=4)
+    font = pygame.font.SysFont("consolas", 12, bold=True)
+    p_lbl = font.render("P", True, (10, 20, 18))
+    screen.blit(p_lbl, (cx - p_lbl.get_width() // 2, cy - p_lbl.get_height() // 2))
+
+    # Power bar above player
+    bar_w, bar_h = 140, 14
+    bx = cx - bar_w // 2
+    by = cy - 36
+
+    # Bar background
+    pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
+    pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
+
+    # Crit zone (gold strip at right)
+    crit_x = bx + int(0.95 * bar_w)
+    pygame.draw.rect(screen, (200, 170, 0, 80), (crit_x, by, bar_w - int(0.95 * bar_w), bar_h))
+
+    # Filled gradient portion (example at ~70%)
+    fill = int(0.70 * bar_w)
+    for i in range(fill):
+        ratio = i / bar_w
+        if ratio < 0.3:
+            c = (200, 55, 55)
+        elif ratio < 0.6:
+            c = (220, 200, 50)
+        else:
+            c = (50, 200, 80)
+        pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
+
+    # Marker line
+    mx = bx + fill
+    pygame.draw.line(screen, (240, 240, 255), (mx, by - 2), (mx, by + bar_h + 1), 2)
+
+    # Labels
+    font_s = pygame.font.SysFont("consolas", 11)
+    lbl_min = font_s.render("MIN", True, (200, 55, 55))
+    lbl_max = font_s.render("MAX", True, (50, 200, 80))
+    lbl_crit = font_s.render("CRIT", True, (255, 220, 40))
+    screen.blit(lbl_min, (bx, by + bar_h + 4))
+    screen.blit(lbl_max, (bx + bar_w - lbl_max.get_width() - 20, by + bar_h + 4))
+    screen.blit(lbl_crit, (crit_x - 2, by + bar_h + 4))
+
+    # Arrow showing oscillation
+    arrow_y = by - 12
+    for i, dx in enumerate([-20, 0, 20]):
+        alpha = 255 - i * 60
+        surf = font_s.render("~", True, (0, 200, 180))
+        surf.set_alpha(alpha)
+        screen.blit(surf, (mx + dx - 4, arrow_y))
+
+    # Key hint
+    font_k = pygame.font.SysFont("consolas", 14, bold=True)
+    key_lbl = font_k.render("[F] / LMB", True, (0, 240, 200))
+    screen.blit(key_lbl, (cx - key_lbl.get_width() // 2, cy + 30))
+
+    # Sine wave preview
+    wave_y = rect.y + 140
+    wave_w = bar_w
+    wave_ox = cx - wave_w // 2
+    prev = None
+    for i in range(wave_w):
+        x = wave_ox + i
+        t_val = i / wave_w * 3 * math.pi
+        y = wave_y + int(20 * math.sin(t_val))
+        if prev is not None:
+            pygame.draw.line(screen, (0, 180, 150), prev, (x, y), 1)
+        prev = (x, y)
+
+    wave_lbl = font_s.render("power oscillation", True, (60, 100, 90))
+    screen.blit(wave_lbl, (cx - wave_lbl.get_width() // 2, wave_y + 28))
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -467,4 +583,5 @@ _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "container": _draw_container,
     "ammo":      _draw_ammo,
     "medipack":  _draw_medipack,
+    "melee":     _draw_melee,
 }

@@ -30,6 +30,9 @@ class Difficulty:
     # Player aim_skill used by simulate_aim_enemy when aim minigame is OFF
     player_aim_skill: float = 2.5
 
+    # Melee minigame — oscillation frequency multiplier
+    melee_freq_mult: float = 1.0
+
     # Healing minigame — timing thresholds (ms).
     # Quality tier = first threshold the sum |press_off| + |release_off| falls below.
     # Tuple: (perfect_ms, great_ms, good_ms, poor_ms); anything ≥ poor_ms → miss.
@@ -51,6 +54,7 @@ EASY = Difficulty(
     objective_credits=360,
     aim_needle_speed_mult=0.65,
     player_aim_skill=4.0,   # mostly hits when minigame is OFF
+    melee_freq_mult=0.75,
     heal_timing_thresholds=(100, 200, 300, 400),
 )
 
@@ -77,4 +81,5 @@ HARD = Difficulty(
     objective_credits=480,
     aim_needle_speed_mult=1.35,
     player_aim_skill=1.5,   # more misses when minigame is OFF
+    melee_freq_mult=1.3,
 )

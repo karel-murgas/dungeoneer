@@ -27,6 +27,7 @@ class GameOverScene(Scene):
         difficulty: Difficulty | None = None,
         use_minigame: bool = True,
         use_aim_minigame: bool = True,
+        use_melee_minigame: bool = True,
         credits_earned: int = 0,
         audio=None,
         map_size: str = "large",
@@ -37,6 +38,7 @@ class GameOverScene(Scene):
         self._difficulty         = difficulty
         self._use_minigame       = use_minigame
         self._use_aim_minigame   = use_aim_minigame
+        self._use_melee_minigame = use_melee_minigame
         self._map_size           = map_size
         self._credits_earned  = credits_earned
         self._audio           = audio
@@ -141,6 +143,7 @@ class GameOverScene(Scene):
                 difficulty=self._difficulty if self._difficulty is not None else NORMAL,
                 use_minigame=self._use_minigame,
                 use_aim_minigame=self._use_aim_minigame,
+                use_melee_minigame=self._use_melee_minigame,
                 map_size=self._map_size,
                 language=get_language(),
             )

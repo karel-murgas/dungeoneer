@@ -8,6 +8,21 @@ type: project
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
 
+### New (2026-03-22) — melee power-charge minigame
+- **MeleeOverlay** (`minigame/melee_scene.py`) — in-world power bar overlay for melee attacks
+- Hold F/LMB → bar oscillates sinusoidally (0.0–1.0); release at peak = max damage
+- `power` maps to `damage_min..damage_max`; crit zone at top 5% (gold strip)
+- Oscillation frequency accelerates over time; auto-releases at 2.5s timeout
+- Difficulty scales oscillation speed: Easy=0.75×, Normal=1.0×, Hard=1.3×
+- `calc_melee_aimed(attacker, target, power)` in `combat/damage.py`
+- `MeleeAttackAction.power` optional field; resolver uses aimed calc when set
+- Settings toggle: "Melee" ON/OFF in SettingsOverlay (default ON); OFF = random roll as before
+- Settings flow: `use_melee_minigame` carried through MainMenuScene → GameScene → GameOverScene
+- Tutorial step "melee" triggers when player equips a melee weapon via weapon picker
+- Help catalog: new MELEE tab (7th tab) with illustration
+- F1 help overlay during charging (freezes bar)
+- i18n: `melee.*` keys (en/cs/es); `settings.gameplay.melee`; `tutorial.melee.*`; `help_catalog.melee.*`
+
 ### New (2026-03-22) — minimap overlay
 - **MinimapOverlay** (`rendering/ui/minimap_overlay.py`) — fullscreen dungeon minimap toggle on **M** key
 - Shows explored tiles vs fog of war (unexplored = black), walls (dark grey), floors (grey, brighter if visible)

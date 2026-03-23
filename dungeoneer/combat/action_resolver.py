@@ -118,7 +118,11 @@ class ActionResolver:
         from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent
 
         target = action.target
-        result = calc_melee(actor, target)
+        if action.power is not None:
+            from dungeoneer.combat.damage import calc_melee_aimed
+            result = calc_melee_aimed(actor, target, action.power)
+        else:
+            result = calc_melee(actor, target)
 
         crit_str = t("log.crit") if result.is_crit else ""
         colour   = (255, 100, 100) if result.is_crit else (220, 120, 80)

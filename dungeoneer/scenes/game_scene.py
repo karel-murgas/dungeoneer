@@ -60,6 +60,7 @@ class GameScene(Scene):
         use_minigame: bool = True,
         use_aim_minigame: bool = True,
         use_heal_minigame: bool = True,
+        use_melee_minigame: bool = True,
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
         map_size: str = "large",
@@ -69,6 +70,7 @@ class GameScene(Scene):
         self.use_minigame        = use_minigame
         self.use_aim_minigame    = use_aim_minigame
         self.use_heal_minigame   = use_heal_minigame
+        self.use_melee_minigame  = use_melee_minigame
         self.heal_threshold_pct  = heal_threshold_pct
         self.map_size            = map_size
         self.resolver       = ActionResolver()
@@ -113,6 +115,7 @@ class GameScene(Scene):
         self._move_hold_timer: float    = 0.0    # seconds until next auto-repeat step
         self._aim_target: Enemy | None = None   # currently highlighted ranged target
         self._aim_overlay = None                # AimOverlay instance when aiming
+        self._melee_overlay = None              # MeleeOverlay instance when charging melee
         # Elevator animation state machine: None | "opening" | "entering" | "closing" | "descending"
         self._elevator_phase: str | None = None
         self._elevator_timer: float = 0.0
@@ -340,6 +343,7 @@ class GameScene(Scene):
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
             use_aim_minigame=self.use_aim_minigame,
+            use_melee_minigame=self.use_melee_minigame,
             credits_earned=credits, audio=self.audio,
             map_size=self.map_size,
         ))
@@ -354,6 +358,7 @@ class GameScene(Scene):
                 difficulty=self.difficulty,
                 use_minigame=self.use_minigame,
                 use_aim_minigame=self.use_aim_minigame,
+                use_melee_minigame=self.use_melee_minigame,
                 use_tutorial=self.tutorial_manager.enabled,
                 map_size=self.map_size,
                 language=get_language(),
@@ -389,6 +394,12 @@ class GameScene(Scene):
         if self._heal_overlay is not None:
             for event in events:
                 self._heal_overlay.handle_event(event)
+            return
+
+        # Melee overlay takes exclusive input while active
+        if self._melee_overlay is not None:
+            for event in events:
+                self._melee_overlay.handle_event(event)
             return
 
         # Tutorial overlay takes exclusive input while active
@@ -529,7 +540,8 @@ class GameScene(Scene):
                     return
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
-                or self._minimap_open or self._heal_overlay is not None):
+                or self._minimap_open or self._heal_overlay is not None
+                or self._melee_overlay is not None):
             return
 
         if self._inventory_open:
@@ -607,6 +619,11 @@ class GameScene(Scene):
 
             if outcome.success:
                 self._weapon_picker_open = False
+                # Tutorial: show melee tutorial when player equips a melee weapon
+                if isinstance(action, EquipAction):
+                    w = self.player.equipped_weapon
+                    if w and w.range_type == RangeType.MELEE:
+                        self._maybe_show_tutorial("melee")
                 self._schedule_advance()
             break
 
@@ -646,6 +663,9 @@ class GameScene(Scene):
                         diag  = w.diagonal    if w else False
                         action = MeleeAttackAction(enemy, range_tiles=reach, diagonal=diag)
                         if action.validate(self.player, self.floor):
+                            if self.use_melee_minigame:
+                                self._launch_melee(enemy)
+                                break
                             result = action.execute(self.player, self.floor, self.resolver)
                             if result.message:
                                 bus.post(LogMessageEvent(result.message, result.msg_colour))
@@ -728,6 +748,13 @@ class GameScene(Scene):
                     dist = abs(self.player.x - action.target.x) + abs(self.player.y - action.target.y)
                     shots = getattr(w, "shots", 1) if w else 1
                     action.accuracy_values = [simulate_aim_enemy(dist, self.player.aim_skill) for _ in range(shots)]
+
+            # Melee attack → intercept for power-charge minigame
+            if isinstance(action, MeleeAttackAction):
+                if self.use_melee_minigame:
+                    self._launch_melee(action.target)
+                    break
+                # else: fall through to normal random-roll execution
 
             result = action.execute(self.player, self.floor, self.resolver)
             if result.message:
@@ -829,7 +856,8 @@ class GameScene(Scene):
             nx, ny = self.player.x + dx, self.player.y + dy
             target = self.floor.get_actor_at(nx, ny)
             if target and target is not self.player:
-                return MeleeAttackAction(target)
+                bus.post(LogMessageEvent(t("log.tile_occupied"), (180, 120, 80)))
+                return None
             container = self.floor.get_container_at(nx, ny)
             if container:
                 return OpenContainerAction(container)
@@ -1132,6 +1160,52 @@ class GameScene(Scene):
         self._had_visible_enemies = now_visible
 
     # ------------------------------------------------------------------
+    # Melee minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_melee(self, target: Enemy) -> None:
+        from dungeoneer.minigame.melee_scene import MeleeOverlay
+
+        assert self.player is not None
+        w = self.player.equipped_weapon
+
+        def on_complete(power: float) -> None:
+            self._on_melee_complete(target, power)
+
+        self._melee_overlay = MeleeOverlay(
+            weapon=w, player=self.player, target=target,
+            on_complete=on_complete,
+            freq_mult=self.difficulty.melee_freq_mult,
+        )
+
+    def _on_melee_complete(self, target: Enemy, power: float) -> None:
+        assert self.player is not None
+        assert self.floor  is not None
+
+        if power < 0.0:
+            return  # cancelled — no turn spent
+
+        w = self.player.equipped_weapon
+        reach = w.range_tiles if w else 1
+        diag  = w.diagonal    if w else False
+        action = MeleeAttackAction(target, range_tiles=reach, diagonal=diag, power=power)
+        if not action.validate(self.player, self.floor):
+            return
+
+        result = action.execute(self.player, self.floor, self.resolver)
+        if result.message:
+            bus.post(LogMessageEvent(result.message, result.msg_colour))
+        if result.success:
+            self._schedule_advance()
+
+        now_visible = self._any_enemy_visible()
+        if now_visible and not self._had_visible_enemies:
+            self.alert_banner.trigger()
+            self.music.to_action(fast=True)
+            self._maybe_show_tutorial("enemy")
+        self._had_visible_enemies = now_visible
+
+    # ------------------------------------------------------------------
     # Cheat / debug menu
     # ------------------------------------------------------------------
 
@@ -1375,7 +1449,8 @@ class GameScene(Scene):
         w = self.player.equipped_weapon
         if w is None or w.range_type != RangeType.RANGED:
             bus.post(LogMessageEvent(t("log.no_ranged"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         visible_enemies = [
             a for a in self.floor.actors
@@ -1384,7 +1459,8 @@ class GameScene(Scene):
         ]
         if not visible_enemies:
             bus.post(LogMessageEvent(t("log.no_target"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         nearest = min(
             visible_enemies,
@@ -1413,7 +1489,8 @@ class GameScene(Scene):
         ]
         if not in_reach:
             bus.post(LogMessageEvent(t("log.no_melee"), (180, 80, 80)))
-            return WaitAction()
+            self.audio.play("action_denied")
+            return None
 
         return MeleeAttackAction(min(in_reach, key=dist), range_tiles=reach, diagonal=diag)
 
@@ -1467,6 +1544,11 @@ class GameScene(Scene):
             if not _ho.is_active:
                 self._heal_overlay = None
 
+        if self._melee_overlay is not None:
+            self._melee_overlay.update(dt)
+            if not self._melee_overlay.is_active:
+                self._melee_overlay = None
+
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
             remaining = []
@@ -1495,6 +1577,7 @@ class GameScene(Scene):
                     and self.turn_manager.is_player_turn()
                     and self._aim_overlay is None
                     and self._heal_overlay is None
+                    and self._melee_overlay is None
                     and self._elevator_phase is None
                     and not self._inventory_open
                     and not self._weapon_picker_open
@@ -1548,6 +1631,7 @@ class GameScene(Scene):
                 and not self._minimap_open
                 and self._aim_overlay is None
                 and self._heal_overlay is None
+                and self._melee_overlay is None
             ):
                 cam = self.renderer.camera
                 ts  = settings.TILE_SIZE
@@ -1577,6 +1661,10 @@ class GameScene(Scene):
             # Heal overlay (centred panel, no scene push)
             if self._heal_overlay is not None:
                 self._heal_overlay.render(screen)
+            # Melee overlay (in-world power bar, no scene push)
+            if self._melee_overlay is not None:
+                cam = self.renderer.camera
+                self._melee_overlay.render(screen, cam.offset_x, cam.offset_y)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:

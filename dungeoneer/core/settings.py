@@ -76,3 +76,13 @@ HEAL_BEAT_FLASH_MS:   int   = 110   # visual flash duration (ms)
 HEAL_ACCURACY_WINDOW: float = 0.25  # ±window in seconds (full accuracy at 0, none at ±window/2)
 HEAL_RESULT_PAUSE:    float = 0.9   # seconds to show result before closing
 HEAL_RANGE:           float = 0.20  # ±20% modifier range (0.8× to 1.2× base)
+
+# Melee power-charge minigame
+MELEE_FREQ1:          float = 1.1    # Hz — primary oscillation frequency
+MELEE_FREQ2:          float = 0.7    # Hz — secondary frequency (creates beating pattern)
+MELEE_FREQ_ACCEL:     float = 0.25   # Hz/s — frequency drift over time
+MELEE_TIMEOUT:        float = 3.0    # seconds before auto-release
+MELEE_CRIT_THRESHOLD: float = 0.92   # power >= this = critical hit
+MELEE_RESULT_PAUSE:   float = 0.35   # seconds to display result
+MELEE_BAR_W:          int   = 120    # power bar width in pixels
+MELEE_BAR_H:          int   = 12     # power bar height in pixels

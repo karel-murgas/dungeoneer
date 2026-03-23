@@ -86,6 +86,7 @@ class MainMenuScene(Scene):
         use_minigame: bool = True,
         use_aim_minigame: bool = True,
         use_heal_minigame: bool = True,
+        use_melee_minigame: bool = True,
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
         map_size: str = "large",
@@ -96,6 +97,7 @@ class MainMenuScene(Scene):
         self._use_minigame        = use_minigame
         self._use_aim_minigame    = use_aim_minigame
         self._use_heal_minigame   = use_heal_minigame
+        self._use_melee_minigame  = use_melee_minigame
         self._heal_threshold_pct  = heal_threshold_pct
         self._use_tutorial        = use_tutorial
         self._map_size            = map_size
@@ -320,6 +322,7 @@ class MainMenuScene(Scene):
                 use_minigame=self._use_minigame,
                 use_aim_minigame=self._use_aim_minigame,
                 use_heal_minigame=self._use_heal_minigame,
+                use_melee_minigame=self._use_melee_minigame,
                 heal_threshold_pct=self._heal_threshold_pct,
                 use_tutorial=self._use_tutorial,
                 map_size=self._map_size,
