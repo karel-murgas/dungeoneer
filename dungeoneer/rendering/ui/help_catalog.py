@@ -3,7 +3,7 @@
 Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 ◄ ► arrow keys or by clicking tab labels.  Close with Esc / Enter.
 
-Tabs:  EXPLORATION | COMBAT | SHOOTING | AIMING | HACKING | HEALING
+Tabs:  EXPLORATION | COMBAT | AIMING | MELEE | HEALING | HACKING | ITEMS
 
 Each tab can have an illustration drawn at the top of the content area:
   - Exploration: sprite icons for container / ammo / elevator / vault
@@ -88,44 +88,28 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.expl.4.1",
             "help_catalog.expl.4.2",
         ]),
+        ("help_catalog.expl.h5", [
+            "help_catalog.expl.5.1",
+            "help_catalog.expl.5.2",
+        ]),
     ]),
     ("help_catalog.tab.combat", [
+        ("help_catalog.comb.intro", [
+            "help_catalog.comb.intro.1",
+            "help_catalog.comb.intro.2",
+            "help_catalog.comb.intro.3",
+            "help_catalog.comb.intro.4",
+        ]),
         ("help_catalog.comb.h1", [
             "help_catalog.comb.1.1",
             "help_catalog.comb.1.2",
             "help_catalog.comb.1.3",
         ]),
-        ("help_catalog.comb.h2", [
-            "help_catalog.comb.2.1",
-            "help_catalog.comb.2.2",
-            "help_catalog.comb.2.3",
-        ]),
-        ("help_catalog.comb.h3", [
-            "help_catalog.comb.3.1",
-            "help_catalog.comb.3.2",
-            "help_catalog.comb.3.3",
-        ]),
-    ]),
-    ("help_catalog.tab.shooting", [
         ("help_catalog.shoot.h1", [
             "help_catalog.shoot.1.1",
             "help_catalog.shoot.1.2",
             "help_catalog.shoot.1.3",
             "help_catalog.shoot.1.4",
-        ]),
-        ("help_catalog.shoot.h2", [
-            "help_catalog.shoot.2.1",
-            "help_catalog.shoot.2.2",
-            "help_catalog.shoot.2.3",
-            "help_catalog.shoot.2.4",
-        ]),
-        ("help_catalog.shoot.h3", [
-            "help_catalog.shoot.3.1",
-            "help_catalog.shoot.3.2",
-            "help_catalog.shoot.3.3",
-            "help_catalog.shoot.3.4",
-            "help_catalog.shoot.3.5",
-            "help_catalog.shoot.3.6",
         ]),
     ]),
     ("help_catalog.tab.aiming", [
@@ -145,29 +129,6 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.aim.3.1",
             "help_catalog.aim.3.2",
             "help_catalog.aim.3.3",
-        ]),
-    ]),
-    ("help_catalog.tab.hacking", [
-        ("help_catalog.hack.h1", [
-            "help_catalog.hack.1.1",
-            "help_catalog.hack.1.2",
-            "help_catalog.hack.1.3",
-        ]),
-        ("help_catalog.hack.h2", [
-            "help_catalog.hack.2.1",
-            "help_catalog.hack.2.2",
-            "help_catalog.hack.2.3",
-            "help_catalog.hack.2.4",
-        ]),
-        ("help_catalog.hack.h3", [
-            "help_catalog.hack.3.1",
-            "help_catalog.hack.3.2",
-            "help_catalog.hack.3.3",
-        ]),
-        ("help_catalog.hack.h4", [
-            "help_catalog.hack.4.1",
-            "help_catalog.hack.4.2",
-            "help_catalog.hack.4.3",
         ]),
     ]),
     ("help_catalog.tab.melee", [
@@ -207,13 +168,60 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "heal.help.key4",
         ]),
     ]),
+    ("help_catalog.tab.hacking", [
+        ("help_catalog.hack.h1", [
+            "help_catalog.hack.1.1",
+            "help_catalog.hack.1.2",
+            "help_catalog.hack.1.3",
+        ]),
+        ("help_catalog.hack.h2", [
+            "help_catalog.hack.2.1",
+            "help_catalog.hack.2.2",
+            "help_catalog.hack.2.3",
+            "help_catalog.hack.2.4",
+        ]),
+        ("help_catalog.hack.h3", [
+            "help_catalog.hack.3.1",
+            "help_catalog.hack.3.2",
+            "help_catalog.hack.3.3",
+        ]),
+        ("help_catalog.hack.h4", [
+            "help_catalog.hack.4.1",
+            "help_catalog.hack.4.2",
+            "help_catalog.hack.4.3",
+            "help_catalog.hack.4.4",
+        ]),
+    ]),
+    ("help_catalog.tab.items", [
+        ("help_catalog.items.h1", [
+            "help_catalog.shoot.3.1",
+            "help_catalog.shoot.3.2",
+            "help_catalog.shoot.3.3",
+            "help_catalog.shoot.3.4",
+            "help_catalog.shoot.3.5",
+            "help_catalog.shoot.3.6",
+        ]),
+        ("help_catalog.shoot.h2", [
+            "help_catalog.shoot.2.1",
+            "help_catalog.shoot.2.2",
+            "help_catalog.shoot.2.3",
+            "help_catalog.shoot.2.4",
+        ]),
+        ("help_catalog.comb.h2", [
+            "help_catalog.comb.2.1",
+            "help_catalog.comb.2.2",
+            "help_catalog.comb.2.3",
+            "help_catalog.comb.2.4",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
-_TAB_AIMING      = 3
-_TAB_HACKING     = 4
-_TAB_MELEE       = 5
-_TAB_HEALING     = 6
+_TAB_AIMING      = 2
+_TAB_MELEE       = 3
+_TAB_HEALING     = 4
+_TAB_HACKING     = 5
+_TAB_ITEMS       = 6
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -263,6 +271,8 @@ class HelpCatalogOverlay:
         self._tab_idx   = 0
         self._hovered_tab: int | None = None
         self._tab_rects: list[pygame.Rect] = []
+        # Fixed y-offset from tab bottom used for ALL labels — never varies with text.
+        self._tab_text_bottom = self._font_tab.get_height() + 3
         self._elevator_tile: pygame.Surface | None = None   # lazy-loaded
         self._panel_rect: pygame.Rect | None = None
         self._close_rect: pygame.Rect | None = None
@@ -271,6 +281,10 @@ class HelpCatalogOverlay:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def open_tab(self, idx: int) -> None:
+        """Open the overlay pre-selected on a specific tab index."""
+        self._tab_idx = max(0, min(idx, len(_TABS) - 1))
 
     def handle_key(self, key: int) -> bool:
         """Return True to close."""
@@ -373,8 +387,9 @@ class HelpCatalogOverlay:
             pygame.draw.rect(screen, bg,  rect, border_radius=4)
             pygame.draw.rect(screen, bdr, rect, 1, border_radius=4)
             lbl = self._font_tab.render(t(tab_key), True, col)
-            screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
-                               rect.centery - lbl.get_height() // 2))
+            bounds = lbl.get_bounding_rect()
+            y = rect.bottom - 6 - bounds.bottom
+            screen.blit(lbl, (rect.centerx - lbl.get_width() // 2, y))
             tx += widths[i] + tab_gap
 
         return cy + tab_h + 4
@@ -748,7 +763,7 @@ class HelpCatalogOverlay:
 
     def _draw_melee_illustration(self, screen: pygame.Surface,
                                   ox: int, cy: int, pw: int) -> int:
-        IH = 70
+        IH = 86
         panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, IH)
         pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
         pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
@@ -756,40 +771,61 @@ class HelpCatalogOverlay:
         bar_w = pw - _PAD * 4 - 40
         bar_h = 16
         bx = ox + _PAD + 20
-        by = cy + 24
+        by = cy + 32   # leave room for timer bar above
 
-        # Bar background
+        # --- Timer bar (thin strip above power bar) ---
+        timer_h = 5
+        timer_by = by - timer_h - 5
+        pygame.draw.rect(screen, (25, 35, 45), (bx, timer_by, bar_w, timer_h))
+        # Show ~60% remaining as example
+        pygame.draw.rect(screen, (100, 185, 165), (bx, timer_by, round(0.60 * bar_w), timer_h))
+        font_s = self._font_ill
+        t_lbl = font_s.render("1.8s", True, (100, 185, 165))
+        screen.blit(t_lbl, (bx + bar_w + 4, timer_by - 1))
+
+        # --- Bar background ---
         pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
 
-        # Color gradient fill
+        # --- Color gradient fill (full bar showing all zones) ---
+        crit_start = 0.92
         for i in range(bar_w):
             ratio = i / bar_w
-            if ratio < 0.3:
-                c = (200, 55, 55)
-            elif ratio < 0.6:
-                c = (180, 160, 40)
+            if ratio >= crit_start:
+                c = (255, 240, 80)    # bright vivid yellow — critical
+            elif ratio >= 0.6:
+                t_val = (ratio - 0.6) / (crit_start - 0.6)
+                c = (
+                    round(210 + (40 - 210) * t_val),
+                    round(165 + (200 - 165) * t_val),
+                    round(25  + (80  -  25) * t_val),
+                )
+            elif ratio >= 0.3:
+                t_val = (ratio - 0.3) / 0.3
+                c = (
+                    round(200 + (210 - 200) * t_val),
+                    round( 40 + (165 -  40) * t_val),
+                    round( 40 + ( 25 -  40) * t_val),
+                )
             else:
-                c = (40, 170, 70)
+                c = (200, 40, 40)     # deep red — weak
             pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
 
-        # Crit zone
-        crit_x = bx + int(0.95 * bar_w)
-        crit_w = bar_w - int(0.95 * bar_w)
-        pygame.draw.rect(screen, (200, 170, 0), (crit_x, by, crit_w, bar_h))
+        # --- Crit zone border highlight ---
+        crit_x = bx + round(crit_start * bar_w)
         pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
 
-        # Zone labels
-        font_s = self._font_ill
+        # --- Zone labels below bar ---
+        label_y = by + bar_h + 3
         for lbl, col, x in [
-            ("MISS", _LABEL_MISS, bx + 4),
-            ("HIT", _LABEL_HIT, bx + int(0.45 * bar_w)),
-            ("CRIT", _LABEL_CRIT, crit_x - 2),
+            ("WEAK",  (200,  50,  50), bx + 2),
+            ("HIT",   (  0, 210,  80), bx + round(0.38 * bar_w)),
+            ("CRIT",  (255, 240,  80), crit_x - 2),
         ]:
             s = font_s.render(lbl, True, col)
-            screen.blit(s, (x, by + bar_h + 3))
+            screen.blit(s, (x, label_y))
 
-        # Marker showing "lock here" example
-        mx = bx + int(0.72 * bar_w)
+        # --- Example marker (strong hit, not crit) ---
+        mx = bx + round(0.74 * bar_w)
         pygame.draw.line(screen, (240, 240, 255), (mx, by - 3), (mx, by + bar_h + 2), 2)
 
         return IH

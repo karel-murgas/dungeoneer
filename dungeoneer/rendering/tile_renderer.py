@@ -48,6 +48,7 @@ _TILE_INDEX: dict[TileType, int] = {
     TileType.DOOR:             40,
     TileType.ELEVATOR_CLOSED:  36,
     TileType.ELEVATOR_OPEN:    44,
+    TileType.ELEVATOR_ENTRY:   36,   # same sprite as ELEVATOR_CLOSED
 }
 
 _RECT_COLOURS: dict[TileType, tuple] = {
@@ -57,6 +58,7 @@ _RECT_COLOURS: dict[TileType, tuple] = {
     TileType.DOOR:            (settings.COL_FLOOR, settings.COL_FLOOR_DARK),
     TileType.ELEVATOR_CLOSED: (settings.COL_STAIR, settings.COL_STAIR_DARK),
     TileType.ELEVATOR_OPEN:   (settings.COL_STAIR, settings.COL_STAIR_DARK),
+    TileType.ELEVATOR_ENTRY:  (settings.COL_STAIR, settings.COL_STAIR_DARK),
 }
 
 # ---------------------------------------------------------------------------
@@ -167,7 +169,7 @@ def _floor_at(dungeon_map: "DungeonMap", x: int, y: int) -> bool:  # type: ignor
     if x < 0 or y < 0 or x >= dungeon_map.width or y >= dungeon_map.height:
         return False
     tt = dungeon_map.get_type(x, y)
-    return tt not in (TileType.WALL, TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN)
+    return tt not in (TileType.WALL, TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN, TileType.ELEVATOR_ENTRY)
 
 
 def _autotile_index(dungeon_map: "DungeonMap", x: int, y: int) -> int:  # type: ignore[name-defined]
@@ -270,7 +272,7 @@ class TileRenderer:
 
                 if tile_type == TileType.WALL:
                     self._draw_wall(screen, dungeon_map, x, y, sx, sy, visible)
-                elif tile_type in (TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN):
+                elif tile_type in (TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN, TileType.ELEVATOR_ENTRY):
                     self._draw_elevator(screen, x, y, sx, sy, tile_type, visible)
                 else:
                     self._draw_floor_tile(screen, dungeon_map, x, y, sx, sy,

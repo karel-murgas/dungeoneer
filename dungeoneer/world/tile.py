@@ -11,6 +11,7 @@ class TileType(IntEnum):
     DOOR            = auto()
     ELEVATOR_CLOSED = auto()   # wall-like: not walkable, not transparent
     ELEVATOR_OPEN   = auto()   # walkable + transparent (doors open)
+    ELEVATOR_ENTRY  = auto()   # entry elevator (came from above) — not walkable, not transparent
 
 
 @dataclass(frozen=True)
@@ -30,4 +31,5 @@ TILE_DEFS: dict[TileType, TileDef] = {
     TileType.DOOR:            TileDef(TileType.DOOR,            True,  False),
     TileType.ELEVATOR_CLOSED: TileDef(TileType.ELEVATOR_CLOSED, False, False),
     TileType.ELEVATOR_OPEN:   TileDef(TileType.ELEVATOR_OPEN,   True,  True),
+    TileType.ELEVATOR_ENTRY:  TileDef(TileType.ELEVATOR_ENTRY,  False, False),
 }

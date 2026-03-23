@@ -43,8 +43,9 @@ _COL_FLOOR_VIS  = (75, 68, 85)       # currently visible floor (slightly brighte
 _COL_PLAYER     = (0, 220, 180)      # cyan
 _COL_ENEMY      = (220, 60, 60)      # red
 _COL_CONTAINER  = (240, 210, 40)     # yellow
-_COL_ELEVATOR   = (40, 120, 220)     # blue
-_COL_VAULT      = (40, 120, 220)     # blue (same as elevator — objective marker)
+_COL_ELEVATOR       = (40, 120, 220)     # blue  — descent elevator
+_COL_ELEVATOR_ENTRY = (55, 60, 80)      # dim grey-blue — entry elevator (no way back)
+_COL_VAULT          = (40, 120, 220)    # blue (same as elevator — objective marker)
 _COL_ITEM       = (160, 150, 60, 160)  # dim yellow
 
 _LEGEND_COL     = (140, 150, 165)
@@ -118,6 +119,8 @@ class MinimapOverlay:
                     col = _COL_WALL
                 elif tile_type in (TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN):
                     col = _COL_ELEVATOR
+                elif tile_type == TileType.ELEVATOR_ENTRY:
+                    col = _COL_ELEVATOR_ENTRY
                 elif dmap.visible[ty, tx]:
                     col = _COL_FLOOR_VIS
                 else:

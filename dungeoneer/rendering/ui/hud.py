@@ -17,8 +17,9 @@ class HUD:
         self._heal_threshold_pct = heal_threshold_pct
         self._font_large = pygame.font.SysFont("consolas", 18, bold=True)
         self._font_small = pygame.font.SysFont("consolas", 14)
-        self.weapon_rect: pygame.Rect | None = None
-        self.heal_rect:   pygame.Rect | None = None
+        self.weapon_rect:   pygame.Rect | None = None
+        self.heal_rect:     pygame.Rect | None = None
+        self.help_btn_rect: pygame.Rect | None = None
 
     # ------------------------------------------------------------------
     # Helpers
@@ -179,10 +180,29 @@ class HUD:
         self._blit_text(screen, self._font_large, cr_str, (200, 190, 80),
                         (r_x, 12 + lh_large + 4))
 
-        # ── controls hint (bottom-right, shadow only) ─────────────────
-        hint_text = t("hud.help_hint")
-        hint_surf = self._font_small.render(hint_text, True, (80, 95, 115))
-        hint_x    = sw - hint_surf.get_width() - 12
-        hint_y    = sh - hint_surf.get_height() - 10
-        self._blit_text(screen, self._font_small, hint_text, (80, 95, 115),
-                        (hint_x, hint_y))
+        # ── help button [?] to the left of the right panel ───────────
+        f1_text = t("hud.help_hint")
+        f1_probe = self._font_small.render(f1_text, True, (0, 0, 0))
+        icon_d  = 16                              # diameter of ? circle
+        btn_pad = 5
+        btn_w   = btn_pad + icon_d + 4 + f1_probe.get_width() + btn_pad
+        btn_h   = r_h                             # same height as right panel
+        btn_x   = r_x - _M - 6 - btn_w           # 6 px gap
+        btn_y   = 12 - _M
+        self.help_btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+        hov = self.help_btn_rect.collidepoint(mx, my)
+        btn_bdr = (80, 180, 150) if hov else (38, 65, 55)
+        lbl_col = (180, 230, 210) if hov else (80, 110, 95)
+        self._draw_panel(screen, btn_x, btn_y, btn_w, btn_h)
+        pygame.draw.rect(screen, btn_bdr, self.help_btn_rect, 1, border_radius=3)
+        # ? icon circle — vertically centred inside the panel
+        icon_cx = btn_x + btn_pad + icon_d // 2
+        icon_cy = btn_y + btn_h // 2
+        pygame.draw.circle(screen, btn_bdr, (icon_cx, icon_cy), icon_d // 2)
+        q_surf = self._font_small.render("?", True, (200, 240, 220) if hov else (100, 140, 120))
+        screen.blit(q_surf, (icon_cx - q_surf.get_width() // 2,
+                              icon_cy - q_surf.get_height() // 2))
+        # F1 label — vertically centred, right of the icon
+        f1_surf = self._font_small.render(f1_text, True, lbl_col)
+        screen.blit(f1_surf, (btn_x + btn_pad + icon_d + 4,
+                               icon_cy - f1_surf.get_height() // 2))

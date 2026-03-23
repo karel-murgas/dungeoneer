@@ -66,7 +66,7 @@ set_language("cs")
 | `item.*` | Item names + descriptions (weapons, consumables, ammo, armor) |
 | `entity.*` | Entity names (player, guard, drone, crate, corp_vault) |
 | `log.*` | Gameplay log messages (combat, pickup, containers, healing, equip, reload, drop, descent, credits_drop, action-denied feedback) |
-| `hint.*` | In-world contextual hints (e.g. `hint.elevator_descend` — shown above player when adjacent to elevator) |
+| `hint.*` | In-world contextual hints: `hint.elevator_descend` (adjacent to descent elevator), `hint.elevator_no_return` (adjacent to entry/arrival elevator — "no way back") |
 | `hack.status.*` | HackScene footer status bar text |
 | `hack.overlay.*` | HackScene security/loot overlay banners (title + sub) |
 | `hack.result.*` | HackScene final result overlay |

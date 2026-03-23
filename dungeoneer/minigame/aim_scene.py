@@ -122,7 +122,6 @@ class AimOverlay:
         self._done_timer                 = 0.0
         self._last_accuracy: Optional[float] = None
         self._completed                  = False
-        self._show_help                  = False
         self._stop_early                 = False
         self._bolt_flash_timer           = 0.0
         # Simulated remaining HP — used to detect early kill across shots
@@ -196,13 +195,6 @@ class AimOverlay:
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """Route a pygame event to the overlay.  Consumes all events."""
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
-            self._show_help = not self._show_help
-            return
-        if self._show_help:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self._show_help = False
-            return  # eat all other input while help is open
         if self._state == _State.AIMING:
             fire = (
                 (event.type == pygame.KEYDOWN and event.key == pygame.K_f)
@@ -258,8 +250,6 @@ class AimOverlay:
             return
 
         if self._state == _State.AIMING:
-            if self._show_help:
-                return  # freeze needle while help is open
             self._bolt_flash_timer = max(0.0, self._bolt_flash_timer - dt)
             self._needle_angle += self._needle_dir * self._speed * dt
             if self._needle_angle >= self._arc_degrees:
@@ -369,10 +359,6 @@ class AimOverlay:
         if self._state == _State.RESULT and self._last_accuracy is not None:
             self._render_result(screen, cx, cy, r)
 
-        # Help overlay (F1)
-        if self._show_help:
-            self._draw_help_overlay(screen)
-
     def _render_labels(
         self, screen: pygame.Surface, cx: int, cy: int, r: int
     ) -> None:
@@ -386,10 +372,6 @@ class AimOverlay:
             s = t("aim.shot_n").format(n=shot_n, total=self._total_shots)
             ssurf = self._font_small.render(s, True, _TEXT_DIM)
             screen.blit(ssurf, (cx - ssurf.get_width() // 2, cy - r - 34))
-
-        # F1 help hint below the arc
-        hint_s = self._font_small.render(t("aim.help.hint"), True, _TEXT_DIM)
-        screen.blit(hint_s, (cx - hint_s.get_width() // 2, cy + r + 6))
 
     def _render_result(
         self, screen: pygame.Surface, cx: int, cy: int, r: int
@@ -407,91 +389,3 @@ class AimOverlay:
         surf = self._font_big.render(label, True, colour)
         screen.blit(surf, (cx - surf.get_width() // 2, cy - r - 52))
 
-    def _draw_help_overlay(self, screen: pygame.Surface) -> None:
-        """Full-screen help overlay shown while self._show_help is True (F1)."""
-        sw, sh = screen.get_size()
-
-        # Dim background
-        dim = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        dim.fill((0, 0, 0, 200))
-        screen.blit(dim, (0, 0))
-
-        _HELP_BG  = (8,   14,  22)
-        _HELP_CYN = (0,  200, 190)
-        _HELP_YEL = (210, 215,  60)
-        _HELP_GRN = (0,  200,  90)
-        _HELP_DIM = (70, 100,  90)
-
-        pw = min(sw - 60, 780)
-        ph = 380
-        px = (sw - pw) // 2
-        py = (sh - ph) // 2
-
-        pygame.draw.rect(screen, _HELP_BG,  (px, py, pw, ph))
-        pygame.draw.rect(screen, _HELP_CYN, (px, py, pw, ph), 1)
-
-        # Title
-        title_s = self._font_big.render(t("aim.help.title"), True, _HELP_CYN)
-        screen.blit(title_s, (sw // 2 - title_s.get_width() // 2, py + 10))
-        sep_y = py + 10 + title_s.get_height() + 6
-        pygame.draw.line(screen, _HELP_CYN, (px + 20, sep_y), (px + pw - 20, sep_y), 1)
-
-        col_l = px + 24
-        col_r = px + pw // 2 + 14
-        y_l   = sep_y + 12
-        y_r   = sep_y + 12
-        lh    = 17
-        font  = self._font_small
-
-        def _section(x: int, y: int, text: str) -> int:
-            s = self._font_med.render(text, True, _HELP_CYN)
-            screen.blit(s, (x, y))
-            return y + 20
-
-        def _bullets(x: int, y: int, items: list) -> int:
-            for bc, text in items:
-                b = font.render("\u2022 ", True, bc)
-                screen.blit(b, (x, y))
-                screen.blit(font.render(text, True, _TEXT), (x + b.get_width(), y))
-                y += lh
-            return y
-
-        def _aligned(x: int, y: int, items: list) -> int:
-            if not items:
-                return y
-            col_dx = max(font.size(lbl)[0] for lbl, _, _ in items) + 10
-            for lbl, lc, desc in items:
-                screen.blit(font.render(lbl,  True, lc),    (x,          y))
-                screen.blit(font.render(desc, True, _TEXT), (x + col_dx, y))
-                y += lh
-            return y
-
-        # ── Left column ──────────────────────────────────────────────
-        y_l = _section(col_l, y_l, t("aim.help.mechanic"))
-        y_l = _bullets(col_l, y_l, [
-            (_HELP_DIM, t("aim.help.mech.1")),
-            (_HELP_GRN, t("aim.help.mech.2")),
-            (_HELP_GRN, t("aim.help.mech.3")),
-            (_TEXT,     t("aim.help.mech.4")),
-            (_HELP_DIM, t("aim.help.mech.5")),
-            (_HELP_DIM, t("aim.help.mech.zone")),
-        ])
-        # ── Right column ─────────────────────────────────────────────
-        y_r = _section(col_r, y_r, t("aim.help.crit"))
-        y_r = _bullets(col_r, y_r, [
-            (_COL_CRIT, t("aim.help.crit.1")),
-            (_HELP_DIM, t("aim.help.crit.2")),
-        ])
-        y_r += 10
-
-        y_r = _section(col_r, y_r, t("aim.help.controls"))
-        y_r = _aligned(col_r, y_r, [
-            (t("aim.help.ctrl.f.key"),   _HELP_YEL, t("aim.help.ctrl.f.desc")),
-            (t("aim.help.ctrl.tab.key"), _HELP_YEL, t("aim.help.ctrl.tab.desc")),
-            (t("aim.help.ctrl.esc.key"), _HELP_YEL, t("aim.help.ctrl.esc.desc")),
-            (t("aim.help.ctrl.f1.key"),  _HELP_YEL, t("aim.help.ctrl.f1.desc")),
-        ])
-
-        # Close hint
-        close_s = font.render(t("aim.help.close"), True, _HELP_DIM)
-        screen.blit(close_s, (sw // 2 - close_s.get_width() // 2, py + ph - 20))

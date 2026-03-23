@@ -497,80 +497,62 @@ def _draw_melee(screen: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
 
     cx = rect.centerx
-    cy = rect.y + 60
-
-    # Player icon
-    pygame.draw.rect(screen, (0, 200, 180), (cx - 12, cy - 12, 24, 24), border_radius=4)
-    font = pygame.font.SysFont("consolas", 12, bold=True)
-    p_lbl = font.render("P", True, (10, 20, 18))
-    screen.blit(p_lbl, (cx - p_lbl.get_width() // 2, cy - p_lbl.get_height() // 2))
-
-    # Power bar above player
-    bar_w, bar_h = 140, 14
+    bar_w, bar_h = 170, 16
     bx = cx - bar_w // 2
-    by = cy - 36
+    crit_start = 0.92
+    font_s = pygame.font.SysFont("consolas", 11)
 
-    # Bar background
+    # --- Timer bar ---
+    timer_h = 4
+    timer_by = rect.y + 36
+    pygame.draw.rect(screen, (25, 35, 45), (bx, timer_by, bar_w, timer_h))
+    pygame.draw.rect(screen, (100, 185, 165), (bx, timer_by, round(0.55 * bar_w), timer_h))
+    t_lbl = font_s.render("1.6s", True, (100, 185, 165))
+    screen.blit(t_lbl, (bx + bar_w + 3, timer_by - 1))
+
+    # --- Power bar ---
+    by = timer_by + timer_h + 5
     pygame.draw.rect(screen, (20, 25, 35), (bx, by, bar_w, bar_h))
+    for i in range(bar_w):
+        ratio = i / bar_w
+        if ratio >= crit_start:
+            c = (255, 240, 80)
+        elif ratio >= 0.6:
+            t_val = (ratio - 0.6) / (crit_start - 0.6)
+            c = (
+                round(210 + (40  - 210) * t_val),
+                round(165 + (200 - 165) * t_val),
+                round( 25 + ( 80 -  25) * t_val),
+            )
+        elif ratio >= 0.3:
+            t_val = (ratio - 0.3) / 0.3
+            c = (
+                round(200 + (210 - 200) * t_val),
+                round( 40 + (165 -  40) * t_val),
+                round( 40 + ( 25 -  40) * t_val),
+            )
+        else:
+            c = (200, 40, 40)
+        pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
     pygame.draw.rect(screen, (60, 100, 130), (bx, by, bar_w, bar_h), 1)
 
-    # Crit zone (gold strip at right)
-    crit_x = bx + int(0.95 * bar_w)
-    pygame.draw.rect(screen, (200, 170, 0, 80), (crit_x, by, bar_w - int(0.95 * bar_w), bar_h))
-
-    # Filled gradient portion (example at ~70%)
-    fill = int(0.70 * bar_w)
-    for i in range(fill):
-        ratio = i / bar_w
-        if ratio < 0.3:
-            c = (200, 55, 55)
-        elif ratio < 0.6:
-            c = (220, 200, 50)
-        else:
-            c = (50, 200, 80)
-        pygame.draw.line(screen, c, (bx + i, by + 1), (bx + i, by + bar_h - 2))
-
-    # Marker line
-    mx = bx + fill
+    # Example marker
+    mx = bx + round(0.72 * bar_w)
     pygame.draw.line(screen, (240, 240, 255), (mx, by - 2), (mx, by + bar_h + 1), 2)
 
-    # Labels
-    font_s = pygame.font.SysFont("consolas", 11)
-    lbl_min = font_s.render("MIN", True, (200, 55, 55))
-    lbl_max = font_s.render("MAX", True, (50, 200, 80))
-    lbl_crit = font_s.render("CRIT", True, (255, 220, 40))
-    screen.blit(lbl_min, (bx, by + bar_h + 4))
-    screen.blit(lbl_max, (bx + bar_w - lbl_max.get_width() - 20, by + bar_h + 4))
-    screen.blit(lbl_crit, (crit_x - 2, by + bar_h + 4))
+    # --- Zone labels ---
+    crit_x = bx + round(crit_start * bar_w)
+    for lbl, col, x in [
+        ("WEAK", (200,  50,  50), bx),
+        ("HIT",  (  0, 210,  80), bx + round(0.38 * bar_w)),
+        ("CRIT", (255, 240,  80), crit_x - 2),
+    ]:
+        screen.blit(font_s.render(lbl, True, col), (x, by + bar_h + 3))
 
-    # Arrow showing oscillation
-    arrow_y = by - 12
-    for i, dx in enumerate([-20, 0, 20]):
-        alpha = 255 - i * 60
-        surf = font_s.render("~", True, (0, 200, 180))
-        surf.set_alpha(alpha)
-        screen.blit(surf, (mx + dx - 4, arrow_y))
-
-    # Key hint
-    font_k = pygame.font.SysFont("consolas", 14, bold=True)
-    key_lbl = font_k.render("[F] / LMB", True, (0, 240, 200))
-    screen.blit(key_lbl, (cx - key_lbl.get_width() // 2, cy + 30))
-
-    # Sine wave preview
-    wave_y = rect.y + 140
-    wave_w = bar_w
-    wave_ox = cx - wave_w // 2
-    prev = None
-    for i in range(wave_w):
-        x = wave_ox + i
-        t_val = i / wave_w * 3 * math.pi
-        y = wave_y + int(20 * math.sin(t_val))
-        if prev is not None:
-            pygame.draw.line(screen, (0, 180, 150), prev, (x, y), 1)
-        prev = (x, y)
-
-    wave_lbl = font_s.render("power oscillation", True, (60, 100, 90))
-    screen.blit(wave_lbl, (cx - wave_lbl.get_width() // 2, wave_y + 28))
+    # --- Key hint ---
+    font_k = pygame.font.SysFont("consolas", 13, bold=True)
+    key_lbl = font_k.render("[F] / LMB  hold & release", True, (0, 240, 200))
+    screen.blit(key_lbl, (cx - key_lbl.get_width() // 2, by + bar_h + 22))
 
 
 # ---------------------------------------------------------------------------

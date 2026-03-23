@@ -80,7 +80,7 @@ HEAL_RANGE:           float = 0.20  # ±20% modifier range (0.8× to 1.2× base)
 # Melee power-charge minigame
 MELEE_FREQ1:          float = 1.1    # Hz — primary oscillation frequency
 MELEE_FREQ2:          float = 0.7    # Hz — secondary frequency (creates beating pattern)
-MELEE_FREQ_ACCEL:     float = 0.25   # Hz/s — frequency drift over time
+MELEE_FREQ_ACCEL:     float = 0.0    # Hz/s — kept for compatibility; oscillation no longer accelerates
 MELEE_TIMEOUT:        float = 3.0    # seconds before auto-release
 MELEE_CRIT_THRESHOLD: float = 0.92   # power >= this = critical hit
 MELEE_RESULT_PAUSE:   float = 0.35   # seconds to display result

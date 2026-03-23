@@ -37,7 +37,10 @@ from dungeoneer.rendering.ui.hud import HUD
 from dungeoneer.rendering.ui.combat_log import CombatLog
 from dungeoneer.rendering.ui.inventory_ui import InventoryUI
 from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
-from dungeoneer.rendering.ui.help_screen import HelpScreen
+from dungeoneer.rendering.ui.help_catalog import (
+    HelpCatalogOverlay, _TAB_EXPLORATION, _TAB_AIMING, _TAB_MELEE, _TAB_HEALING,
+    _TAB_ITEMS,
+)
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
@@ -80,7 +83,7 @@ class GameScene(Scene):
         self.combat_log     = CombatLog()
         self.inventory_ui   = InventoryUI()
         self.weapon_picker  = WeaponPickerUI()
-        self.help_screen    = HelpScreen()
+        self.help_catalog   = HelpCatalogOverlay()
         self.quit_confirm     = QuitConfirmDialog()
         self.overheal_confirm = QuitConfirmDialog(key_prefix="overheal_confirm")
         self.cheat_menu       = CheatMenuOverlay()
@@ -120,6 +123,11 @@ class GameScene(Scene):
         self._elevator_phase: str | None = None
         self._elevator_timer: float = 0.0
         self._elevator_pos: tuple[int, int] | None = None  # (x, y) of elevator tile
+        # Arrival animation (reverse): None | "arrive_closed" | "arrive_open" | "arrive_exit" | "arrive_closing"
+        self._arrival_phase: str | None = None
+        self._arrival_timer: float = 0.0
+        self._arrival_elevator_pos: tuple[int, int] | None = None
+        self._arrival_spawn_pos: tuple[int, int] | None = None
         self._hint_font   = pygame.font.SysFont("consolas", 14, bold=True)
 
     def on_enter(self) -> None:
@@ -242,13 +250,35 @@ class GameScene(Scene):
                 ContainerEntity(vault_x, vault_y, credits=obj_credits, is_objective=True, name=t("entity.corp_vault.name"))
             )
 
-        compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+        # Start the arrival animation from the entry elevator on every floor
+        # (floor 1: game start; floors 2+: descending from above).
+        # Player is temporarily placed at the elevator tile (hidden); after the
+        # animation they step out to the adjacent spawn position.
+        self._arrival_phase = None
+        self._arrival_elevator_pos = None
+        self._arrival_spawn_pos = None
+        entry_ex, entry_ey = result.entry_pos
+        # Find the walkable tile adjacent to the entry elevator
+        entry_spawn_x, entry_spawn_y = entry_ex, entry_ey
+        for adx, ady in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            if self.floor.dungeon_map.is_walkable(entry_ex + adx, entry_ey + ady):
+                entry_spawn_x, entry_spawn_y = entry_ex + adx, entry_ey + ady
+                break
+        # Move player into elevator tile for the animation start
+        self.player.x, self.player.y = entry_ex, entry_ey
+        self._arrival_elevator_pos = (entry_ex, entry_ey)
+        self._arrival_spawn_pos = (entry_spawn_x, entry_spawn_y)
+        self._arrival_phase = "arrive_closed"
+        self._arrival_timer = 0.35
+        fov_x, fov_y = entry_spawn_x, entry_spawn_y
+
+        compute_fov(fov_x, fov_y, self.floor.dungeon_map)
         self.turn_manager.build_queue(self.floor)
         self._had_visible_enemies = False
 
         log.info(
-            "Floor %d loaded  actors=%s  stair=%s",
-            depth, [a.name for a in self.floor.actors], result.stair_pos,
+            "Floor %d loaded  actors=%s  stair=%s  entry=%s",
+            depth, [a.name for a in self.floor.actors], result.stair_pos, result.entry_pos,
         )
         self.combat_log.add(t("log.floor_enter").format(n=depth), (80, 200, 180))
 
@@ -384,6 +414,33 @@ class GameScene(Scene):
             elif event.type == pygame.KEYUP and event.key == self._held_move_key:
                 self._held_move_key = None
 
+        # Help catalog takes priority over all overlays (F1 always works)
+        if self._help_open:
+            for event in events:
+                if event.type == pygame.MOUSEMOTION:
+                    self.help_catalog.handle_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.help_catalog.handle_click(event.pos):
+                        self._help_open = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_F1 or self.help_catalog.handle_key(event.key):
+                        self._help_open = False
+            return
+
+        # F1 opens help with a context-sensitive tab
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+                if self._aim_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_AIMING)
+                elif self._melee_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_MELEE)
+                elif self._heal_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_HEALING)
+                else:
+                    self.help_catalog.open_tab(_TAB_EXPLORATION)
+                self._help_open = True
+                return
+
         # Aim overlay takes exclusive input while active
         if self._aim_overlay is not None:
             for event in events:
@@ -479,21 +536,7 @@ class GameScene(Scene):
                         self._minimap_open = False
                 continue
 
-            if self._help_open:
-                if event.type == pygame.MOUSEMOTION:
-                    self.help_screen.handle_mouse_motion(event.pos)
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.help_screen.handle_mouse_button(event):
-                        self._help_open = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_F1 or self.help_screen.handle_key(event.key):
-                        self._help_open = False
-                continue
-
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F1:
-                    self._help_open = True
-                    return
                 if event.key == pygame.K_F11:
                     self._cheat_menu_open = not self._cheat_menu_open
                     return
@@ -525,8 +568,9 @@ class GameScene(Scene):
                     return
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                wp_r = self.hud.weapon_rect if self.hud else None
-                hl_r = self.hud.heal_rect   if self.hud else None
+                wp_r = self.hud.weapon_rect   if self.hud else None
+                hl_r = self.hud.heal_rect     if self.hud else None
+                hb_r = self.hud.help_btn_rect if self.hud else None
                 if wp_r and wp_r.collidepoint(event.pos):
                     if self._weapon_picker_open:
                         self._weapon_picker_open = False
@@ -537,6 +581,10 @@ class GameScene(Scene):
                     return
                 if hl_r and hl_r.collidepoint(event.pos):
                     self._launch_heal()
+                    return
+                if hb_r and hb_r.collidepoint(event.pos):
+                    self.help_catalog.open_tab(_TAB_EXPLORATION)
+                    self._help_open = True
                     return
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
@@ -569,6 +617,10 @@ class GameScene(Scene):
 
             if action == "close":
                 self._inventory_open = False
+                return
+            if action == "help":
+                self.help_catalog.open_tab(_TAB_ITEMS)
+                self._help_open = True
                 return
             if action is None:
                 continue
@@ -630,8 +682,8 @@ class GameScene(Scene):
     def _handle_player_input(self, events: List[pygame.event.Event]) -> None:
         if self.alert_banner.is_blocking:
             return
-        if self._elevator_phase is not None:
-            return  # block all input during elevator animation
+        if self._elevator_phase is not None or self._arrival_phase is not None:
+            return  # block all input during elevator animations
         self._check_tutorial_triggers()
         if self._tutorial_open:
             return
@@ -749,7 +801,7 @@ class GameScene(Scene):
                     shots = getattr(w, "shots", 1) if w else 1
                     action.accuracy_values = [simulate_aim_enemy(dist, self.player.aim_skill) for _ in range(shots)]
 
-            # Melee attack → intercept for power-charge minigame
+            # Melee attack (from [F] key) — intercept for power-charge minigame
             if isinstance(action, MeleeAttackAction):
                 if self.use_melee_minigame:
                     self._launch_melee(action.target)
@@ -872,6 +924,11 @@ class GameScene(Scene):
             container = self._find_adjacent_container()
             if container:
                 return OpenContainerAction(container)
+            # Entry elevator: show "no way back" and consume the keypress
+            if self._adjacent_entry_elevator_pos() is not None:
+                bus.post(LogMessageEvent(t("hint.elevator_no_return"), (160, 130, 90)))
+                self.audio.play("action_denied")
+                return None
             return ElevatorAction()
         if key == pygame.K_f:
             w = self.player.equipped_weapon
@@ -984,6 +1041,17 @@ class GameScene(Scene):
             nx, ny = self.player.x + dx, self.player.y + dy
             if self.floor.dungeon_map.in_bounds(nx, ny):
                 if self.floor.dungeon_map.get_type(nx, ny) == TileType.ELEVATOR_CLOSED:
+                    return (nx, ny)
+        return None
+
+    def _adjacent_entry_elevator_pos(self) -> tuple[int, int] | None:
+        """Return (x, y) of a cardinally adjacent ELEVATOR_ENTRY tile, or None."""
+        if self.player is None or self.floor is None:
+            return None
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nx, ny = self.player.x + dx, self.player.y + dy
+            if self.floor.dungeon_map.in_bounds(nx, ny):
+                if self.floor.dungeon_map.get_type(nx, ny) == TileType.ELEVATOR_ENTRY:
                     return (nx, ny)
         return None
 
@@ -1503,7 +1571,7 @@ class GameScene(Scene):
         self.floating_nums.update(dt)
         self.music.update(dt)
 
-        # Elevator animation state machine
+        # Elevator animation state machine (descent)
         if self._elevator_phase is not None:
             self._elevator_timer -= dt
             if self._elevator_timer <= 0.0:
@@ -1524,6 +1592,37 @@ class GameScene(Scene):
                     self._elevator_phase = None
                     self._elevator_pos = None
                     self._elevator_descend()
+
+        # Arrival animation state machine (ascending from elevator on a new floor)
+        # Sequence: closed → open (hero inside) → hero steps out → closed
+        if self._arrival_phase is not None:
+            self._arrival_timer -= dt
+            if self._arrival_timer <= 0.0:
+                aex, aey = self._arrival_elevator_pos
+                asx, asy = self._arrival_spawn_pos
+                if self._arrival_phase == "arrive_closed":
+                    # Open the elevator doors, reveal player inside
+                    self.floor.dungeon_map.set_type(aex, aey, TileType.ELEVATOR_OPEN)
+                    self.audio.play("elevator_open", 0.5)
+                    self._arrival_phase = "arrive_open"
+                    self._arrival_timer = 0.25
+                elif self._arrival_phase == "arrive_open":
+                    # Player steps out next to the elevator
+                    self.player.x, self.player.y = asx, asy
+                    self._arrival_phase = "arrive_exit"
+                    self._arrival_timer = 0.35
+                elif self._arrival_phase == "arrive_exit":
+                    # Close the elevator doors
+                    self.floor.dungeon_map.set_type(aex, aey, TileType.ELEVATOR_ENTRY)
+                    self.audio.play("elevator_close", 0.5)
+                    self._arrival_phase = "arrive_closing"
+                    self._arrival_timer = 0.4
+                elif self._arrival_phase == "arrive_closing":
+                    # Animation done — recompute FOV from player's actual position
+                    self._arrival_phase = None
+                    self._arrival_elevator_pos = None
+                    self._arrival_spawn_pos = None
+                    compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
 
         if self._aim_overlay is not None:
             self._aim_overlay.update(dt)
@@ -1579,6 +1678,7 @@ class GameScene(Scene):
                     and self._heal_overlay is None
                     and self._melee_overlay is None
                     and self._elevator_phase is None
+                    and self._arrival_phase is None
                     and not self._inventory_open
                     and not self._weapon_picker_open
                     and not self._help_open
@@ -1611,17 +1711,22 @@ class GameScene(Scene):
 
     def render(self, screen: pygame.Surface) -> None:
         if self.floor and self.player:
+            hide_player = (
+                self._elevator_phase == "closing"
+                or self._arrival_phase == "arrive_closed"
+            )
             self.renderer.draw(
                 screen, self.floor, self.player,
                 hud=self.hud,
                 combat_log=self.combat_log,
+                hide_player=hide_player,
             )
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
-            # Elevator hint — shown when player is adjacent to a closed elevator
-            if (
-                self._adjacent_elevator_pos() is not None
-                and self._elevator_phase is None
+            # Elevator / entry-elevator hints
+            _no_overlay = (
+                self._elevator_phase is None
+                and self._arrival_phase is None
                 and not self._inventory_open
                 and not self._weapon_picker_open
                 and not self._help_open
@@ -1632,11 +1737,20 @@ class GameScene(Scene):
                 and self._aim_overlay is None
                 and self._heal_overlay is None
                 and self._melee_overlay is None
-            ):
+            )
+            _hint_text: str | None = None
+            _hint_col: tuple = (220, 220, 100)
+            if _no_overlay:
+                if self._adjacent_elevator_pos() is not None:
+                    _hint_text = t("hint.elevator_descend")
+                elif self._adjacent_entry_elevator_pos() is not None:
+                    _hint_text = t("hint.elevator_no_return")
+                    _hint_col  = (160, 130, 90)
+            if _hint_text is not None:
                 cam = self.renderer.camera
                 ts  = settings.TILE_SIZE
                 sx, sy = cam.world_to_screen(self.player.x, self.player.y)
-                hint_surf = self._hint_font.render(t("hint.elevator_descend"), True, (220, 220, 100))
+                hint_surf = self._hint_font.render(_hint_text, True, _hint_col)
                 hw = hint_surf.get_width()
                 hh = hint_surf.get_height()
                 pad = 4
@@ -1670,7 +1784,7 @@ class GameScene(Scene):
             elif self._weapon_picker_open:
                 self.weapon_picker.draw(screen, self.player)
             if self._help_open:
-                self.help_screen.draw(screen)
+                self.help_catalog.draw(screen)
             if self._quit_confirm_open:
                 self.quit_confirm.draw(screen)
             if self._overheal_confirm_open:

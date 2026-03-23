@@ -18,7 +18,7 @@ class Difficulty:
     # Player starting stats
     player_max_hp:        int  = 30
     player_attack:        int  = 4
-    player_defence:       int  = 1
+    player_defence:       int  = 0
     starting_ammo:        dict = field(default_factory=dict)   # empty = only what's in the gun
 
     # Credits reward for securing the mission objective (final floor)
@@ -76,7 +76,6 @@ HARD = Difficulty(
     drones_per_floor=4,
     containers_per_floor=2,
     player_max_hp=25,
-    player_defence=0,
     # 7g×10 + 4d×15 + 2c×15 = 160/floor × 3 floors = 480
     objective_credits=480,
     aim_needle_speed_mult=1.35,

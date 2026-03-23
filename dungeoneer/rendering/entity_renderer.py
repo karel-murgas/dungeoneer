@@ -72,6 +72,7 @@ class EntityRenderer:
         screen: pygame.Surface,
         floor: "Floor",    # type: ignore[name-defined]
         camera: "Camera",  # type: ignore[name-defined]
+        hide_player: bool = False,
     ) -> None:
         self._init()
         ts = settings.TILE_SIZE
@@ -128,6 +129,8 @@ class EntityRenderer:
                 else:
                     pygame.draw.circle(screen, actor.render_colour, (sx + half, sy + half), half - 3)
             elif actor_type == "Player":
+                if hide_player:
+                    continue
                 screen.blit(procedural_sprites.get("player"), (sx, sy))
             elif actor_type == "Enemy":
                 screen.blit(procedural_sprites.get("guard"), (sx, sy))

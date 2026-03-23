@@ -32,6 +32,7 @@ class GenerationResult:
     rooms: list[Room]
     spawns: list[SpawnDesc]
     stair_pos: tuple[int, int]   # elevator position (legacy name kept for compat)
+    entry_pos: tuple[int, int]   # entry elevator position in start room
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,10 @@ class DungeonGenerator:
         px, py = start_room.cx, start_room.cy
         spawns.append(SpawnDesc("player", px, py))
 
+        # Entry elevator in the start room wall (the elevator the player came from)
+        entry_x, entry_y = self._find_elevator_wall(start_room, dungeon_map)
+        dungeon_map.set_type(entry_x, entry_y, TileType.ELEVATOR_ENTRY)
+
         # Elevator in one of the N farthest rooms from the start room.
         # Placed on a wall tile that has exactly one cardinal floor neighbour
         # (so the player can only approach from one side).
@@ -141,7 +146,12 @@ class DungeonGenerator:
         # Containers in random rooms (any room, including start/end)
         # Avoid doorway tiles, stairs, and already-placed chests.
         container_rooms = self._rng.choices(rooms, k=containers)
-        blocked: set[tuple[int, int]] = {(sx, sy), (px, py)}
+        blocked: set[tuple[int, int]] = {(sx, sy), (px, py), (entry_x, entry_y)}
+        # Block the floor tile adjacent to the entry elevator so the player can exit
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            if dungeon_map.is_walkable(entry_x + dx, entry_y + dy):
+                blocked.add((entry_x + dx, entry_y + dy))
+                break
         for sp in spawns:
             blocked.add((sp.x, sp.y))
         for room in container_rooms:
@@ -149,7 +159,7 @@ class DungeonGenerator:
             spawns.append(SpawnDesc("container", cx, cy))
             blocked.add((cx, cy))
 
-        return GenerationResult(dungeon_map, rooms, spawns, (sx, sy))
+        return GenerationResult(dungeon_map, rooms, spawns, (sx, sy), (entry_x, entry_y))
 
     # ------------------------------------------------------------------
     # BSP splitting

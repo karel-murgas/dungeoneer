@@ -24,6 +24,7 @@ class Renderer:
         player: "Player",  # type: ignore[name-defined]
         hud: "HUD | None" = None,          # type: ignore[name-defined]
         combat_log: "CombatLog | None" = None,  # type: ignore[name-defined]
+        hide_player: bool = False,
     ) -> None:
         screen.fill(settings.COL_BLACK)
 
@@ -34,7 +35,7 @@ class Renderer:
 
         self.tile_renderer.draw(screen, floor.dungeon_map, self.camera)
         self.range_overlay.draw(screen, floor, player, self.camera)
-        self.entity_renderer.draw(screen, floor, self.camera)
+        self.entity_renderer.draw(screen, floor, self.camera, hide_player=hide_player)
 
         if hud:
             hud.draw(screen, player)
