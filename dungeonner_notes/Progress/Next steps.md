@@ -1,0 +1,2 @@
+- [ ] Zapsat si poznatky jak generovat
+- [ ] Pushnout do devu (včetně tohohle vaultu)
