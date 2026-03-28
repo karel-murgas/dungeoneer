@@ -15,6 +15,9 @@ build/
 # Assets source files (not tracked)
 sources/
 
+# Temporary generated assets (SD output before approval)
+dungeoneer/assets/.tmp/
+
 # OS
 .DS_Store
 Thumbs.db
