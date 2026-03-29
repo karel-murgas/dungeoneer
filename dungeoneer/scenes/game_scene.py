@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import pygame
 
@@ -404,7 +404,7 @@ class GameScene(Scene):
         pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d,
     })
 
-    def handle_events(self, events: List[pygame.event.Event]) -> None:
+    def handle_events(self, events: list[pygame.event.Event]) -> None:
         # Track held movement keys for auto-repeat (KEYUP always clears, regardless of overlays)
         for event in events:
             if event.type == pygame.KEYDOWN and event.key in self._HOLD_MOVE_KEYS:
@@ -566,6 +566,9 @@ class GameScene(Scene):
                         self._inventory_open = False
                         self.weapon_picker.open(self.player)
                     return
+                if event.key == pygame.K_p:
+                    settings.HACK_WEAPON_USE_PNG = not settings.HACK_WEAPON_USE_PNG
+                    return
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 wp_r = self.hud.weapon_rect   if self.hud else None
@@ -599,7 +602,7 @@ class GameScene(Scene):
         else:
             self._handle_player_input(events)
 
-    def _handle_inventory_input(self, events: List[pygame.event.Event]) -> None:
+    def _handle_inventory_input(self, events: list[pygame.event.Event]) -> None:
         assert self.player is not None
         assert self.floor  is not None
 
@@ -639,7 +642,7 @@ class GameScene(Scene):
                 self._schedule_advance()
             break
 
-    def _handle_weapon_picker_input(self, events: List[pygame.event.Event]) -> None:
+    def _handle_weapon_picker_input(self, events: list[pygame.event.Event]) -> None:
         assert self.player is not None
         assert self.floor  is not None
 
@@ -679,7 +682,7 @@ class GameScene(Scene):
                 self._schedule_advance()
             break
 
-    def _handle_player_input(self, events: List[pygame.event.Event]) -> None:
+    def _handle_player_input(self, events: list[pygame.event.Event]) -> None:
         if self.alert_banner.is_blocking:
             return
         if self._elevator_phase is not None or self._arrival_phase is not None:

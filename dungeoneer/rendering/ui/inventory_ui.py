@@ -1,6 +1,8 @@
 """Inventory overlay — drawn on top of the game when player presses I."""
 from __future__ import annotations
 
+import os
+
 import pygame
 
 from dungeoneer.core import settings
@@ -14,6 +16,11 @@ _W            = 520
 _H            = 390
 _PAD          = 16
 _ROW_H        = 32
+_ICON_SIZE    = 26   # weapon icon px in item list (fits in _ROW_H with 3px margin)
+_EQUIP_ICON   = 36   # larger icon for the equipped weapon detail area
+_AMMO_BADGE   = 18   # ammo badge overlaid on bottom-right corner of weapon icon
+
+_ASSETS_ITEMS = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "items")
 _VISIBLE_ROWS = 7
 _BG      = (14, 14, 24, 220)
 _BORDER  = (60, 200, 160)
@@ -39,6 +46,12 @@ class InventoryUI:
         self._btn_rects:  dict[str, pygame.Rect] = {}   # "use"|"close" → rect
         self.help_btn_rect: pygame.Rect | None = None   # [?] items help button
 
+        # Item icons keyed by "{itemtype}_{id}" — loaded on first use, scaled to _ICON_SIZE
+        # Convention: assets/items/{item.item_type.name.lower()}_{item.id}.png
+        self._item_icons:  dict[str, pygame.Surface | None] = {}
+        # Larger icons for the equipped-weapon detail area, scaled to _EQUIP_ICON
+        self._equip_icons: dict[str, pygame.Surface | None] = {}
+
     # ------------------------------------------------------------------
     # Keyboard input
     # ------------------------------------------------------------------
@@ -63,7 +76,7 @@ class InventoryUI:
         self._selected = min(self._selected, n - 1)
         item = items[self._selected]
 
-        if key == pygame.K_e:
+        if key in (pygame.K_e, pygame.K_RETURN, pygame.K_KP_ENTER):
             if isinstance(item, Weapon):
                 return EquipAction(item)
             if isinstance(item, Consumable):
@@ -165,6 +178,39 @@ class InventoryUI:
             w = player.equipped_weapon
             eq_surf = self._font_bold.render(f"{w.name}   {w.stat_line()}", True, _COL_EQ)
             screen.blit(eq_surf, (ox + _PAD + 75, eq_y))
+            # Large icons to the right: weapon icon, then ammo icon to its left (ranged only)
+            eq_icon_key = f"weapon_{w.id}"
+            if eq_icon_key not in self._equip_icons:
+                path = os.path.join(_ASSETS_ITEMS, f"{eq_icon_key}.png")
+                if os.path.isfile(path):
+                    raw = pygame.image.load(path).convert_alpha()
+                    self._equip_icons[eq_icon_key] = pygame.transform.smoothscale(
+                        raw, (_EQUIP_ICON, _EQUIP_ICON)
+                    )
+                else:
+                    self._equip_icons[eq_icon_key] = None
+            eq_icon = self._equip_icons[eq_icon_key]
+            icon_y = eq_y - (_EQUIP_ICON - self._font_bold.get_height()) // 2
+            if eq_icon is not None:
+                icon_x = ox + _W - _PAD - _EQUIP_ICON
+                screen.blit(eq_icon, (icon_x, icon_y))
+            # Ammo badge — small icon on bottom-right corner of weapon icon (ranged only)
+            if w.range_type == RangeType.RANGED and hasattr(w, "ammo_type"):
+                ammo_badge_key = f"ammo_badge_{w.ammo_type}"
+                if ammo_badge_key not in self._equip_icons:
+                    path = os.path.join(_ASSETS_ITEMS, f"ammo_ammo_{w.ammo_type}.png")
+                    if os.path.isfile(path):
+                        raw = pygame.image.load(path).convert_alpha()
+                        self._equip_icons[ammo_badge_key] = pygame.transform.smoothscale(
+                            raw, (_AMMO_BADGE, _AMMO_BADGE)
+                        )
+                    else:
+                        self._equip_icons[ammo_badge_key] = None
+                ammo_icon = self._equip_icons[ammo_badge_key]
+                if ammo_icon is not None:
+                    badge_x = ox + _W - _PAD - _AMMO_BADGE
+                    badge_y = icon_y + _EQUIP_ICON - _AMMO_BADGE
+                    screen.blit(ammo_icon, (badge_x, badge_y))
         else:
             screen.blit(self._font.render(t("inv.none"), True, _COL_DIM), (ox + _PAD + 75, eq_y))
 
@@ -208,15 +254,32 @@ class InventoryUI:
 
                 col = _COL_WPN if isinstance(item, Weapon) else _COL_CON
 
+                # Icon — convention: assets/items/{itemtype}_{id}.png
+                icon_key = f"{item.item_type.name.lower()}_{item.id}"
+                if icon_key not in self._item_icons:
+                    path = os.path.join(_ASSETS_ITEMS, f"{icon_key}.png")
+                    if os.path.isfile(path):
+                        raw = pygame.image.load(path).convert_alpha()
+                        self._item_icons[icon_key] = pygame.transform.smoothscale(
+                            raw, (_ICON_SIZE, _ICON_SIZE)
+                        )
+                    else:
+                        self._item_icons[icon_key] = None
+                icon_surf = self._item_icons[icon_key]
+                if icon_surf is not None:
+                    icon_y = row_y + (_ROW_H - _ICON_SIZE) // 2
+                    screen.blit(icon_surf, (ox + _PAD, icon_y))
+                text_x = ox + _PAD + (_ICON_SIZE + 4 if icon_surf is not None else 0)
+
                 stat      = item.stat_line() if hasattr(item, "stat_line") else ""
                 stat_surf = self._font.render(stat, True, _COL_DIM)
                 stat_x    = ox + _W - _PAD - stat_surf.get_width()
 
-                name_max_w = stat_x - _PAD - (ox + _PAD)
+                name_max_w = stat_x - _PAD - text_x
                 name_s = self._font_bold.render(item.name, True, col)
                 if name_s.get_width() > name_max_w:
                     name_s = name_s.subsurface((0, 0, name_max_w, name_s.get_height()))
-                screen.blit(name_s, (ox + _PAD, row_y + 4))
+                screen.blit(name_s, (text_x, row_y + 4))
                 screen.blit(stat_surf, (stat_x, row_y + 4))
 
             if scroll_top > 0:

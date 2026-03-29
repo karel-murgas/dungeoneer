@@ -36,9 +36,10 @@ class GridCell:
     loot_kind:     Optional[LootKind]     = None
     security_kind: Optional[SecurityKind] = None
 
-    hacked:   bool  = False   # LOOT collected; or SECURITY triggered
-    revealed: bool  = True    # SECURITY: False = hidden (looks like EMPTY)
-    active:   bool  = True    # LOOT: False = destroyed by ICE (still walkable)
+    hacked:        bool           = False  # LOOT collected; or SECURITY triggered
+    revealed:      bool           = True   # SECURITY: False = hidden (looks like EMPTY)
+    active:        bool           = True   # LOOT: False = destroyed by ICE (still walkable)
+    loot_item_id:  Optional[str]  = None   # item id after collection (e.g. "shotgun")
 
     flash_timer: float = 0.0  # >0 → red flash (BLOCKED)
 

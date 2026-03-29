@@ -15,7 +15,23 @@ from dungeoneer.items.weapon import Weapon
 from dungeoneer.rendering.spritesheet import SpriteSheet
 from dungeoneer.rendering import procedural_sprites
 
-_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
+_ASSETS_DIR   = os.path.join(os.path.dirname(__file__), "..", "assets")
+_ASSETS_ITEMS = os.path.join(_ASSETS_DIR, "items")
+
+_loot_pngs: dict[str, pygame.Surface | None] = {}
+
+
+def _try_loot_png(item: "Item", tile_size: int) -> "pygame.Surface | None":  # type: ignore[name-defined]
+    """Return a PNG icon scaled to tile_size, or None if no asset exists."""
+    key = f"{item.item_type.name.lower()}_{item.id}"
+    if key not in _loot_pngs:
+        path = os.path.join(_ASSETS_ITEMS, f"{key}.png")
+        if os.path.isfile(path):
+            raw = pygame.image.load(path).convert_alpha()
+            _loot_pngs[key] = pygame.transform.smoothscale(raw, (tile_size, tile_size))
+        else:
+            _loot_pngs[key] = None
+    return _loot_pngs[key]
 
 
 def _loot_sprite_key(item: "Item") -> str:  # type: ignore[name-defined]
@@ -102,7 +118,15 @@ class EntityRenderer:
                 continue
             non_credit_tiles.add((item_e.x, item_e.y))
             sx, sy = camera.world_to_screen(item_e.x, item_e.y)
-            screen.blit(procedural_sprites.get(_loot_sprite_key(item_e.item)), (sx, sy))
+            # PNG icon if asset exists; procedural fallback otherwise.
+            # TODO: remove fallback once all item icons are available as PNG assets.
+            surf = _try_loot_png(item_e.item, ts) or procedural_sprites.get(_loot_sprite_key(item_e.item))
+            if item_e.item.item_type == ItemType.AMMO:
+                half = ts // 2
+                surf = pygame.transform.smoothscale(surf, (half, half))
+                screen.blit(surf, (sx + ts // 4, sy + ts // 4))
+            else:
+                screen.blit(surf, (sx, sy))
         for item_e in credit_entities:
             sx, sy = camera.world_to_screen(item_e.x, item_e.y)
             sprite = procedural_sprites.get("item_hack_credits")

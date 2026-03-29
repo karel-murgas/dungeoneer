@@ -9,7 +9,7 @@ type: project
 - Entry: `main.py` → `core/game.py` (`GameApp`) → `SceneManager` → scenes
 - Deps: `pygame-ce ≥2.5.0`, `python-tcod ≥16.0.0` (FOV), `numpy ≥1.26.0`, `pytest ≥8.0.0`, `rembg[cpu]` (asset post-processing)
 - Asset generation: `scripts/sd_generate.py` (SD WebUI API), `scripts/asset_postprocess.py` (rembg + PCA rotate + frame fill + downscale)
-- Asset pipeline config: `.claude/imagegen-roguelite.md`
+- Asset pipeline config: `.claude/imagegen.md`
 
 ## Module Map
 

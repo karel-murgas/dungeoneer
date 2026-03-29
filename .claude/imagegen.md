@@ -18,6 +18,106 @@ TMP_FINAL=$TMP_DIR/final    # po downscale na cílovou velikost
 
 ---
 
+## MODELY — DOPORUČENÁ SESTAVA
+
+### Aktuální sestava (méně ideální pro item ikony)
+- Base: **SDXL 1.0**
+- LoRA: `pixel-art-xl-v1.1` (váha 1.0)
+- Problém: LoRA je biasovaná na celé zbraně, špatně generuje izolované malé objekty (náboje, předměty)
+
+### Doporučená sestava pro item ikony (stáhnout ručně)
+
+| Model | URL | Umístění | Poznámka |
+|---|---|---|---|
+| **Illustrious XL** (checkpoint) | [civitai.com/models/795765](https://civitai.com/models/795765) | `models/Stable-diffusion/` | Nový base model, lepší pro itemy |
+| **Pixel Art Game UI Icons LoRA** | [civitai.com/models/2443581](https://civitai.com/models/2443581) | `models/Lora/` | Trénovaný přímo na herní inventory ikony |
+
+### Po stažení — nové prompty pro item ikony
+```
+<lora:pixel-art-xl-v1.1:0.6>, <lora:pixel_art_game_ui_icons:0.8>, pixelarticon, cyberpunk, [SUBJEKT], ...
+```
+Trigger word: `pixelarticon` — přidat na začátek positive promptu.
+
+Spustit SD s Illustrious XL jako base modelem (vybrat v UI nebo přidat `--ckpt` argument).
+
+### Alternativa — Pixel Art Diffusion XL (full checkpoint, ~6.5 GB)
+- [civitai.com/models/277680](https://civitai.com/models/277680)
+- Nevyžaduje LoRA, konzistentní quality pro game sprity
+- Umístit do `models/Stable-diffusion/`, vybrat jako base model
+
+---
+
+## SPUŠTĚNÍ STABLE DIFFUSION
+
+Spusť SD přes `launch.py` přímo Python interpretem (bat soubory nefungují spolehlivě z bashe):
+
+```bash
+powershell.exe -NoProfile -Command "Start-Process -FilePath 'C:\Users\karel\AppData\Local\Programs\Python\Python310\python.exe' -ArgumentList 'launch.py --no-half-vae --api' -WorkingDirectory 'C:\Users\karel\Documents\stable-diffusion-webui' -WindowStyle Normal"
+```
+
+SD se načítá pomalu (~3–5 min, při prvním spuštění instaluje PyTorch 2.5 GB). Čekej na port 7860:
+
+```bash
+# Běží Python?
+tasklist 2>&1 | grep python
+
+# Naslouchá server?
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:7860/
+
+# Nebo check skript (z adresáře dungeoneer/):
+python scripts/sd_generate.py --check --prompt x --output nul
+```
+
+SD musí běžet před jakýmkoliv generováním.
+
+---
+
+## JEDNOTNÝ VIZUÁLNÍ STYL PROJEKTU
+
+Tento styl byl odvozen z existujících schválených assetů (weapon_pistol, weapon_shotgun, weapon_rifle, weapon_smg, weapon_combat_knife, weapon_energy_sword). **Každý nový asset musí odpovídat těmto pravidlům.**
+
+### Paleta
+
+| Role | Barva | Poznámka |
+|---|---|---|
+| Tělo objektu | Tmavý teal `#1a3535` – `#1f4040` | Dominantní plocha — ne šedá, ne černá |
+| Highlight / hrana | Bright cyan `#00d4d4` – `#00e8e8` | Světlá linka na exponované hraně |
+| Outline / stín | Velmi tmavý teal `#0d1f1f` – `#111` | Pixel outline, ne čistá černá |
+| Accent (volitelný) | Bright cyan / neon teal | Vnitřní detail, trigger, scope lens |
+
+- Maximálně **3 barvy** + průhlednost — každá plocha je jednobarevná (pixel art, žádný gradient)
+- **Bez teplých barev** (žádná oranžová, červená, žlutá) — výjimka: krev/výbuchy v herním kontextu, ne ikony
+- Energetické / futuristické zbraně (energy_sword) mohou mít tělo i highlight v podobném jasném cyan tónu → víc "glow" efekt
+
+### Tvar a čitelnost
+
+- **Silueta** okamžitě čitelná na 32×32 px — minimum detailů, žádné složité výřezy
+- **Hard pixel edges** — nulový anti-aliasing, ostré přechody barev
+- **Orientace item ikon**: vždy 45° diagonálně `/` — špička / hlaveň vpravo nahoře, rukojeť / základna vlevo dole (PCA post-processing)
+- **Edge-to-edge pokrytí** — 1–2px padding, žádné velké prázdné okraje
+
+### Referenční assety (k vizuální inspekci)
+
+```
+dungeoneer/assets/items/weapon_pistol.png       ← pistole, základní tvar
+dungeoneer/assets/items/weapon_rifle.png        ← dlouhá zbraň, úzký profil
+dungeoneer/assets/items/weapon_shotgun.png      ← krátká tlustá hlaveň
+dungeoneer/assets/items/weapon_smg.png          ← kompaktní tělo
+dungeoneer/assets/items/weapon_combat_knife.png  ← čepel, minimalistická silueta
+dungeoneer/assets/items/weapon_energy_sword.png ← glow varianta (uniformně bright)
+```
+
+### Checklist konzistence stylu (použij při inspekci nového assetu)
+
+- [ ] Dominantní barva je tmavý teal (ne šedá, ne modrá, ne zelená)
+- [ ] Highlight je bright cyan podél exponované hrany
+- [ ] Max 3 barvy celkem
+- [ ] Orientace 45° (platí pro item ikony)
+- [ ] Silueta odpovídá objektu na 32px
+- [ ] Žádné teplé barvy
+
+---
+
 ## A. Rozhodni, jaký asset generuješ
 
 Před generováním urči typ assetu a sděl uživateli, co jsi zvolil a proč.
@@ -73,6 +173,114 @@ bad quality, blurry, text, watermark, signature, border, frame, noise, jpeg arti
 
 > ⚠️ Pokud SD vygeneruje více objektů → VŽDY regenerovat, NIKDY neořezávat.
 
+### POSTUP VÝROBY MUNIČNÍCH IKON (ověřený workflow)
+
+Muniční ikony nelze spolehlivě generovat samotným SD — LoRA je příliš biasovaná na celé zbraně a na 32px jsou tvarové rozdíly mezi typy nábojů nerozlišitelné. Ověřený postup:
+
+#### Krok 1 — Vygeneruj základní náboj (img2img od dobrého výsledku)
+
+Reprodukovatelný základ: seed `3947922114`, prompt viz sekci níže.
+
+```bash
+python scripts/sd_generate.py \
+  --prompt "<lora:pixel-art-xl-v1.1:1.0>, cyberpunk, 9mm pistol bullet cartridge, side view profile, elongated oval silhouette, blunt rounded tip, cylindrical body, game item icon, single object, bold clean silhouette, hard pixel edges, limited color palette, highlight along edge, dark pixel outline, solid white background, isolated object, brass amber colored body, dark gunmetal bullet tip, subtle cyan highlight" \
+  --negative "bad quality, blurry, text, watermark, border, noise, jpeg artifacts, humanoid, spritesheet, pattern, multiple, duplicate, gun, weapon, firearm, realistic, 3d render, photo, hud, scanlines, drop shadow, shadow, background, floor, vignette, anti-aliasing, gradient, front view, top view, isometric" \
+  --seed 3947922114 \
+  --output $TMP_RAW/ammo_base.png \
+  --width 1024 --height 1024
+```
+
+Pro varianty (různé délky) použij img2img z tohoto base s `--denoising 0.45–0.7`.
+
+#### Krok 2 — Post-processing
+
+```bash
+python scripts/asset_postprocess.py $TMP_RAW/ammo_base.png $TMP_FINAL/ammo_base.png --padding 2
+```
+
+#### Krok 3 — Přebarvení hrotu (`scripts/ammo_recolor.py`)
+
+Primární diferenciátor mezi typy munice = barva hrotu. Tělo (tmavé pouzdro + cyan pruh) zůstává stejné.
+
+```bash
+# 9mm = amber (standard, žádná změna)
+cp ammo_base.png ammo_ammo_9mm.png
+
+# rifle = zelený hrot (hue 120°)
+python scripts/ammo_recolor.py $TMP_FINAL/ammo_base.png $TMP_FINAL/ammo_ammo_rifle.png 120
+
+# shell = červený hrot (hue 0°)
+python scripts/ammo_recolor.py $TMP_FINAL/ammo_base.png $TMP_FINAL/ammo_ammo_shell.png 0
+```
+
+**Hue referenční tabulka:**
+| Typ munice | Hue | Barva hrotu | Soubor |
+|---|---|---|---|
+| 9mm (standard) | 40 (výchozí) | amber/gold | `ammo_ammo_9mm.png` |
+| rifle | 120 | zelená | `ammo_ammo_rifle.png` |
+| shell | 0 | červená | `ammo_ammo_shell.png` |
+| nový typ | dle výběru | dle výběru | `ammo_ammo_{id}.png` |
+
+#### Krok 4 — Složené ikony (Python, bez SD)
+
+Pro ikony representující více nábojů (random ammo atd.) skládej v Pythonu pomocí PIL:
+
+```python
+from PIL import Image
+import colorsys
+
+# Zkřížené náboje (random ammo) — flip + alpha_composite
+base = Image.open("ammo_ammo_9mm.png").convert("RGBA")
+back = base.copy()
+# přebarvi hrot back náboje (volitelně)
+back = back.transpose(Image.FLIP_LEFT_RIGHT)   # "\" tvar
+canvas = Image.new("RGBA", base.size, (0,0,0,0))
+canvas.alpha_composite(back)   # za
+canvas.alpha_composite(base)   # před
+canvas.save("ammo_ammo_random.png")
+```
+
+**Pravidlo:** ikony složené z více nábojů dělej vždy v Pythonu, ne v SD — SD z více objektů generuje spritesheet nebo chaos.
+
+---
+
+### Poznatky z generování munice (praktické tipy)
+
+**Přístup**: stejný pipeline jako zbraně (txt2img → rembg → PCA 45° → 32×32).
+
+**Paleta**: shodná s weapons — dark teal tělo, bright cyan highlight. Žádné brass/amber akcenty (i když reálná munice má mosazné pouzdro — v tomto stylu to nerušíme, viz design decision níže).
+
+**Primární diferenciátor = tvar siluety** (viz referenci Nuclear Throne), ne barva:
+- `9mm` → střední zakulacená kulka, tupý hrot → `rounded bullet, blunt tip, medium sized, compact`
+- `rifle` → dlouhá štíhlá patrona, špičatý hrot → `long slender rifle cartridge, pointed tip, narrow elongated`
+- `shell` → krátký tlustý válec → `short wide shotgun shell, cylindrical, stubby, brass hull`
+
+**Design decision** (2026-03-28): Munice má jednotnou teal/cyan paletu jako zbraně. Brass/amber accent zvažován, zamítnut — weapon sprites nemají žádné teplé tóny, konzistence je důležitější než realismus.
+
+**Prompty pro munici:**
+
+9mm:
+```
+<lora:pixel-art-xl-v1.1:1.0>, cyberpunk, 9mm pistol bullet cartridge, rounded blunt tip, compact small round, game item icon, single object, bold clean silhouette, hard pixel edges, limited color palette, highlight along edge, dark pixel outline, solid white background, isolated object, no background elements, cyan neon accent, dark teal body
+```
+
+Rifle:
+```
+<lora:pixel-art-xl-v1.1:1.0>, cyberpunk, rifle cartridge ammunition, long slender elongated, sharp pointed tip, bottleneck shape, game item icon, single object, bold clean silhouette, hard pixel edges, limited color palette, highlight along edge, dark pixel outline, solid white background, isolated object, no background elements, cyan neon accent, dark teal body
+```
+
+Shell:
+```
+<lora:pixel-art-xl-v1.1:1.0>, cyberpunk, shotgun shell, short wide cylindrical hull, stubby barrel shape, game item icon, single object, bold clean silhouette, hard pixel edges, limited color palette, highlight along edge, dark pixel outline, solid white background, isolated object, no background elements, cyan neon accent, dark teal body
+```
+
+**Cílové názvy souborů** (konvence `{itemtype}_{id}.png`):
+- `ammo_ammo_9mm.png`
+- `ammo_ammo_rifle.png`
+- `ammo_ammo_shell.png`
+
+---
+
 ### Poznatky z generování zbraní (praktické tipy)
 
 **Co funguje:**
@@ -120,7 +328,7 @@ bad quality, blurry, text, watermark, characters, enemies, people
 
 ---
 
-## E. Generování
+## C. Generování
 
 Generování obstarává `scripts/sd_generate.py`. Nejdřív ověř, že SD běží:
 
@@ -157,7 +365,7 @@ python scripts/sd_generate.py --mode img2img --reference $STYLE_REFERENCE --prom
 
 ---
 
-## F. Animované sprite sheety
+## D. Animované sprite sheety
 
 Přístup: img2img variace z base framu (4 framy celkem).
 
@@ -204,7 +412,7 @@ print(f'Spritesheet: {W * len(imgs)}x{H}, {len(imgs)} frames')
 
 ---
 
-## G. Post-processing
+## E. Post-processing
 
 Veškerá post-processing logika je ve skriptu `scripts/asset_postprocess.py`.
 
@@ -249,7 +457,7 @@ python scripts/asset_postprocess.py raw/floor.png final/floor.png --skip-rembg -
 
 ---
 
-## H. Zkontroluj výsledek
+## F. Zkontroluj výsledek
 
 Přečti výsledný obrázek Read toolem a projdi checklist pro daný typ assetu.
 
@@ -261,9 +469,9 @@ Přečti výsledný obrázek Read toolem a projdi checklist pro daný typ assetu
 
 ### Checklist pro item ikony (zbraně, předměty)
 - **Silueta**: odpovídá tvar zadanému typu zbraně? (nůž vypadá jako nůž, brokovnice jako brokovnice)
-- **Orientace**: špička/hlaveň vpravo nahoře, rukojeť/pažba vlevo dole (45° `/`) — zajišťuje G3
-- **Pokrytí**: objekt vyplňuje celý rámec od kraje ke kraji — zajišťuje G4
-- **Jediný objekt**: žádné duplikáty — kontroluje G6
+- **Orientace**: špička/hlaveň vpravo nahoře, rukojeť/pažba vlevo dole (45° `/`) — zajišťuje E3
+- **Pokrytí**: objekt vyplňuje celý rámec od kraje ke kraji — zajišťuje E4
+- **Jediný objekt**: žádné duplikáty — kontroluje E6
 - **Styl sady**: odpovídá paletě ostatních ikon (cyan accent, dark body)
 
 ### Checklist pro spritesheets (animace)
@@ -278,7 +486,7 @@ Přečti výsledný obrázek Read toolem a projdi checklist pro daný typ assetu
 
 ---
 
-## I. Ulož schválený asset
+## G. Ulož schválený asset
 
 Po schválení uživatelem zkopíruj z `$TMP_FINAL/` do správného subadresáře:
 
@@ -289,5 +497,13 @@ cp $TMP_FINAL/btn_help.png        $ASSETS_DIR/ui/btn_help.png
 ```
 
 Pojmenování: lowercase, bez mezer, výstižné (`weapon_pistol.png`, `enemy_drone.png`).
+
+**Povinná konvence pro item ikony** (`assets/items/`): název souboru musí být `{itemtype}_{id}.png`, kde:
+- `itemtype` = `item.item_type.name.lower()` → `weapon`, `consumable`, `armor`, `ammo`
+- `id` = `item.id` z kódu (např. `combat_knife`, `energy_sword`, `smg`, `basic_armor`)
+
+Příklady: `weapon_pistol.png`, `weapon_combat_knife.png`, `consumable_stimpack.png`, `armor_basic_armor.png`.
+
+Kód načítá ikony přímo podle tohoto vzoru bez mapovací tabulky — odlišný název = ikona se nezobrazí.
 
 > **Seed** pro reprodukovatelnost: `sd_generate.py` vypisuje seed při každém generování. Zapiš ho do poznámky u assetu.

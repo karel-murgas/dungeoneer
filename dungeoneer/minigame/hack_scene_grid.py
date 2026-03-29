@@ -25,7 +25,7 @@ import math
 import os
 import random
 from enum import auto, Enum
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 import pygame
 
@@ -34,10 +34,13 @@ from dungeoneer.core.i18n import t
 from dungeoneer.minigame.hack_node import LootKind, SecurityKind
 from dungeoneer.minigame.hack_grid_map import GridCell, GridCellType, HackGridMap, Pos
 from dungeoneer.minigame.hack_grid_generator import HackGridParams, generate_grid_map
+from dungeoneer.core import settings
 from dungeoneer.minigame.hack_audio import HackAudio
 from dungeoneer.minigame import hack_common as _hc
 from dungeoneer.rendering import procedural_sprites
 from dungeoneer.rendering.ui.help_catalog import HelpCatalogOverlay, _TAB_HACKING
+
+_ASSETS_ITEMS = os.path.join(os.path.dirname(__file__), "..", "assets", "items")
 
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
@@ -126,8 +129,8 @@ class HackGridScene(Scene):
     def __init__(
         self,
         app: "GameApp",
-        params: Optional[HackGridParams] = None,
-        on_complete: Optional[Callable[[bool, List["Item"], int], None]] = None,
+        params: HackGridParams | None = None,
+        on_complete: Callable[[bool, list["Item"], int], None] | None = None,
     ) -> None:
         super().__init__(app)
         self._params      = params or HackGridParams()
@@ -155,15 +158,15 @@ class HackGridScene(Scene):
         self._tick_cooldown: float = 0.0
         self._timer_started: bool  = False
 
-        self._result_items:   List["Item"] = []
+        self._result_items:   list["Item"] = []
         self._result_credits: int          = 0
 
         self._sec_overlay:  dict | None = None
         self._loot_overlay: dict | None = None
 
         # Auto-movement: keep going in a direction until node/intersection
-        self._auto_dir:      Optional[Pos] = None   # current auto direction
-        self._queued_dir:    Optional[Pos] = None   # direction pressed during MOVING
+        self._auto_dir:      Pos | None = None   # current auto direction
+        self._queued_dir:    Pos | None = None   # direction pressed during MOVING
         self._last_node_pos: Pos           = self._grid_map.entry_pos  # for BLOCKED rollback
 
         self._status: str = t("hack.status.initial")
@@ -173,7 +176,7 @@ class HackGridScene(Scene):
         self._help_catalog.open_tab(_TAB_HACKING)
 
         # Cache which connections to draw (avoid redrawing both directions)
-        self._wire_pairs: List[Tuple[Pos, Pos]] = []
+        self._wire_pairs: list[tuple[Pos, Pos]] = []
         self._rebuild_wire_pairs()
 
         # Audio
@@ -202,6 +205,26 @@ class HackGridScene(Scene):
             _raw = procedural_sprites.get(_key)
             if _raw is not None:
                 self._item_sprites[_key] = _raw   # will be scaled at draw time
+        # PNG icons for WEAPON / AMMO nodes (HACK_WEAPON_USE_PNG toggle — P key)
+        _wpn_path = os.path.join(_ASSETS_ITEMS, "weapon_random.png")
+        if os.path.isfile(_wpn_path):
+            self._weapon_random_png: pygame.Surface | None = pygame.image.load(_wpn_path).convert_alpha()
+        else:
+            self._weapon_random_png = None
+        _ammo_path = os.path.join(_ASSETS_ITEMS, "ammo_ammo_random.png")
+        if os.path.isfile(_ammo_path):
+            self._ammo_random_png: pygame.Surface | None = pygame.image.load(_ammo_path).convert_alpha()
+        else:
+            self._ammo_random_png = None
+        # Specific ammo PNGs shown after node is collected
+        self._ammo_specific_pngs: dict[str, pygame.Surface | None] = {}
+        for _ammo_id in ("ammo_ammo_9mm", "ammo_ammo_rifle", "ammo_ammo_shell"):
+            _p = os.path.join(_ASSETS_ITEMS, f"{_ammo_id}.png")
+            self._ammo_specific_pngs[_ammo_id] = (
+                pygame.image.load(_p).convert_alpha() if os.path.isfile(_p) else None
+            )
+        # Lazy cache for specific weapon PNGs revealed after collection
+        self._weapon_specific_pngs: dict[str, pygame.Surface | None] = {}
 
     def on_exit(self) -> None:
         pygame.mixer.music.fadeout(300)
@@ -224,7 +247,7 @@ class HackGridScene(Scene):
     # Input
     # ------------------------------------------------------------------
 
-    def handle_events(self, events: List[pygame.event.Event]) -> None:
+    def handle_events(self, events: list[pygame.event.Event]) -> None:
         if self._state == _State.DONE:
             return
         if self._sec_overlay is not None:
@@ -255,6 +278,10 @@ class HackGridScene(Scene):
             if key == pygame.K_F1:
                 self._help_catalog.open_tab(_TAB_HACKING)
                 self._help_open = True
+                continue
+
+            if key == pygame.K_p:
+                settings.HACK_WEAPON_USE_PNG = not settings.HACK_WEAPON_USE_PNG
                 continue
 
             if key == pygame.K_ESCAPE and self._state == _State.HACKING:
@@ -413,7 +440,7 @@ class HackGridScene(Scene):
         else:
             self._auto_dir = None
 
-    def _handle_click(self, screen_pos: Tuple[int, int]) -> None:
+    def _handle_click(self, screen_pos: tuple[int, int]) -> None:
         """Navigate to the adjacent node under the mouse cursor (if reachable)."""
         panel   = self._panel_rect()
         clicked = self._screen_to_cell(screen_pos[0], screen_pos[1], panel)
@@ -423,7 +450,7 @@ class HackGridScene(Scene):
         if direction is not None:
             self._try_start_auto(direction)
 
-    def _screen_to_cell(self, mx: int, my: int, panel: pygame.Rect) -> Optional[Pos]:
+    def _screen_to_cell(self, mx: int, my: int, panel: pygame.Rect) -> Pos | None:
         """Convert screen pixel position to the nearest physical grid cell."""
         gm = self._grid_map
         pc = gm.phys_cols - 1
@@ -608,6 +635,7 @@ class HackGridScene(Scene):
             item = _make_loot_item(kind)
             if item is not None:
                 self._result_items.append(item)
+                cell.loot_item_id = item.id
                 self._status = t("hack.status.extracted").format(item=item.name)
                 self._log    = f"[{item.name}]"
                 self._loot_overlay = {
@@ -641,7 +669,7 @@ class HackGridScene(Scene):
         m = 20
         return pygame.Rect(m, _HEADER_H + m, sw - 2 * m, sh - _HEADER_H - _FOOTER_H - 2 * m)
 
-    def _cell_center(self, col: int, row: int, panel: pygame.Rect) -> Tuple[int, int]:
+    def _cell_center(self, col: int, row: int, panel: pygame.Rect) -> tuple[int, int]:
         """Map physical grid coordinates to screen pixels."""
         gm = self._grid_map
         # Spread node positions evenly across the panel
@@ -1009,6 +1037,38 @@ class HackGridScene(Scene):
     ) -> None:
         kind = cell.loot_kind
         icon_size = max(12, round(node_r * 1.7))
+
+        if settings.HACK_WEAPON_USE_PNG:
+            if kind == LootKind.WEAPON:
+                if cell.hacked and cell.loot_item_id is not None:
+                    png_key = f"weapon_{cell.loot_item_id}"
+                    if png_key not in self._weapon_specific_pngs:
+                        _p = os.path.join(_ASSETS_ITEMS, f"{png_key}.png")
+                        self._weapon_specific_pngs[png_key] = (
+                            pygame.image.load(_p).convert_alpha() if os.path.isfile(_p) else None
+                        )
+                    png = self._weapon_specific_pngs[png_key]
+                else:
+                    png = self._weapon_random_png
+                if png is not None:
+                    scaled = pygame.transform.scale(png, (icon_size, icon_size))
+                    screen.blit(scaled, (cx - icon_size // 2, cy - icon_size // 2))
+                    return
+            _ammo_id_map = {
+                LootKind.AMMO:         "ammo_ammo_9mm",
+                LootKind.RIFLE_AMMO:   "ammo_ammo_rifle",
+                LootKind.SHOTGUN_AMMO: "ammo_ammo_shell",
+            }
+            if kind in _ammo_id_map:
+                if cell.hacked:
+                    png = self._ammo_specific_pngs.get(_ammo_id_map[kind])
+                else:
+                    png = self._ammo_random_png
+                if png is not None:
+                    ammo_size = max(8, icon_size // 2)
+                    scaled = pygame.transform.scale(png, (ammo_size, ammo_size))
+                    screen.blit(scaled, (cx - ammo_size // 2, cy - ammo_size // 2))
+                    return
 
         sprite_key = {
             LootKind.AMMO:         "item_loot_ammo",

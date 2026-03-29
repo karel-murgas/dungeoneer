@@ -41,7 +41,7 @@ pytest                                # tests (tests/ directory)
 - Karel downloads external assets (tilesets, audio, references) manually into `sources/` at the project root
 - **Never reference files from `sources/` in game code** — always copy to `dungeoneer/assets/` first
 - `sources/` is not committed to git
-- You can generate assets yourself using Stable Diffusion — read `.claude/imagegen-roguelite.md` before generating and follow its instructions
+- You can generate assets yourself using Stable Diffusion — read `.claude/imagegen.md` before generating and follow its instructions
 - **Generated assets workflow:** SD output → `dungeoneer/assets/.tmp/` (gitignored) → after user approval → copy to `dungeoneer/assets/[subdir]/`
 - Asset subdirectories: `entities/` (sprites, NPCs), `ui/` (buttons, icons), `tiles/` (tilesets, environment), `portraits/`
 

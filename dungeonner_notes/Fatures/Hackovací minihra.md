@@ -1,0 +1,2 @@
+- Udělat přepínání "náhodný loot" (náhodné náboje, náhodná zbraň) vs známý loot (konkrétní náboje, atp.) - rozdíl je jen v tom, kdy se vygeneruje RNG a jaká se použije ikonka
+- Bude pak perk, který v hackovací minihře "ukáže loot"

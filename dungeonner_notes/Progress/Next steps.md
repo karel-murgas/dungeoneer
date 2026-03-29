@@ -1,2 +1,2 @@
-- [ ] Zapsat si poznatky jak generovat
-- [ ] Pushnout do devu (včetně tohohle vaultu)
+- [x] Zapsat si poznatky jak generovat
+- [x] Pushnout do devu (včetně tohohle vaultu)

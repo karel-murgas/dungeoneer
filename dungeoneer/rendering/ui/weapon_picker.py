@@ -1,13 +1,18 @@
 """Weapon-swap dropdown — opened with C, anchored under the HUD weapon line."""
 from __future__ import annotations
 
+import os
+
 import pygame
 
 from dungeoneer.core.i18n import t
 from dungeoneer.items.weapon import Weapon
 
-_PAD     = 10
-_ROW_H   = 26
+_ASSETS_ITEMS = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "items")
+
+_PAD      = 10
+_ROW_H    = 26
+_ICON_SIZE = 20   # weapon icon in picker rows
 _W       = 420
 _BG      = (14, 14, 24, 230)
 _BORDER  = (80, 180, 160)
@@ -33,6 +38,8 @@ class WeaponPickerUI:
         # Populated during draw()
         self._weapon_rects: dict[int, pygame.Rect] = {}  # index → rect
         self._btn_rects:    dict[str, pygame.Rect] = {}  # "close" → rect
+        # Icon cache: "weapon_{id}" → Surface | None
+        self._item_icons: dict[str, pygame.Surface | None] = {}
 
     # ------------------------------------------------------------------
 
@@ -154,6 +161,23 @@ class WeaponPickerUI:
                 col   = _COL_EQ if is_eq else _COL_WPN
                 label = f"{'▶ ' if is_eq else '  '}{wpn.name}"
 
+                # Icon — slot is always _ICON_SIZE + 4 wide for alignment
+                icon_key = f"weapon_{wpn.id}"
+                if icon_key not in self._item_icons:
+                    path = os.path.join(_ASSETS_ITEMS, f"{icon_key}.png")
+                    if os.path.isfile(path):
+                        raw = pygame.image.load(path).convert_alpha()
+                        self._item_icons[icon_key] = pygame.transform.smoothscale(
+                            raw, (_ICON_SIZE, _ICON_SIZE)
+                        )
+                    else:
+                        self._item_icons[icon_key] = None
+                icon_surf = self._item_icons[icon_key]
+                if icon_surf is not None:
+                    icon_y = row_y + (_ROW_H - _ICON_SIZE) // 2
+                    screen.blit(icon_surf, (ox + _PAD, icon_y))
+                text_x = ox + _PAD + _ICON_SIZE + 4
+
                 from dungeoneer.items.item import RangeType
                 if hasattr(wpn, "range_type") and wpn.range_type == RangeType.RANGED:
                     burst   = f"  ×{wpn.shots}" if wpn.shots > 1 else ""
@@ -169,11 +193,11 @@ class WeaponPickerUI:
                 stat_x = ox + _W - _PAD - stat_s.get_width()
 
                 # Clip name so it never overlaps the stat column
-                name_max_w = stat_x - _PAD - (ox + _PAD)
+                name_max_w = stat_x - _PAD - text_x
                 name_s = self._font_bold.render(label, True, col)
                 if name_s.get_width() > name_max_w:
                     name_s = name_s.subsurface((0, 0, name_max_w, name_s.get_height()))
-                screen.blit(name_s, (ox + _PAD, row_y + 5))
+                screen.blit(name_s, (text_x, row_y + 5))
                 screen.blit(stat_s, (stat_x, row_y + 5))
 
         # Footer close button

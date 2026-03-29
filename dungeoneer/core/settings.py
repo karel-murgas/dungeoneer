@@ -1,7 +1,7 @@
 """Global constants for Dungeoneer."""
 
 # Localisation — change via dungeoneer.core.i18n.set_language()
-# Supported: "en", "cs"
+# Supported: "en", "cs", "es"
 LANGUAGE = "en"
 
 # Display
@@ -42,7 +42,6 @@ COL_DRONE       = (220, 160, 40)    # amber
 COL_ITEM        = (240, 220, 80)    # yellow
 COL_HP_FULL     = (60,  200, 80)
 COL_HP_LOW      = (220, 60,  60)
-COL_LOG_BG      = (10,  10,  18,  200)  # semi-transparent
 
 # FOV
 FOV_RADIUS = 10
@@ -80,9 +79,11 @@ HEAL_RANGE:           float = 0.20  # ±20% modifier range (0.8× to 1.2× base)
 # Melee power-charge minigame
 MELEE_FREQ1:          float = 1.1    # Hz — primary oscillation frequency
 MELEE_FREQ2:          float = 0.7    # Hz — secondary frequency (creates beating pattern)
-MELEE_FREQ_ACCEL:     float = 0.0    # Hz/s — kept for compatibility; oscillation no longer accelerates
 MELEE_TIMEOUT:        float = 3.0    # seconds before auto-release
 MELEE_CRIT_THRESHOLD: float = 0.92   # power >= this = critical hit
 MELEE_RESULT_PAUSE:   float = 0.35   # seconds to display result
 MELEE_BAR_W:          int   = 120    # power bar width in pixels
 MELEE_BAR_H:          int   = 12     # power bar height in pixels
+
+# Visual experiment — press P in hack minigame to toggle all custom PNG icons at once
+HACK_WEAPON_USE_PNG: bool = False   # True = custom PNGs for weapon + ammo nodes; False = procedural
