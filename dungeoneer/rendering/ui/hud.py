@@ -201,8 +201,8 @@ class HUD:
         pygame.draw.circle(screen, btn_bdr, (icon_cx, icon_cy), icon_d // 2)
         q_surf = self._font_small.render("?", True, (200, 240, 220) if hov else (100, 140, 120))
         screen.blit(q_surf, (icon_cx - q_surf.get_width() // 2,
-                              icon_cy - q_surf.get_height() // 2))
+                              icon_cy - self._font_small.get_height() // 2 + 1))
         # F1 label — vertically centred, right of the icon
         f1_surf = self._font_small.render(f1_text, True, lbl_col)
         screen.blit(f1_surf, (btn_x + btn_pad + icon_d + 4,
-                               icon_cy - f1_surf.get_height() // 2))
+                               icon_cy - self._font_small.get_height() // 2 + 1))

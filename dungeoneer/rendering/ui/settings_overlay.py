@@ -140,7 +140,7 @@ class SettingsOverlay:
             pygame.draw.rect(screen, (180, 60, 60), close_rect, 1, border_radius=3)
         x_surf = self._font_btn.render("x", True, (180, 60, 60) if is_hov_close else _COL_LBL)
         screen.blit(x_surf, (close_rect.centerx - x_surf.get_width() // 2,
-                              close_rect.centery - x_surf.get_height() // 2))
+                              close_rect.centery - self._font_btn.get_height() // 2 + 1))
 
         # Title
         title = self._font_title.render(t("settings.title"), True, _COL_ACCENT)
@@ -247,7 +247,7 @@ class SettingsOverlay:
 
         if label:
             lbl_surf = self._font_lbl.render(label, True, _COL_LBL)
-            screen.blit(lbl_surf, (bx, by + (_BTN_H - lbl_surf.get_height()) // 2))
+            screen.blit(lbl_surf, (bx, by + (_BTN_H - self._font_lbl.get_height()) // 2 + 1))
             bx += _LBL_W + 8
 
         gap = 8
@@ -264,7 +264,7 @@ class SettingsOverlay:
             pygame.draw.rect(screen, border, rect, 2, border_radius=4)
             lbl = self._font_btn.render(text, True, col)
             screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
-                               rect.centery - lbl.get_height() // 2))
+                               rect.centery - self._font_btn.get_height() // 2 + 1))
             self._btn_rects[key] = rect
             bx += btn_w + gap
 
@@ -275,7 +275,7 @@ class SettingsOverlay:
         by  = cy + (_ROW_H - _BTN_H) // 2
 
         lbl_surf = self._font_lbl.render(label, True, _COL_LBL)
-        screen.blit(lbl_surf, (bx, by + (_BTN_H - lbl_surf.get_height()) // 2))
+        screen.blit(lbl_surf, (bx, by + (_BTN_H - self._font_lbl.get_height()) // 2 + 1))
         bx += _LBL_W + 8
 
         arrow_w = 28
@@ -291,7 +291,7 @@ class SettingsOverlay:
         pygame.draw.rect(screen, _brd, dn_rect, 2, border_radius=4)
         arr = self._font_btn.render("\u25c4", True, _COL_BTN_NRM)
         screen.blit(arr, (dn_rect.centerx - arr.get_width() // 2,
-                          dn_rect.centery - arr.get_height() // 2))
+                          dn_rect.centery - self._font_btn.get_height() // 2 + 1))
         self._btn_rects[dn_key] = dn_rect
         bx += arrow_w + 4
 
@@ -299,7 +299,7 @@ class SettingsOverlay:
         pct = f"{int(round(value * 100))}%"
         val_surf = self._font_vol.render(pct, True, _COL_BTN_SEL)
         screen.blit(val_surf, (bx + (val_w - val_surf.get_width()) // 2,
-                                by + (_BTN_H - val_surf.get_height()) // 2))
+                                by + (_BTN_H - self._font_vol.get_height()) // 2 + 1))
         bx += val_w + 4
 
         # [►] button
@@ -312,7 +312,7 @@ class SettingsOverlay:
         pygame.draw.rect(screen, _brd2, up_rect, 2, border_radius=4)
         arr2 = self._font_btn.render("\u25ba", True, _COL_BTN_NRM)
         screen.blit(arr2, (up_rect.centerx - arr2.get_width() // 2,
-                           up_rect.centery - arr2.get_height() // 2))
+                           up_rect.centery - self._font_btn.get_height() // 2 + 1))
         self._btn_rects[up_key] = up_rect
 
         return cy + _ROW_H
@@ -324,7 +324,7 @@ class SettingsOverlay:
         by = cy + (_ROW_H - _BTN_H) // 2
 
         lbl_surf = self._font_lbl.render(label, True, _COL_LBL)
-        screen.blit(lbl_surf, (bx, by + (_BTN_H - lbl_surf.get_height()) // 2))
+        screen.blit(lbl_surf, (bx, by + (_BTN_H - self._font_lbl.get_height()) // 2 + 1))
         bx += _LBL_W + 8
 
         arrow_w = 28
@@ -339,14 +339,14 @@ class SettingsOverlay:
         pygame.draw.rect(screen, _brd, dn_rect, 2, border_radius=4)
         arr = self._font_btn.render("\u25c4", True, _COL_BTN_NRM)
         screen.blit(arr, (dn_rect.centerx - arr.get_width() // 2,
-                          dn_rect.centery - arr.get_height() // 2))
+                          dn_rect.centery - self._font_btn.get_height() // 2 + 1))
         self._btn_rects["heal_thr_dn"] = dn_rect
         bx += arrow_w + 4
 
         # value %
         pct_surf = self._font_vol.render(f"{value}%", True, _COL_BTN_SEL)
         screen.blit(pct_surf, (bx + (val_w - pct_surf.get_width()) // 2,
-                                by + (_BTN_H - pct_surf.get_height()) // 2))
+                                by + (_BTN_H - self._font_vol.get_height()) // 2 + 1))
         bx += val_w + 4
 
         # [►]
@@ -358,13 +358,13 @@ class SettingsOverlay:
         pygame.draw.rect(screen, _brd2, up_rect, 2, border_radius=4)
         arr2 = self._font_btn.render("\u25ba", True, _COL_BTN_NRM)
         screen.blit(arr2, (up_rect.centerx - arr2.get_width() // 2,
-                           up_rect.centery - arr2.get_height() // 2))
+                           up_rect.centery - self._font_btn.get_height() // 2 + 1))
         self._btn_rects["heal_thr_up"] = up_rect
         bx += arrow_w + 8
 
         # suffix "threshold" after ►
         sfx_surf = self._font_lbl.render(t("settings.gameplay.heal_threshold_suffix"), True, _COL_LBL)
-        screen.blit(sfx_surf, (bx, by + (_BTN_H - sfx_surf.get_height()) // 2))
+        screen.blit(sfx_surf, (bx, by + (_BTN_H - self._font_lbl.get_height()) // 2 + 1))
 
         # hint line below the slider
         hint_surf = self._font_foot.render(t(f"menu.heal.thr.{value}"), True, _COL_LBL)

@@ -143,8 +143,8 @@ class DungeonGenerator:
                 for rx in range(r.inner_x, r.inner_x + r.inner_w):
                     room_tile_set.add((rx, ry))
 
-        # Containers in random rooms (any room, including start/end)
-        # Avoid doorway tiles, stairs, and already-placed chests.
+        # Containers in random rooms — prefer wall-mounted placement.
+        # Avoid elevator tiles and already-placed spawns.
         container_rooms = self._rng.choices(rooms, k=containers)
         blocked: set[tuple[int, int]] = {(sx, sy), (px, py), (entry_x, entry_y)}
         # Block the floor tile adjacent to the entry elevator so the player can exit
@@ -155,7 +155,10 @@ class DungeonGenerator:
         for sp in spawns:
             blocked.add((sp.x, sp.y))
         for room in container_rooms:
-            cx, cy = self._safe_container_pos(room, room_tile_set, dungeon_map, blocked)
+            wall_pos = self._wall_container_pos(room, dungeon_map, blocked)
+            if wall_pos is None:
+                continue  # no suitable wall in this room — skip container
+            cx, cy = wall_pos
             spawns.append(SpawnDesc("container", cx, cy))
             blocked.add((cx, cy))
 
@@ -299,6 +302,51 @@ class DungeonGenerator:
                 if (rx, ry) not in blocked:
                     return rx, ry
         return cx, cy
+
+    def _wall_container_pos(
+        self,
+        room: Room,
+        dungeon_map: DungeonMap,
+        blocked: set[tuple[int, int]],
+    ) -> tuple[int, int] | None:
+        """Find a perimeter wall tile for a wall-mounted supply locker.
+
+        The tile must belong to a single room's wall — tiles with walkable floor
+        on both north+south or both east+west are rejected (they separate two
+        separate floor areas, i.e. sit between two rooms or a room and a corridor).
+        Corner positions (floor on two adjacent sides) are allowed.
+
+        Returns None if no suitable position exists in this room.
+        """
+        candidates: list[tuple[int, int]] = []
+        for x in range(room.inner_x, room.inner_x + room.inner_w):
+            for y in (room.y, room.y + room.h - 1):
+                if (x, y) not in blocked and dungeon_map.get_type(x, y) == TileType.WALL:
+                    if self._single_side_floor(x, y, dungeon_map):
+                        candidates.append((x, y))
+        for y in range(room.inner_y, room.inner_y + room.inner_h):
+            for x in (room.x, room.x + room.w - 1):
+                if (x, y) not in blocked and dungeon_map.get_type(x, y) == TileType.WALL:
+                    if self._single_side_floor(x, y, dungeon_map):
+                        candidates.append((x, y))
+        if candidates:
+            return self._rng.choice(candidates)
+        return None
+
+    @staticmethod
+    def _single_side_floor(x: int, y: int, dungeon_map: DungeonMap) -> bool:
+        """True when (x, y) has at least one walkable cardinal neighbour but NOT
+        on both opposite axes (N+S or E+W) — i.e. not sandwiched between two
+        separate floor areas."""
+        n = dungeon_map.is_walkable(x,     y - 1)
+        s = dungeon_map.is_walkable(x,     y + 1)
+        e = dungeon_map.is_walkable(x + 1, y)
+        w = dungeon_map.is_walkable(x - 1, y)
+        if not (n or s or e or w):
+            return False          # no floor neighbour at all
+        if (n and s) or (e and w):
+            return False          # sandwiched between two separate areas
+        return True
 
     def _adjacent_to_corridor(
         self,

@@ -131,10 +131,12 @@ class HackGridScene(Scene):
         app: "GameApp",
         params: HackGridParams | None = None,
         on_complete: Callable[[bool, list["Item"], int], None] | None = None,
+        on_cancel: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(app)
         self._params      = params or HackGridParams()
         self._on_complete = on_complete or (lambda *_: None)
+        self._on_cancel   = on_cancel or (lambda: None)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -168,6 +170,8 @@ class HackGridScene(Scene):
         self._auto_dir:      Pos | None = None   # current auto direction
         self._queued_dir:    Pos | None = None   # direction pressed during MOVING
         self._last_node_pos: Pos           = self._grid_map.entry_pos  # for BLOCKED rollback
+
+        self._committed:  bool = False   # True once player makes first move
 
         self._status: str = t("hack.status.initial")
         self._log:    str = ""
@@ -205,6 +209,11 @@ class HackGridScene(Scene):
             _raw = procedural_sprites.get(_key)
             if _raw is not None:
                 self._item_sprites[_key] = _raw   # will be scaled at draw time
+        # PNG icon for credits (gated by HACK_WEAPON_USE_PNG toggle — P key, same as other items)
+        _credits_path = os.path.join(_ASSETS_ITEMS, "credits_credits.png")
+        self._credits_png: pygame.Surface | None = (
+            pygame.image.load(_credits_path).convert_alpha() if os.path.isfile(_credits_path) else None
+        )
         # PNG icons for WEAPON / AMMO nodes (HACK_WEAPON_USE_PNG toggle — P key)
         _wpn_path = os.path.join(_ASSETS_ITEMS, "weapon_random.png")
         if os.path.isfile(_wpn_path):
@@ -225,6 +234,40 @@ class HackGridScene(Scene):
             )
         # Lazy cache for specific weapon PNGs revealed after collection
         self._weapon_specific_pngs: dict[str, pygame.Surface | None] = {}
+        # Pre-load consumable + armor PNGs (fixed item IDs, no lazy loading needed)
+        _consumable_ids = {
+            "consumable_stim_pack": LootKind.HEAL,
+            "consumable_medkit":    LootKind.MEDKIT,
+        }
+        self._consumable_pngs: dict[str, pygame.Surface | None] = {}
+        for _cid in _consumable_ids:
+            _p = os.path.join(_ASSETS_ITEMS, f"{_cid}.png")
+            self._consumable_pngs[_cid] = (
+                pygame.image.load(_p).convert_alpha() if os.path.isfile(_p) else None
+            )
+        _consumable_random_path = os.path.join(_ASSETS_ITEMS, "consumable_random.png")
+        self._consumable_random_png: pygame.Surface | None = (
+            pygame.image.load(_consumable_random_path).convert_alpha()
+            if os.path.isfile(_consumable_random_path) else None
+        )
+        _armor_path = os.path.join(_ASSETS_ITEMS, "armor_basic_armor.png")
+        self._armor_png: pygame.Surface | None = (
+            pygame.image.load(_armor_path).convert_alpha() if os.path.isfile(_armor_path) else None
+        )
+
+        # Circuit board background
+        _bg_path = os.path.join(os.path.dirname(__file__), "..", "assets", "ui", "bg_hack_circuit.png")
+        if os.path.isfile(_bg_path):
+            _bg_raw = pygame.image.load(_bg_path).convert()
+            _bg_raw.set_alpha(70)
+            self._circuit_bg: pygame.Surface | None = _bg_raw
+        else:
+            self._circuit_bg = None
+
+        # Pre-allocated semi-transparent panel overlay (avoids per-frame allocation)
+        _pr = self._panel_rect()
+        self._panel_bg_surf = pygame.Surface((_pr.width, _pr.height), pygame.SRCALPHA)
+        self._panel_bg_surf.fill((*_PANEL_BG, 180))
 
     def on_exit(self) -> None:
         pygame.mixer.music.fadeout(300)
@@ -290,7 +333,11 @@ class HackGridScene(Scene):
                 continue
 
             if key in (pygame.K_q, pygame.K_ESCAPE) and self._state == _State.IDLE:
-                self._finish(success=True)
+                if self._committed:
+                    self._finish(success=True)
+                else:
+                    self._on_cancel()
+                    self.app.scenes.pop()
                 continue
 
             direction = _DIR_MAP.get(key)
@@ -362,6 +409,13 @@ class HackGridScene(Scene):
 
     def render(self, screen: pygame.Surface) -> None:
         screen.fill(_BG)
+        if self._circuit_bg is not None:
+            sw, sh = screen.get_size()
+            bg = self._circuit_bg
+            bw, bh = bg.get_size()
+            if bw != sw or bh != sh:
+                bg = pygame.transform.scale(bg, (sw, sh))
+            screen.blit(bg, (0, 0))
         self._draw_bg_grid(screen)
 
         panel = self._panel_rect()
@@ -410,6 +464,7 @@ class HackGridScene(Scene):
         dc, dr = direction
         target: Pos = (self._player_pos[0] + dc, self._player_pos[1] + dr)
         if target in self._grid_map.connections.get(self._player_pos, set()):
+            self._committed  = True
             self._auto_dir   = direction
             self._queued_dir = None
             self._start_move(target)
@@ -800,8 +855,8 @@ class HackGridScene(Scene):
         player  = self._player_pos
         node_r  = self._node_radius(panel)
 
-        # Panel background + corner brackets
-        pygame.draw.rect(screen, _PANEL_BG, panel)
+        # Panel background (semi-transparent so circuit bg shows through)
+        screen.blit(self._panel_bg_surf, (panel.x, panel.y))
         _draw_corner_bracket(screen, panel.x,     panel.y,      50, 16, _NEON_CYAN, 1)
         _draw_corner_bracket(screen, panel.right,  panel.y,      50, 16, _NEON_CYAN, 1, flip_x=True)
         _draw_corner_bracket(screen, panel.x,     panel.bottom,  50, 16, _NEON_CYAN, 1, flip_y=True)
@@ -1069,6 +1124,29 @@ class HackGridScene(Scene):
                     scaled = pygame.transform.scale(png, (ammo_size, ammo_size))
                     screen.blit(scaled, (cx - ammo_size // 2, cy - ammo_size // 2))
                     return
+            _consumable_png_map = {
+                LootKind.HEAL:   (self._consumable_pngs.get("consumable_stim_pack"), True),
+                LootKind.MEDKIT: (self._consumable_pngs.get("consumable_medkit"),    False),
+            }
+            if kind in _consumable_png_map:
+                if not cell.hacked and self._consumable_random_png is not None:
+                    scaled = pygame.transform.scale(self._consumable_random_png, (icon_size, icon_size))
+                    screen.blit(scaled, (cx - icon_size // 2, cy - icon_size // 2))
+                    return
+                png, is_small = _consumable_png_map[kind]
+                if png is not None:
+                    draw_size = max(8, round(icon_size * 2 / 3)) if is_small else icon_size
+                    scaled = pygame.transform.scale(png, (draw_size, draw_size))
+                    screen.blit(scaled, (cx - draw_size // 2, cy - draw_size // 2))
+                    return
+            if kind == LootKind.ARMOR and self._armor_png is not None:
+                scaled = pygame.transform.scale(self._armor_png, (icon_size, icon_size))
+                screen.blit(scaled, (cx - icon_size // 2, cy - icon_size // 2))
+                return
+            if kind == LootKind.CREDITS and self._credits_png is not None:
+                scaled = pygame.transform.scale(self._credits_png, (icon_size, icon_size))
+                screen.blit(scaled, (cx - icon_size // 2, cy - icon_size // 2))
+                return
 
         sprite_key = {
             LootKind.AMMO:         "item_loot_ammo",

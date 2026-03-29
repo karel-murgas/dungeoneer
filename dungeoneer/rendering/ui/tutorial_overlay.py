@@ -189,7 +189,7 @@ class TutorialOverlay:
         )
         screen.blit(x_surf, (
             self._close_rect.centerx - x_surf.get_width() // 2,
-            self._close_rect.centery - x_surf.get_height() // 2,
+            self._close_rect.centery - self._font_close.get_height() // 2 + 1,
         ))
 
         # Title
@@ -283,7 +283,7 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
         pygame.draw.rect(screen, _BDR, r, 2, border_radius=4)
         s = font.render(lbl, True, _TXT)
         screen.blit(s, (r.centerx - s.get_width() // 2,
-                        r.centery - s.get_height() // 2))
+                        r.centery - font.get_height() // 2 + 1))
     hint_font = pygame.font.SysFont("consolas", 11)
     h = hint_font.render(t("tutorial.img.arrow_keys"), True, (50, 100, 90))
     screen.blit(h, (rect.centerx - h.get_width() // 2, cy + step + 10))
@@ -316,7 +316,7 @@ def _draw_movement(screen: pygame.Surface, rect: pygame.Rect) -> None:
         fa = pygame.font.SysFont("consolas", 32, bold=True)
         arr = fa.render("v", True, (80, 200, 180))
         screen.blit(arr, (tx + tile_px // 2 - arr.get_width() // 2,
-                          ty + tile_px // 2 - arr.get_height() // 2))
+                          ty + tile_px // 2 - fa.get_height() // 2 + 1))
 
     # Label under the tile
     lbl_font = pygame.font.SysFont("consolas", 12, bold=True)

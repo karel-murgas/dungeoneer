@@ -80,7 +80,13 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(''''Model:'''', d.get\\(''''sd_model_checkpoint'''',''''?''''\\)\\)\")",
       "Bash(for f:*)",
       "Bash(do python:*)",
-      "Bash(for var:*)"
+      "Bash(for var:*)",
+      "Bash(python3 -:*)",
+      "Bash(\"C:/Users/karel/AppData/Local/Programs/Python/Python310/python.exe\" -c \":*)",
+      "Bash(for seed:*)",
+      "Bash(mkdir -p dungeoneer/assets/tiles)",
+      "Bash(cp dungeoneer/assets/.tmp/final/container_locker.png dungeoneer/assets/tiles/container_locker.png)",
+      "Bash(cp dungeoneer/assets/.tmp/final/container_locker_open.png dungeoneer/assets/tiles/container_locker_open.png)"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",

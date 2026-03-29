@@ -97,7 +97,8 @@ class QuitConfirmDialog:
             hov = pygame.Surface((yes_row.width, yes_row.height), pygame.SRCALPHA)
             hov.fill(_ROW_HOV)
             screen.blit(hov, yes_row.topleft)
-        screen.blit(yes_surf, (ox + (_W - yes_surf.get_width()) // 2, cy))
+        screen.blit(yes_surf, (ox + (_W - yes_surf.get_width()) // 2,
+                                yes_row.centery - self._font_key.get_height() // 2 + 1))
         cy += row_h
 
         # Cancel row
@@ -108,4 +109,5 @@ class QuitConfirmDialog:
             hov = pygame.Surface((no_row.width, no_row.height), pygame.SRCALPHA)
             hov.fill(_ROW_HOV)
             screen.blit(hov, no_row.topleft)
-        screen.blit(no_surf, (ox + (_W - no_surf.get_width()) // 2, cy))
+        screen.blit(no_surf, (ox + (_W - no_surf.get_width()) // 2,
+                               no_row.centery - self._font_key.get_height() // 2 + 1))

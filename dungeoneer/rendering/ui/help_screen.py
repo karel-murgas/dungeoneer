@@ -214,7 +214,7 @@ class HelpScreen:
             pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
         x_surf = self._font_key.render("x", True, (180, 60, 60) if self._close_hovered else _COL_DIM)
         screen.blit(x_surf, (self._close_rect.centerx - x_surf.get_width() // 2,
-                              self._close_rect.centery - x_surf.get_height() // 2))
+                              self._close_rect.centery - self._font_key.get_height() // 2 + 1))
 
         # Title
         title = self._font_title.render(t("help.title"), True, _COL_HDR)

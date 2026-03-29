@@ -95,39 +95,53 @@ def _make_guard_sprite() -> pygame.Surface:
 
 
 def _make_container_closed() -> pygame.Surface:
-    """Locked loot crate — amber glow, lock clasp."""
+    """Wall-mounted supply locker — locked, cyan LED indicator."""
     surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    T = _TS  # 32
 
-    # Subtle glow behind the crate
-    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
-    pygame.draw.rect(glow, (200, 155, 35, 28), (3, 4, _TS - 6, _TS - 7))
+    # Subtle cyan glow
+    glow = pygame.Surface((T, T), pygame.SRCALPHA)
+    pygame.draw.rect(glow, (0, 190, 190, 22), (2, 3, T - 4, T - 5))
     surf.blit(glow, (0, 0))
 
-    # Crate body
-    pygame.draw.rect(surf, (55, 40, 16), (3, 10, _TS - 6, _TS - 14))
-    # Lid
-    pygame.draw.rect(surf, (72, 54, 20), (3, 5, _TS - 6, 7))
-    # Outer border
-    pygame.draw.rect(surf, (185, 145, 48), (3, 5, _TS - 6, _TS - 8), 1)
-    # Horizontal strap
-    pygame.draw.line(surf, (185, 145, 48), (3, _TS // 2), (_TS - 4, _TS // 2))
-    # Lock clasp
-    cx = _TS // 2
-    ly = _TS // 2 - 1
-    pygame.draw.rect(surf, (220, 185, 65), (cx - 3, ly, 6, 5))  # body
-    pygame.draw.circle(surf, (220, 185, 65), (cx, ly - 1), 3, 1)  # arch
+    # Top face (viewed slightly from above — lighter strip)
+    pygame.draw.rect(surf, (35, 70, 70), (2, 3, T - 4, 6))
+    # Main body
+    pygame.draw.rect(surf, (26, 53, 53), (2, 8, T - 4, T - 11))
+    # Outer border — bright cyan
+    pygame.draw.rect(surf, (0, 200, 200), (2, 3, T - 4, T - 6), 1)
+    # Seam between top face and door
+    pygame.draw.line(surf, (0, 200, 200), (2, 9), (T - 3, 9))
+
+    # Lock panel (centre of door)
+    cx = T // 2
+    pygame.draw.rect(surf, (15, 35, 35), (cx - 5, 14, 10, 8))
+    pygame.draw.rect(surf, (0, 130, 130), (cx - 5, 14, 10, 8), 1)
+
+    # LED dot — bright cyan = locked
+    pygame.draw.rect(surf, (0, 232, 232), (cx - 1, 17, 3, 3))
+    glow2 = pygame.Surface((7, 7), pygame.SRCALPHA)
+    pygame.draw.rect(glow2, (0, 220, 220, 40), (0, 0, 7, 7))
+    surf.blit(glow2, (cx - 3, 15))
 
     return surf
 
 
 def _make_container_open() -> pygame.Surface:
-    """Opened / looted crate — dim, no glow."""
+    """Wall-mounted supply locker — opened / looted, dim."""
     surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    T = _TS
 
-    pygame.draw.rect(surf, (30, 22, 8), (3, 10, _TS - 6, _TS - 14))
-    pygame.draw.rect(surf, (40, 30, 11), (3, 5, _TS - 6, 7))
-    pygame.draw.rect(surf, (85, 66, 22), (3, 5, _TS - 6, _TS - 8), 1)
-    pygame.draw.line(surf, (85, 66, 22), (3, _TS // 2), (_TS - 4, _TS // 2))
+    pygame.draw.rect(surf, (18, 36, 36), (2, 3, T - 4, 6))
+    pygame.draw.rect(surf, (14, 28, 28), (2, 8, T - 4, T - 11))
+    pygame.draw.rect(surf, (0, 70, 70), (2, 3, T - 4, T - 6), 1)
+    pygame.draw.line(surf, (0, 70, 70), (2, 9), (T - 3, 9))
+
+    cx = T // 2
+    pygame.draw.rect(surf, (10, 22, 22), (cx - 5, 14, 10, 8))
+    pygame.draw.rect(surf, (0, 50, 50), (cx - 5, 14, 10, 8), 1)
+    # LED off
+    pygame.draw.rect(surf, (0, 40, 40), (cx - 1, 17, 3, 3))
 
     return surf
 

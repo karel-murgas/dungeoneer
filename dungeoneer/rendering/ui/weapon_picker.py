@@ -174,7 +174,7 @@ class WeaponPickerUI:
                         self._item_icons[icon_key] = None
                 icon_surf = self._item_icons[icon_key]
                 if icon_surf is not None:
-                    icon_y = row_y + (_ROW_H - _ICON_SIZE) // 2
+                    icon_y = row_y + (_ROW_H - _ICON_SIZE) // 2 - 1
                     screen.blit(icon_surf, (ox + _PAD, icon_y))
                 text_x = ox + _PAD + _ICON_SIZE + 4
 
@@ -197,8 +197,9 @@ class WeaponPickerUI:
                 name_s = self._font_bold.render(label, True, col)
                 if name_s.get_width() > name_max_w:
                     name_s = name_s.subsurface((0, 0, name_max_w, name_s.get_height()))
-                screen.blit(name_s, (text_x, row_y + 5))
-                screen.blit(stat_s, (stat_x, row_y + 5))
+                text_cy = row_y + (_ROW_H - self._font.get_height()) // 2 + 2
+                screen.blit(name_s, (text_x, text_cy))
+                screen.blit(stat_s, (stat_x, text_cy))
 
         # Footer close button
         footer_y = oy + h - _PAD - 22
@@ -215,8 +216,8 @@ class WeaponPickerUI:
         pygame.draw.rect(screen, _BORDER if is_hov else (45, 70, 60), close_rect, 1)
         screen.blit(self._font.render(close_label, True,
                                       (180, 220, 200) if is_hov else _COL_KEY),
-                    (ox + _PAD + 7, footer_y + 2))
+                    (ox + _PAD + 7, close_rect.centery - self._font.get_height() // 2 + 1))
 
         hint = t("weapon_picker.hint")
         hint_s = self._font.render(hint, True, _COL_KEY)
-        screen.blit(hint_s, (ox + _PAD + close_w + 4, footer_y + 2))
+        screen.blit(hint_s, (ox + _PAD + close_w + 4, close_rect.centery - self._font.get_height() // 2 + 1))

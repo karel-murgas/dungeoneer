@@ -227,7 +227,7 @@ class MainMenuScene(Scene):
             else:
                 lbl = self._font_icon_lg.render("?", True, col)
                 screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
-                                   rect.centery - lbl.get_height() // 2 + 3))
+                                   rect.centery - self._font_icon_lg.get_height() // 2 + 3))
 
         # --- Title block ---
         title_surf = self._font_title.render(t("menu.title"), True, _COL_ACCENT)
@@ -269,7 +269,7 @@ class MainMenuScene(Scene):
             pygame.draw.rect(screen, border, rect, 2, border_radius=4)
             lbl = self._font_start.render(label, True, col)
             screen.blit(lbl, (rect.centerx - lbl.get_width() // 2,
-                               rect.centery - lbl.get_height() // 2))
+                               rect.centery - self._font_start.get_height() // 2 + 2))
 
         # --- Overlays (drawn on top) ---
         if self._settings_open:

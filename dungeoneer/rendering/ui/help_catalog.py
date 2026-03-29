@@ -336,7 +336,7 @@ class HelpCatalogOverlay:
             pygame.draw.rect(screen, (180, 60, 60), self._close_rect, 1, border_radius=3)
         x_surf = self._font_tab.render("x", True, (180, 60, 60) if self._close_hovered else _COL_DIM)
         screen.blit(x_surf, (self._close_rect.centerx - x_surf.get_width() // 2,
-                              self._close_rect.centery - x_surf.get_height() // 2))
+                              self._close_rect.centery - self._font_tab.get_height() // 2 + 1))
 
         # Title
         title = self._font_title.render(t("help_catalog.title"), True, _COL_HDR)
@@ -604,7 +604,7 @@ class HelpCatalogOverlay:
         pygame.draw.circle(screen, col, (dot_x, dot_y), 2)
         surf = self._font_ill.render(text, True, col)
         screen.blit(surf, (lx - surf.get_width() // 2,
-                            ly - surf.get_height() // 2))
+                            ly - self._font_ill.get_height() // 2 + 1))
 
     # ------------------------------------------------------------------
     # Hacking illustration — node legend + loot icon row
@@ -662,7 +662,7 @@ class HelpCatalogOverlay:
             if icon:
                 ic = self._font_node.render(icon, True, fill)
                 screen.blit(ic, (cell_cx - ic.get_width() // 2,
-                                  ny + NODE_SIZE // 2 - ic.get_height() // 2))
+                                  ny + NODE_SIZE // 2 - self._font_node.get_height() // 2 + 1))
 
             # Label below node
             lbl = self._font_ill.render(label, True, _COL_TXT)

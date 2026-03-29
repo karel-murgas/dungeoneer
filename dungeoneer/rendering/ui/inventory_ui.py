@@ -19,6 +19,8 @@ _ROW_H        = 32
 _ICON_SIZE    = 26   # weapon icon px in item list (fits in _ROW_H with 3px margin)
 _EQUIP_ICON   = 36   # larger icon for the equipped weapon detail area
 _AMMO_BADGE   = 18   # ammo badge overlaid on bottom-right corner of weapon icon
+_CON_ICON     = 18   # small consumable icon px (injections, pills — smaller items)
+_SMALL_ITEMS  = {"stim_pack"}   # item ids rendered at _CON_ICON instead of _ICON_SIZE
 
 _ASSETS_ITEMS = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "items")
 _VISIBLE_ROWS = 7
@@ -256,18 +258,19 @@ class InventoryUI:
 
                 # Icon — convention: assets/items/{itemtype}_{id}.png
                 icon_key = f"{item.item_type.name.lower()}_{item.id}"
+                _isize = _CON_ICON if item.id in _SMALL_ITEMS else _ICON_SIZE
                 if icon_key not in self._item_icons:
                     path = os.path.join(_ASSETS_ITEMS, f"{icon_key}.png")
                     if os.path.isfile(path):
                         raw = pygame.image.load(path).convert_alpha()
                         self._item_icons[icon_key] = pygame.transform.smoothscale(
-                            raw, (_ICON_SIZE, _ICON_SIZE)
+                            raw, (_isize, _isize)
                         )
                     else:
                         self._item_icons[icon_key] = None
                 icon_surf = self._item_icons[icon_key]
                 if icon_surf is not None:
-                    icon_y = row_y + (_ROW_H - _ICON_SIZE) // 2
+                    icon_y = row_y + (_ROW_H - _isize) // 2 - 1
                     screen.blit(icon_surf, (ox + _PAD, icon_y))
                 text_x = ox + _PAD + (_ICON_SIZE + 4 if icon_surf is not None else 0)
 
@@ -279,8 +282,9 @@ class InventoryUI:
                 name_s = self._font_bold.render(item.name, True, col)
                 if name_s.get_width() > name_max_w:
                     name_s = name_s.subsurface((0, 0, name_max_w, name_s.get_height()))
-                screen.blit(name_s, (text_x, row_y + 4))
-                screen.blit(stat_surf, (stat_x, row_y + 4))
+                text_cy = row_y + (_ROW_H - self._font.get_height()) // 2 + 2
+                screen.blit(name_s, (text_x, text_cy))
+                screen.blit(stat_surf, (stat_x, text_cy))
 
             if scroll_top > 0:
                 up_s = self._font.render("▲", True, _COL_DIM)
@@ -309,7 +313,8 @@ class InventoryUI:
             pygame.draw.rect(screen, _BTN_HOV if is_hov else _BTN_NRM, rect)
             pygame.draw.rect(screen, _BORDER if is_hov else (45, 70, 60), rect, 1)
             col = (180, 220, 200) if is_hov else _COL_KEY
-            screen.blit(self._font.render(label, True, col), (bx + 7, footer_y))
+            screen.blit(self._font.render(label, True, col),
+                        (bx + 7, rect.centery - self._font.get_height() // 2 + 1))
             bx += btn_w + 8
 
         # --- Help button [?] on the right side of footer ---
@@ -321,4 +326,4 @@ class InventoryUI:
         pygame.draw.rect(screen, _BORDER if is_hov else (45, 70, 60), help_rect, 1)
         col = (180, 220, 200) if is_hov else _COL_KEY
         screen.blit(self._font.render("?", True, col),
-                    (help_rect.x + 7, footer_y))
+                    (help_rect.x + 7, help_rect.centery - self._font.get_height() // 2 + 1))

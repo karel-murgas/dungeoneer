@@ -913,9 +913,6 @@ class GameScene(Scene):
             if target and target is not self.player:
                 bus.post(LogMessageEvent(t("log.tile_occupied"), (180, 120, 80)))
                 return None
-            container = self.floor.get_container_at(nx, ny)
-            if container:
-                return OpenContainerAction(container)
             return MoveAction(dx, dy)
 
         if key in (pygame.K_PERIOD, pygame.K_KP5, pygame.K_SPACE):
@@ -1132,12 +1129,17 @@ class GameScene(Scene):
         def on_complete(success: bool, items, credits: int) -> None:
             self._on_hack_complete(success, items, credits, container)
 
+        def on_cancel() -> None:
+            self.music.resume()
+
         self.music.pause()
 
         from dungeoneer.minigame.hack_scene_grid import HackGridScene
         from dungeoneer.minigame.hack_grid_generator import HackGridParams
         params = HackGridParams.for_difficulty(self.difficulty)
-        self.app.scenes.push(HackGridScene(self.app, params=params, on_complete=on_complete))
+        self.app.scenes.push(HackGridScene(
+            self.app, params=params, on_complete=on_complete, on_cancel=on_cancel
+        ))
 
     def _on_hack_complete(
         self, success: bool, items, credits: int, container: "ContainerEntity"
@@ -1744,7 +1746,10 @@ class GameScene(Scene):
             _hint_text: str | None = None
             _hint_col: tuple = (220, 220, 100)
             if _no_overlay:
-                if self._adjacent_elevator_pos() is not None:
+                if self._find_adjacent_container() is not None:
+                    _hint_text = t("hint.container_open")
+                    _hint_col  = (80, 200, 200)
+                elif self._adjacent_elevator_pos() is not None:
                     _hint_text = t("hint.elevator_descend")
                 elif self._adjacent_entry_elevator_pos() is not None:
                     _hint_text = t("hint.elevator_no_return")

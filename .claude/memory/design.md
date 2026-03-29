@@ -36,6 +36,7 @@ Karel builds from scratch iteratively with Claude as collaborator.
 - Top-down 2D pixel art, 32×32 tiles
 - Dithart sci-fi tileset (`tileset_for_free.png`), procedural coloured-square fallback
 - Neon cyberpunk palette for UI (minigame: cyan/green/red/orange on dark bg)
+- **Credits icon**: dark teal hexagonal chip, cyan highlight, gold ¥ symbol (PIL composite, 15pt Consolas +2px y-offset) — `assets/items/credits_credits.png` (PIL-generated, not SD). Teal body keeps palette consistent; gold ¥ differentiates from other items.
 
 ## Floors & Win Condition
 - 3 floors; final floor has Objective Vault instead of stairs → victory
