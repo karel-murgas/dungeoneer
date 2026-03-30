@@ -95,6 +95,17 @@ def make_energy_sword() -> Weapon:
         diagonal=True,
     )
 
+def make_k9_bite() -> Weapon:
+    return Weapon(
+        id="k9_bite", name=t("item.k9_bite.name"),
+        description=t("item.k9_bite.desc"),
+        item_type=ItemType.WEAPON,
+        range_type=RangeType.MELEE,
+        damage_min=1, damage_max=3,
+        ammo_capacity=0, ammo_current=0,
+        range_tiles=1,
+    )
+
 def make_rifle() -> Weapon:
     return Weapon(
         id="rifle", name=t("item.rifle.name"),

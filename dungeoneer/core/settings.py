@@ -39,6 +39,11 @@ COL_STAIR_DARK  = (30,  80,  70)
 COL_PLAYER      = (0,   220, 180)   # cyan-green
 COL_GUARD       = (220, 60,  60)    # red
 COL_DRONE       = (220, 160, 40)    # amber
+COL_DOG         = (200, 80,  40)    # dark orange
+COL_HEAVY       = (140, 80,  220)   # violet
+COL_TURRET      = (80,  100, 200)   # steel blue
+COL_SNIPER      = (180, 220, 40)    # yellow-green
+COL_RIOT_GUARD  = (220, 80,  40)    # orange-red
 COL_ITEM        = (240, 220, 80)    # yellow
 COL_HP_FULL     = (60,  200, 80)
 COL_HP_LOW      = (220, 60,  60)
@@ -87,3 +92,14 @@ MELEE_BAR_H:          int   = 12     # power bar height in pixels
 
 # Visual experiment — press P in hack minigame to toggle all custom PNG icons at once
 HACK_WEAPON_USE_PNG: bool = False   # True = custom PNGs for weapon + ammo nodes; False = procedural
+
+# Heat mechanic
+HEAT_PER_LEVEL:        int   = 100   # points to fill one heat level bar (levels 1–5)
+HEAT_MAX_LEVEL:        int   = 5
+HEAT_COMBAT_ROUND:     int   = 1     # heat gained per combat round (TurnEndEvent)
+HEAT_HACK_NODE:        int   = 2     # heat per hacked loot node (applied at hack end)
+HEAT_HACK_FAIL:        int   = 10    # heat on failed hack (applied at hack end)
+HEAT_COOLANT_REDUCE:   int   = 12    # heat removed by a COOLANT node (applied at hack end)
+HEAT_HACK_TIME_OFFSET: float = 2.0   # seconds added at level 1; formula: (2 − level) seconds
+HEAT_HACK_TIME_FLOOR:  float = 4.0   # minimum time_limit (hard + high heat)
+HEAT_PATROL_COUNT:     tuple = (1, 2) # (min, max) enemies in a heat-triggered patrol

@@ -4,9 +4,34 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-22, in dev)
+## Current State (2026-03-29, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+
+### New (2026-03-29) — Heat system
+- **HeatSystem** (`systems/heat.py`) — 5 levels (GHOST/TRACE/ALERT/PURSUIT/BURN), stored on `Player.heat` (0–500)
+- **Sources**: +1/combat round (TurnEndEvent), +2/hacked node, +10/failed hack — hack heat applied at minigame end
+- **Effects**: tier cap for floor generation (lv1-2 → tier1, lv3-4 → tier2, lv5 → tier3); hack time modifier (2−level seconds, min 4s); patrol spawn on level-up (1-2 enemies, CombatState, near player)
+- **COOLANT loot node** (`LootKind.COOLANT`) — reduces heat by 12 at hack end; teal hexagon icon; +2 heat still applies for hacking it; added to `_loot_pool` weight 1
+- **HUD heat bar** — center-top, 180×14px, fills per level (resets visually at level-up); level name shown below in level colour; pulse at level 5
+- **Cheat menu** — Heat Level section, set to any level (1–5)
+- **Events**: `HeatChangeEvent`, `HeatLevelUpEvent`, `HackNodesCollectedEvent` in event_bus.py
+- **i18n**: `hud.heat_level`, `log.heat_level_up`, `hack.status.purge`, `hack.overlay.purge_*`, `hack.loot.coolant`, `cheat.section.heat`, `cheat.heat.level1-5` (en/cs/es)
+- Balance numbers TBD in rebalance; tier cap first kicks in at floor load (not mid-floor), patrol arrives mid-floor on level-up
+
+### New (2026-03-29) — 5 new enemy types + tier system
+- **7 enemy types** across 3 tiers; each Enemy has `tier: int` and `sprite_key: str`
+- **Tier 1**: Guard (existing), Drone (existing), Dog (K9 — 2 moves/turn, 1 attack, k9_bite 1–3 dmg)
+- **Tier 2**: Heavy (pistol, def=3, approaches to dist~4, never retreats), Turret (immobile, 2 shots/turn, LOS lost → Idle)
+- **Tier 3**: Sniper Drone (rifle, aim=6, always retreats, dist~7), Riot Guard (combat_knife, def=4)
+- **AI flags on Enemy**: `can_move`, `preferred_dist`, `always_retreat`, `retreat_when_close`, `actions_per_turn`, `max_attacks_per_turn`
+- **TurnManager** extended: multi-action loop (`actions_per_turn`, `max_attacks_per_turn`)
+- **AI states.py**: `_turret_action` (immobile); `_drone_action` reads enemy flags; weapon range from `equipped_weapon.range_tiles`
+- **Tier-aware spawn**: `dungeon_generator.generate(tier_cap=N)` — `_ENEMY_POOL` dict; default `tier_cap=1` (no change yet)
+- **Procedural sprites**: dog, heavy, turret, sniper_drone, riot_guard added to `procedural_sprites.py`
+- **EntityRenderer**: dispatches by `sprite_key`; `"drone_animated"` = spritesheet, others = procedural
+- **Cheat menu (F11)**: all 7 enemy types spawnable
+- **i18n**: entity + item keys added for all new types (en/cs/es); new weapon `k9_bite`
 
 ### New (2026-03-22) — melee power-charge minigame
 - **MeleeOverlay** (`minigame/melee_scene.py`) — in-world power bar overlay for melee attacks

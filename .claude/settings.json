@@ -86,7 +86,10 @@
       "Bash(for seed:*)",
       "Bash(mkdir -p dungeoneer/assets/tiles)",
       "Bash(cp dungeoneer/assets/.tmp/final/container_locker.png dungeoneer/assets/tiles/container_locker.png)",
-      "Bash(cp dungeoneer/assets/.tmp/final/container_locker_open.png dungeoneer/assets/tiles/container_locker_open.png)"
+      "Bash(cp dungeoneer/assets/.tmp/final/container_locker_open.png dungeoneer/assets/tiles/container_locker_open.png)",
+      "Bash(python -c \":*)",
+      "Bash(sed -i 's/; img labels: `tutorial.img.ammo_9mm\\\\/ammo_rifle\\\\/ammo_shell` \\(ammo type icons\\)//' \"c:/Users/karel/Documents/Python/Dungeoneer/dungeoneer/.claude/memory/ref_i18n.md\")",
+      "Bash(sed -i '/`help_catalog.heat.\\\\*`/i | `help_catalog.items.icon.*` | HelpCatalog ITEMS tab illustration: `icon.9mm\\\\/rifle\\\\/shell` — ammo type PNG icon labels \\(en\\\\/cs\\\\/es\\) |' \"c:/Users/karel/Documents/Python/Dungeoneer/dungeoneer/.claude/memory/ref_i18n.md\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",

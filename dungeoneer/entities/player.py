@@ -33,6 +33,7 @@ class Player(Actor):
         self.credits:          int            = 0
         self.floor_depth:      int            = 1
         self.aim_skill:        float          = diff.player_aim_skill
+        self.heat:             int            = 0   # cumulative heat (0–500); level = heat//100 + 1
         self.inventory.add(make_combat_knife())
 
     @property

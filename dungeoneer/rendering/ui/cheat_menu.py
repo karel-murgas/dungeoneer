@@ -26,6 +26,7 @@ _W        = 440
 _ROW_H    = 22
 _PAD      = 14
 _SECT_GAP = 6    # extra gap above a section header
+_SCROLL_SPEED = 30  # pixels per wheel tick
 
 # ---------------------------------------------------------------------------
 # Menu data — list of (kind, label_key, action_id)
@@ -48,6 +49,11 @@ _ROWS: list[tuple[str, str, str | None]] = [
     ("section", "cheat.section.enemies",   None),
     ("item",    "entity.guard.name",        "spawn_enemy:guard"),
     ("item",    "entity.drone.name",        "spawn_enemy:drone"),
+    ("item",    "entity.dog.name",          "spawn_enemy:dog"),
+    ("item",    "entity.heavy.name",        "spawn_enemy:heavy"),
+    ("item",    "entity.turret.name",       "spawn_enemy:turret"),
+    ("item",    "entity.sniper_drone.name", "spawn_enemy:sniper_drone"),
+    ("item",    "entity.riot_guard.name",   "spawn_enemy:riot_guard"),
     ("section", "cheat.section.container", None),
     ("item",    "cheat.spawn_chest",        "spawn_container"),
     ("section", "cheat.section.player",    None),
@@ -56,10 +62,33 @@ _ROWS: list[tuple[str, str, str | None]] = [
     ("item",    "cheat.hp.plus10",          "hp:+10"),
     ("item",    "cheat.hp.plus20",          "hp:+20"),
     ("item",    "cheat.credits.plus100",    "credits:+100"),
+    ("section", "cheat.section.heat",       None),
+    ("item",    "cheat.heat.level1",        "heat_level:1"),
+    ("item",    "cheat.heat.level2",        "heat_level:2"),
+    ("item",    "cheat.heat.level3",        "heat_level:3"),
+    ("item",    "cheat.heat.level4",        "heat_level:4"),
+    ("item",    "cheat.heat.level5",        "heat_level:5"),
 ]
 
 # Indices of selectable rows (kind == "item")
 _SELECTABLE = [i for i, (kind, _, _a) in enumerate(_ROWS) if kind == "item"]
+
+# Pre-compute the content-y (in pixels from content top) of every row.
+# Used for auto-scroll-to-selection.
+def _compute_row_content_y() -> dict[int, int]:
+    cy = 0
+    result: dict[int, int] = {}
+    for row_i, (kind, _, _) in enumerate(_ROWS):
+        if kind == "section":
+            cy += _SECT_GAP
+            result[row_i] = cy
+            cy += _ROW_H
+        else:
+            result[row_i] = cy
+            cy += _ROW_H
+    return result
+
+_ROW_CONTENT_Y = _compute_row_content_y()
 
 
 class CheatMenuOverlay:
@@ -73,10 +102,34 @@ class CheatMenuOverlay:
         self._sel_idx    = 0          # index into _SELECTABLE
         self._hovered_action: str | None = None
         self._hovered_close  = False
+        self._scroll_offset: int = 0  # pixels scrolled from content top
+        # Computed in draw(), used by input handlers:
+        self._content_h: int = 0      # total height of all rows
+        self._view_h: int = 0         # visible height for rows
+        self._content_top: int = 0    # screen-y where content area starts
         # Built each draw call:
         self._row_rects: dict[int, tuple[pygame.Rect, str]] = {}  # row_index → (rect, action)
         self._panel_rect: pygame.Rect | None = None
         self._close_rect: pygame.Rect | None = None
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _clamp_scroll(self) -> None:
+        max_scroll = max(0, self._content_h - self._view_h)
+        self._scroll_offset = max(0, min(self._scroll_offset, max_scroll))
+
+    def _scroll_to_sel(self) -> None:
+        """Ensure the currently selected row is visible."""
+        row_i = _SELECTABLE[self._sel_idx]
+        row_top = _ROW_CONTENT_Y[row_i]
+        row_bot = row_top + _ROW_H
+        if row_top < self._scroll_offset:
+            self._scroll_offset = row_top
+        elif row_bot > self._scroll_offset + self._view_h:
+            self._scroll_offset = row_bot - self._view_h
+        self._clamp_scroll()
 
     # ------------------------------------------------------------------
     # Input
@@ -88,12 +141,19 @@ class CheatMenuOverlay:
             return "close"
         if key in (pygame.K_UP, pygame.K_w):
             self._sel_idx = (self._sel_idx - 1) % len(_SELECTABLE)
+            self._scroll_to_sel()
         elif key in (pygame.K_DOWN, pygame.K_s):
             self._sel_idx = (self._sel_idx + 1) % len(_SELECTABLE)
+            self._scroll_to_sel()
         elif key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
             row_i = _SELECTABLE[self._sel_idx]
             return _ROWS[row_i][2]
         return None
+
+    def handle_scroll(self, delta: int) -> None:
+        """delta > 0 = scroll up (content moves up), delta < 0 = scroll down."""
+        self._scroll_offset -= delta * _SCROLL_SPEED
+        self._clamp_scroll()
 
     def handle_mouse_motion(self, pos: tuple[int, int]) -> None:
         self._hovered_action = None
@@ -130,35 +190,44 @@ class CheatMenuOverlay:
         sw = settings.SCREEN_WIDTH
         sh = settings.SCREEN_HEIGHT
 
-        # Calculate panel height
         title_h = 26
         sep_h   = 2
         hint_h  = 18
-        inner_h = title_h + sep_h + _SECT_GAP
+        # Height above the scrollable content area
+        header_h = _PAD + title_h + sep_h + _SECT_GAP
+        # Height below the scrollable content area
+        footer_h = _SECT_GAP + hint_h + _PAD
 
-        for kind, _lk, _a in _ROWS:
+        # Total content height (all rows, no cap)
+        content_h = 0
+        for kind, _, _ in _ROWS:
             if kind == "section":
-                inner_h += _SECT_GAP + _ROW_H
+                content_h += _SECT_GAP + _ROW_H
             else:
-                inner_h += _ROW_H
+                content_h += _ROW_H
+        self._content_h = content_h
 
-        inner_h += _SECT_GAP + hint_h + _PAD
+        # Panel height: cap at 92% of screen
+        max_h     = round(sh * 0.92)
+        natural_h = _PAD * 2 + header_h + content_h + footer_h - _PAD  # _PAD counted once in header
+        # Simpler: header_h already includes the top _PAD
+        natural_h = header_h + content_h + footer_h
+        panel_h   = min(natural_h, max_h)
 
-        total_h = _PAD * 2 + inner_h
-        # Cap at 90% screen height (shouldn't happen but safety)
-        max_h = round(sh * 0.92)
-        total_h = min(total_h, max_h)
+        # Scrollable view height
+        self._view_h = panel_h - header_h - footer_h
+        self._clamp_scroll()
 
         ox = (sw - _W) // 2
-        oy = (sh - total_h) // 2
-
-        self._panel_rect = pygame.Rect(ox, oy, _W, total_h)
+        oy = (sh - panel_h) // 2
+        self._panel_rect = pygame.Rect(ox, oy, _W, panel_h)
+        self._content_top = oy + header_h
 
         # Background
-        panel = pygame.Surface((_W, total_h), pygame.SRCALPHA)
+        panel = pygame.Surface((_W, panel_h), pygame.SRCALPHA)
         panel.fill(_BG)
         screen.blit(panel, (ox, oy))
-        pygame.draw.rect(screen, _BORDER, (ox, oy, _W, total_h), 2)
+        pygame.draw.rect(screen, _BORDER, (ox, oy, _W, panel_h), 2)
 
         # Close button [×] in top-right corner
         _CLOSE_SIZE = 18
@@ -182,20 +251,28 @@ class CheatMenuOverlay:
         cy += title_h
         pygame.draw.line(screen, (40, 90, 80), (ox + _PAD, cy), (ox + _W - _PAD, cy))
         cy += sep_h + _SECT_GAP
+        # cy is now at the top of the scrollable content area
+
+        # --- Scrollable content ---
+        clip_rect = pygame.Rect(ox, cy, _W, self._view_h)
+        screen.set_clip(clip_rect)
 
         self._row_rects = {}
-
         sel_row_i = _SELECTABLE[self._sel_idx]
+        content_cy = cy - self._scroll_offset  # screen y of content[0]
 
         for row_i, (kind, label_key, action) in enumerate(_ROWS):
+            row_screen_y = content_cy + _ROW_CONTENT_Y[row_i]
+
+            # Skip rows entirely outside the clip
+            if row_screen_y + _ROW_H <= cy or row_screen_y >= cy + self._view_h:
+                continue
+
             if kind == "section":
-                cy += _SECT_GAP
                 lbl = self._font_sect.render(t(label_key).upper(), True, _COL_DIM)
-                screen.blit(lbl, (ox + _PAD + 4, cy + 3))
-                cy += _ROW_H
+                screen.blit(lbl, (ox + _PAD + 4, row_screen_y + _SECT_GAP + 3))
             else:
-                # Row background
-                row_rect = pygame.Rect(ox + 2, cy, _W - 4, _ROW_H)
+                row_rect = pygame.Rect(ox + 2, row_screen_y, _W - 4, _ROW_H)
                 self._row_rects[row_i] = (row_rect, action)
 
                 is_sel = (row_i == sel_row_i)
@@ -212,22 +289,35 @@ class CheatMenuOverlay:
 
                 col = _COL_SEL if is_sel else _COL_ITEM
                 lbl = self._font_item.render(t(label_key), True, col)
-                screen.blit(lbl, (ox + _PAD + 16, cy + 3))
+                screen.blit(lbl, (ox + _PAD + 16, row_screen_y + 3))
 
                 if is_sel:
                     pygame.draw.polygon(
                         screen, _COL_SEL,
-                        [(ox + _PAD + 4, cy + _ROW_H // 2),
-                         (ox + _PAD + 10, cy + 4),
-                         (ox + _PAD + 10, cy + _ROW_H - 4)],
+                        [(ox + _PAD + 4,  row_screen_y + _ROW_H // 2),
+                         (ox + _PAD + 10, row_screen_y + 4),
+                         (ox + _PAD + 10, row_screen_y + _ROW_H - 4)],
                     )
 
-                cy += _ROW_H
+        screen.set_clip(None)
+        # --- End scrollable content ---
 
-        # Hint line
-        cy += _SECT_GAP
-        hint = self._font_hint.render(
-            t("cheat.hint"),
-            True, (80, 110, 100),
-        )
-        screen.blit(hint, (ox + (_W - hint.get_width()) // 2, cy))
+        # Scrollbar (only when content overflows)
+        if self._content_h > self._view_h:
+            _SB_W   = 4
+            _SB_PAD = 3
+            sb_x    = ox + _W - _SB_W - _SB_PAD
+            sb_top  = cy
+            sb_h    = self._view_h
+            # Track
+            pygame.draw.rect(screen, (30, 50, 45), (sb_x, sb_top, _SB_W, sb_h))
+            # Thumb
+            ratio      = self._view_h / self._content_h
+            thumb_h    = max(16, round(sb_h * ratio))
+            thumb_top  = sb_top + round((sb_h - thumb_h) * self._scroll_offset / max(1, self._content_h - self._view_h))
+            pygame.draw.rect(screen, _BORDER, (sb_x, thumb_top, _SB_W, thumb_h), border_radius=2)
+
+        # Hint line (always at the bottom, outside clip)
+        hint_y = oy + panel_h - _PAD - hint_h
+        hint = self._font_hint.render(t("cheat.hint"), True, (80, 110, 100))
+        screen.blit(hint, (ox + (_W - hint.get_width()) // 2, hint_y))

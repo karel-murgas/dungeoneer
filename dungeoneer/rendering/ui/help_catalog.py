@@ -3,12 +3,13 @@
 Tabbed reference guide covering all gameplay mechanics.  Navigate tabs with
 ◄ ► arrow keys or by clicking tab labels.  Close with Esc / Enter.
 
-Tabs:  EXPLORATION | COMBAT | AIMING | MELEE | HEALING | HACKING | ITEMS
+Tabs:  EXPLORATION | COMBAT | AIMING | MELEE | HEALING | HACKING | ITEMS | ENEMIES
 
 Each tab can have an illustration drawn at the top of the content area:
   - Exploration: sprite icons for container / ammo / elevator / vault
   - Aiming:      arc diagram with MISS / HIT / CRITICAL zones
   - Hacking:     node-type legend + loot icon examples
+  - Enemies:     sprite grid — all 7 enemies with name label and coloured trait chips
 
 When adding a new mechanic with in-game help, add a matching entry here too
 (see CLAUDE.md rule).
@@ -62,6 +63,43 @@ _NODE_BORDER = (55,   90, 110)
 
 _PAD    = 20
 _MARGIN = 30   # min gap between panel and screen edge
+
+# Illustration colours — enemy trait chips
+_TAG_MELEE    = (210, 110,  40)   # orange
+_TAG_RANGED   = ( 40, 140, 210)   # blue
+_TAG_FAST     = (210, 200,   0)   # yellow
+_TAG_PRECISE  = (  0, 200, 200)   # cyan
+_TAG_ARMOR_LT = ( 90, 115, 155)   # gray-blue
+_TAG_ARMOR_HV = ( 50,  75, 140)   # dark blue
+_TAG_IMMOBILE = (190,  45,  45)   # red
+_TAG_RAPID    = (210, 120,   0)   # orange-red
+_TAG_RETREATS = (140,  65, 190)   # purple
+_TAG_ADVANCES = ( 40, 170,  80)   # green
+
+# Enemy entries shown in the illustration: (sprite_key, name_i18n, [(tag_i18n, colour), ...])
+_ENEMY_ENTRIES = [
+    ("guard",         "entity.guard.name",
+     [("help_catalog.enem.tag.melee",     _TAG_MELEE),
+      ("help_catalog.enem.tag.lt_armor",  _TAG_ARMOR_LT)]),
+    ("drone_animated", "entity.drone.name",
+     [("help_catalog.enem.tag.ranged",    _TAG_RANGED),
+      ("help_catalog.enem.tag.precise",   _TAG_PRECISE)]),
+    ("dog",           "entity.dog.name",
+     [("help_catalog.enem.tag.fast",      _TAG_FAST),
+      ("help_catalog.enem.tag.melee",     _TAG_MELEE)]),
+    ("heavy",         "entity.heavy.name",
+     [("help_catalog.enem.tag.lt_armor",  _TAG_ARMOR_LT),
+      ("help_catalog.enem.tag.advances",  _TAG_ADVANCES)]),
+    ("turret",        "entity.turret.name",
+     [("help_catalog.enem.tag.immobile",  _TAG_IMMOBILE),
+      ("help_catalog.enem.tag.rapid_fire", _TAG_RAPID)]),
+    ("sniper_drone",  "entity.sniper_drone.name",
+     [("help_catalog.enem.tag.precise",   _TAG_PRECISE),
+      ("help_catalog.enem.tag.retreats",  _TAG_RETREATS)]),
+    ("riot_guard",    "entity.riot_guard.name",
+     [("help_catalog.enem.tag.hvy_armor", _TAG_ARMOR_HV),
+      ("help_catalog.enem.tag.melee",     _TAG_MELEE)]),
+]
 
 # ---------------------------------------------------------------------------
 # Content definition
@@ -214,6 +252,40 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.comb.2.4",
         ]),
     ]),
+    ("help_catalog.tab.heat", [
+        ("help_catalog.heat.h1", [
+            "help_catalog.heat.1.1",
+            "help_catalog.heat.1.2",
+            "help_catalog.heat.1.3",
+            "help_catalog.heat.1.4",
+        ]),
+        ("help_catalog.heat.h2", [
+            "help_catalog.heat.2.1",
+            "help_catalog.heat.2.2",
+            "help_catalog.heat.2.3",
+            "help_catalog.heat.2.4",
+        ]),
+        ("help_catalog.heat.h3", [
+            "help_catalog.heat.3.1",
+            "help_catalog.heat.3.2",
+            "help_catalog.heat.3.3",
+        ]),
+    ]),
+    ("help_catalog.tab.enemies", [
+        ("help_catalog.enem.h1", [
+            "help_catalog.enem.1.guard",
+            "help_catalog.enem.1.drone",
+            "help_catalog.enem.1.dog",
+        ]),
+        ("help_catalog.enem.h2", [
+            "help_catalog.enem.2.heavy",
+            "help_catalog.enem.2.turret",
+        ]),
+        ("help_catalog.enem.h3", [
+            "help_catalog.enem.3.sniper",
+            "help_catalog.enem.3.riot",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
@@ -222,6 +294,8 @@ _TAB_MELEE       = 3
 _TAB_HEALING     = 4
 _TAB_HACKING     = 5
 _TAB_ITEMS       = 6
+_TAB_HEAT        = 7
+_TAB_ENEMIES     = 8
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -274,6 +348,9 @@ class HelpCatalogOverlay:
         # Fixed y-offset from tab bottom used for ALL labels — never varies with text.
         self._tab_text_bottom = self._font_tab.get_height() + 3
         self._elevator_tile: pygame.Surface | None = None   # lazy-loaded
+        self._container_tile: pygame.Surface | None = None  # lazy-loaded
+        self._drone_frame: pygame.Surface | None = None     # lazy-loaded (first frame)
+        self._ammo_icons: dict[str, pygame.Surface | None] = {}  # lazy-loaded PNG icons
         self._panel_rect: pygame.Rect | None = None
         self._close_rect: pygame.Rect | None = None
         self._close_hovered = False
@@ -457,6 +534,12 @@ class HelpCatalogOverlay:
             return self._draw_melee_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_HEALING:
             return self._draw_heal_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_HEAT:
+            return self._draw_heat_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_ENEMIES:
+            return self._draw_enemies_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_ITEMS:
+            return self._draw_items_illustration(screen, ox, cy, pw)
         return 0
 
     # ------------------------------------------------------------------
@@ -480,6 +563,17 @@ class HelpCatalogOverlay:
                 pygame.draw.rect(surf, (0, 180, 160), (0, 0, 32, 32))
                 self._elevator_tile = surf
         return self._elevator_tile
+
+    def _get_container_tile(self) -> "pygame.Surface | None":
+        """Lazy-load and cache the container_locker PNG, or None if not found."""
+        if self._container_tile is None:
+            path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "tiles", "container_locker.png"
+            )
+            if os.path.isfile(path):
+                raw = pygame.image.load(path).convert_alpha()
+                self._container_tile = pygame.transform.scale(raw, (32, 32))
+        return self._container_tile
 
     def _draw_expl_illustration(self, screen: pygame.Surface,
                                   ox: int, cy: int, pw: int) -> int:
@@ -510,6 +604,8 @@ class HelpCatalogOverlay:
 
             if sprite_key == "elevator":
                 spr = self._get_elevator_tile()
+            elif sprite_key == "container_closed":
+                spr = self._get_container_tile() or procedural_sprites.get(sprite_key)
             else:
                 spr = procedural_sprites.get(sprite_key)
             screen.blit(spr, (cell_cx - spr_size // 2, iy))
@@ -829,6 +925,188 @@ class HelpCatalogOverlay:
         pygame.draw.line(screen, (240, 240, 255), (mx, by - 3), (mx, by + bar_h + 2), 2)
 
         return IH
+
+    # ------------------------------------------------------------------
+    # Heat illustration — mock heat bar + level legend
+    # ------------------------------------------------------------------
+
+    def _draw_heat_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        _HEAT_COLS = [
+            (80,  200,  80),   # 1 GHOST
+            (180, 210,  60),   # 2 TRACE
+            (220, 150,  40),   # 3 ALERT
+            (220,  60,  60),   # 4 PURSUIT
+            (180,  20,  20),   # 5 BURN
+        ]
+        _NAMES = ["1  GHOST", "2  TRACE", "3  ALERT", "4  PURSUIT", "5  BURN"]
+
+        strip_h  = 16
+        strip_gap = 4
+        panel_h  = strip_h * 5 + strip_gap * 4 + 32   # 5 strips + padding
+
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, panel_h)
+        pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        bar_w = pw - _PAD * 4 - 80   # leave room for text on right
+        bx = ox + _PAD + 16
+        sy = cy + 14
+
+        for i, (col, name) in enumerate(zip(_HEAT_COLS, _NAMES)):
+            dark = (max(0, col[0] // 5), max(0, col[1] // 5), max(0, col[2] // 5))
+            by_strip = sy + i * (strip_h + strip_gap)
+
+            # Background track
+            pygame.draw.rect(screen, dark, (bx, by_strip, bar_w, strip_h), border_radius=3)
+
+            # Fill — gets progressively fuller
+            fill_frac = 0.25 + i * 0.16
+            fill_w = round(bar_w * fill_frac)
+            if fill_w > 0:
+                pygame.draw.rect(screen, col, (bx, by_strip, fill_w, strip_h), border_radius=3)
+
+            # Border
+            pygame.draw.rect(screen, col, (bx, by_strip, bar_w, strip_h), 1, border_radius=3)
+
+            # Level name to the right
+            lbl = self._font_ill.render(name, True, col)
+            screen.blit(lbl, (bx + bar_w + 8,
+                               by_strip + strip_h // 2 - self._font_ill.get_height() // 2 + 1))
+
+        return panel_h
+
+    # ------------------------------------------------------------------
+    # Enemies illustration — sprite grid with trait chips
+    # ------------------------------------------------------------------
+
+    def _get_drone_frame(self) -> "pygame.Surface | None":
+        """Lazy-load first frame of drone_idle spritesheet (32×32)."""
+        if self._drone_frame is None:
+            from dungeoneer.rendering.spritesheet import SpriteSheet
+            path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "entities", "drone_idle.png"
+            )
+            try:
+                sheet = SpriteSheet(path, 48, 48)
+                self._drone_frame = pygame.transform.scale(
+                    sheet.get_tile_surface(0), (32, 32)
+                )
+            except Exception:
+                self._drone_frame = None
+        return self._drone_frame
+
+    def _draw_enemies_illustration(self, screen: pygame.Surface,
+                                    ox: int, cy: int, pw: int) -> int:
+        from dungeoneer.rendering import procedural_sprites
+
+        spr_size  = 32
+        chip_h    = 14   # height of one trait chip row
+        name_h    = self._font_ill.get_height() + 2
+        n_chips   = 2    # always exactly 2 tags per enemy
+        cell_w    = 104
+        panel_h   = 10 + spr_size + 4 + name_h + n_chips * chip_h + 8
+
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, panel_h)
+        pygame.draw.rect(screen, (10, 14, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        n = len(_ENEMY_ENTRIES)
+        total_w = n * cell_w
+        start_x = ox + (pw - total_w) // 2
+
+        for i, (sprite_key, name_key, tags) in enumerate(_ENEMY_ENTRIES):
+            cell_cx = start_x + i * cell_w + cell_w // 2
+            iy = cy + 10
+
+            # Sprite
+            if sprite_key == "drone_animated":
+                spr = self._get_drone_frame()
+                if spr is None:
+                    spr = pygame.Surface((32, 32), pygame.SRCALPHA)
+                    pygame.draw.circle(spr, (0, 190, 210), (16, 16), 12)
+            else:
+                spr = procedural_sprites.get(sprite_key)
+            screen.blit(spr, (cell_cx - spr_size // 2, iy))
+
+            # Name label (truncate if too wide)
+            name_text = t(name_key)
+            max_name_w = cell_w - 4
+            while self._font_ill.size(name_text)[0] > max_name_w and len(name_text) > 3:
+                name_text = name_text[:-1]
+            if name_text != t(name_key):
+                name_text = name_text.rstrip() + "\u2026"
+            name_surf = self._font_ill.render(name_text, True, _COL_TXT)
+            ny = iy + spr_size + 4
+            screen.blit(name_surf, (cell_cx - name_surf.get_width() // 2, ny))
+
+            # Trait chips
+            chip_y = ny + name_h
+            for tag_key, tag_col in tags:
+                label = t(tag_key)
+                lw = self._font_ill.size(label)[0]
+                chip_w = min(lw + 8, cell_w - 2)
+                chip_rect = pygame.Rect(cell_cx - chip_w // 2, chip_y, chip_w, chip_h - 2)
+                pygame.draw.rect(screen, (8, 12, 20), chip_rect, border_radius=2)
+                pygame.draw.rect(screen, tag_col, chip_rect, 1, border_radius=2)
+                tag_surf = self._font_ill.render(label, True, tag_col)
+                tx = chip_rect.x + (chip_w - tag_surf.get_width()) // 2
+                ty = chip_y + (chip_h - 2 - tag_surf.get_height()) // 2
+                screen.blit(tag_surf, (tx, ty))
+                chip_y += chip_h
+
+        return panel_h
+
+    # ------------------------------------------------------------------
+    # Items illustration — ammo type icons from PNG assets
+    # ------------------------------------------------------------------
+
+    def _get_ammo_icon(self, ammo_id: str) -> "pygame.Surface | None":
+        """Lazy-load and cache a 32×32 ammo PNG icon."""
+        if ammo_id not in self._ammo_icons:
+            path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "assets", "items",
+                f"ammo_ammo_{ammo_id}.png",
+            )
+            if os.path.isfile(path):
+                raw = pygame.image.load(path).convert_alpha()
+                self._ammo_icons[ammo_id] = pygame.transform.scale(raw, (32, 32))
+            else:
+                self._ammo_icons[ammo_id] = None
+        return self._ammo_icons[ammo_id]
+
+    def _draw_items_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        """Row of three ammo-type PNG icons with labels."""
+        spr_size = 32
+        lbl_h    = self._font_ill.get_height() + 3
+        cell_w   = 90
+        panel_h  = spr_size + lbl_h + 18
+
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, panel_h)
+        pygame.draw.rect(screen, (10, 14, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        entries = [
+            ("9mm",   t("help_catalog.items.icon.9mm")),
+            ("rifle", t("help_catalog.items.icon.rifle")),
+            ("shell", t("help_catalog.items.icon.shell")),
+        ]
+
+        total_w = len(entries) * cell_w
+        start_x = ox + (pw - total_w) // 2
+
+        for i, (ammo_id, label) in enumerate(entries):
+            cell_cx = start_x + i * cell_w + cell_w // 2
+            iy      = cy + 9
+            spr = self._get_ammo_icon(ammo_id)
+            if spr is not None:
+                screen.blit(spr, (cell_cx - spr_size // 2, iy))
+            lbl_surf = self._font_ill.render(label, True, _COL_TXT)
+            screen.blit(lbl_surf,
+                        (cell_cx - lbl_surf.get_width() // 2, iy + spr_size + 3))
+
+        return panel_h
 
     # ------------------------------------------------------------------
     # Helpers

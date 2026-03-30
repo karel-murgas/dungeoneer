@@ -31,6 +31,7 @@ import pygame
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core.i18n import t
+from dungeoneer.core.event_bus import bus, HackNodesCollectedEvent
 from dungeoneer.minigame.hack_node import LootKind, SecurityKind
 from dungeoneer.minigame.hack_grid_map import GridCell, GridCellType, HackGridMap, Pos
 from dungeoneer.minigame.hack_grid_generator import HackGridParams, generate_grid_map
@@ -173,6 +174,10 @@ class HackGridScene(Scene):
 
         self._committed:  bool = False   # True once player makes first move
 
+        # Heat tracking — reported via HackNodesCollectedEvent on _finish()
+        self._nodes_collected:   int = 0
+        self._coolant_reduction: int = 0
+
         self._status: str = t("hack.status.initial")
         self._log:    str = ""
         self._help_open: bool = False
@@ -205,6 +210,7 @@ class HackGridScene(Scene):
             "item_loot_ammo", "item_loot_consumable",
             "item_loot_ranged", "item_loot_armor", "item_loot",
             "item_hack_credits", "item_hack_bonus_time", "item_hack_mystery",
+            "item_hack_coolant",
         ):
             _raw = procedural_sprites.get(_key)
             if _raw is not None:
@@ -663,7 +669,22 @@ class HackGridScene(Scene):
             kind = random.choice([k for k in LootKind if k != LootKind.MYSTERY])
             cell.loot_kind = kind   # update cell so display shows the result
 
-        if kind == LootKind.BONUS_TIME:
+        # Every collected node counts toward heat (including COOLANT — you still touched the system)
+        self._nodes_collected += 1
+
+        if kind == LootKind.COOLANT:
+            self._coolant_reduction += settings.HEAT_COOLANT_REDUCE
+            self._status = t("hack.status.purge")
+            self._log    = t("hack.status.purge")
+            self._audio.play("bonus_time", volume=0.7)
+            self._loot_overlay = {
+                "timer": 1.4,
+                "text":  t("hack.overlay.purge_title"),
+                "sub":   t("hack.overlay.purge_sub"),
+                "color": (40, 200, 200),
+            }
+
+        elif kind == LootKind.BONUS_TIME:
             self._time_remaining += 3.0
             self._status = t("hack.status.bonus_time")
             self._log    = "[+3s]"
@@ -714,6 +735,12 @@ class HackGridScene(Scene):
             self._audio.play("fail", volume=0.8)
         else:
             self._audio.play("success", volume=0.8)
+        # Report heat impact to HeatSystem — applied at end of minigame
+        bus.post(HackNodesCollectedEvent(
+            nodes_collected=self._nodes_collected,
+            success=success,
+            coolant_reduction=self._coolant_reduction,
+        ))
 
     # ------------------------------------------------------------------
     # Layout helpers
@@ -1158,6 +1185,7 @@ class HackGridScene(Scene):
             LootKind.ARMOR:        "item_loot_armor",
             LootKind.CREDITS:      "item_hack_credits",
             LootKind.BONUS_TIME:   "item_hack_bonus_time",
+            LootKind.COOLANT:      "item_hack_coolant",
             LootKind.MYSTERY:      "item_hack_mystery",
         }.get(kind, "item_loot")
 

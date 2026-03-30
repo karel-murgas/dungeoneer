@@ -49,6 +49,7 @@ _loot_pool = (
     [LootKind.CREDITS]      * 3 +
     [LootKind.BONUS_TIME]   * 1 +
     [LootKind.ARMOR]        * 1 +
+    [LootKind.COOLANT]      * 1 +
     [LootKind.MYSTERY]      * 2
 )
 

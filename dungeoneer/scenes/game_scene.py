@@ -10,7 +10,8 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent
+from dungeoneer.systems.heat import HeatSystem
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -18,7 +19,10 @@ from dungeoneer.world.floor import Floor
 from dungeoneer.world.tile import TileType
 from dungeoneer.world.fov import compute_fov
 from dungeoneer.entities.player import Player
-from dungeoneer.entities.enemy import Enemy, make_guard, make_drone
+from dungeoneer.entities.enemy import (
+    Enemy, make_guard, make_drone, make_dog,
+    make_heavy, make_turret, make_sniper_drone, make_riot_guard,
+)
 from dungeoneer.entities.item_entity import ItemEntity
 from dungeoneer.entities.container_entity import ContainerEntity
 from dungeoneer.combat.action_resolver import ActionResolver
@@ -39,7 +43,7 @@ from dungeoneer.rendering.ui.inventory_ui import InventoryUI
 from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
 from dungeoneer.rendering.ui.help_catalog import (
     HelpCatalogOverlay, _TAB_EXPLORATION, _TAB_AIMING, _TAB_MELEE, _TAB_HEALING,
-    _TAB_ITEMS,
+    _TAB_ITEMS, _TAB_HEAT,
 )
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
@@ -96,6 +100,7 @@ class GameScene(Scene):
         self.floating_nums  = FloatingNumbers()
         self.player: Player | None = None
         self.floor:  Floor  | None = None
+        self.heat_system: HeatSystem | None = None
         self._game_over          = False
         self._subscribed         = False
         self._inventory_open     = False
@@ -182,8 +187,11 @@ class GameScene(Scene):
             bus.subscribe(StairEvent,     self._on_stair)
             bus.subscribe(ElevatorEvent,  self._on_elevator)
             bus.subscribe(ObjectiveEvent, self._on_objective)
-            bus.subscribe(DamageEvent,    self._on_damage)
-            bus.subscribe(MissEvent,      self._on_miss)
+            bus.subscribe(DamageEvent,          self._on_damage)
+            bus.subscribe(MissEvent,            self._on_miss)
+            bus.subscribe(EnemyBurstQueueEvent, self._on_enemy_burst)
+            bus.subscribe(HeatLevelUpEvent,     self._on_heat_level_up)
+            bus.subscribe(TurnEndEvent,         self._on_turn_end_heat)
             self._subscribed = True
 
     def _unsubscribe_events(self) -> None:
@@ -191,8 +199,11 @@ class GameScene(Scene):
         bus.unsubscribe(StairEvent,     self._on_stair)
         bus.unsubscribe(ElevatorEvent,  self._on_elevator)
         bus.unsubscribe(ObjectiveEvent, self._on_objective)
-        bus.unsubscribe(DamageEvent,  self._on_damage)
-        bus.unsubscribe(MissEvent,    self._on_miss)
+        bus.unsubscribe(DamageEvent,          self._on_damage)
+        bus.unsubscribe(MissEvent,            self._on_miss)
+        bus.unsubscribe(EnemyBurstQueueEvent, self._on_enemy_burst)
+        bus.unsubscribe(HeatLevelUpEvent,     self._on_heat_level_up)
+        bus.unsubscribe(TurnEndEvent,         self._on_turn_end_heat)
         self._subscribed = False
 
     # ------------------------------------------------------------------
@@ -206,12 +217,18 @@ class GameScene(Scene):
         else:
             mw, mh = settings.MAP_WIDTH, settings.MAP_HEIGHT
         gen    = DungeonGenerator()
+        # Heat system must exist before generate() call so tier_cap is correct.
+        # On floor 1 the player is freshly created below, so we bootstrap with
+        # a temporary player if needed, then hand it to HeatSystem after.
+        _tier_cap = self.heat_system.tier_cap() if self.heat_system else 1
+
         result = gen.generate(
             mw, mh,
             floor_depth=depth,
             guards=self.difficulty.guards_per_floor,
             drones=self.difficulty.drones_per_floor,
             containers=self.difficulty.containers_per_floor,
+            tier_cap=_tier_cap,
         )
         self.floor = Floor(result.dungeon_map, depth)
 
@@ -223,14 +240,28 @@ class GameScene(Scene):
             existing_player.y = player_spawn.y
             self.player = existing_player
 
+        # Create / reuse HeatSystem (created once, persists for the whole run)
+        if self.heat_system is None:
+            self.heat_system = HeatSystem(self.player)
+            self.heat_system.subscribe()
+        self.hud.heat_system = self.heat_system
+
         self.player.floor_depth = depth
         self.floor.add_actor(self.player)
 
+        _enemy_factories = {
+            "guard":       make_guard,
+            "drone":       make_drone,
+            "dog":         make_dog,
+            "heavy":       make_heavy,
+            "turret":      make_turret,
+            "sniper_drone": make_sniper_drone,
+            "riot_guard":  make_riot_guard,
+        }
         for spawn in result.spawns:
-            if spawn.kind == "guard":
-                self.floor.add_actor(make_guard(spawn.x, spawn.y))
-            elif spawn.kind == "drone":
-                self.floor.add_actor(make_drone(spawn.x, spawn.y))
+            factory = _enemy_factories.get(spawn.kind)
+            if factory is not None:
+                self.floor.add_actor(factory(spawn.x, spawn.y))
             elif spawn.kind == "container":
                 self.floor.add_container(self._make_container(spawn.x, spawn.y))
 
@@ -295,6 +326,7 @@ class GameScene(Scene):
             self._trigger_game_over(victory=False)
         elif isinstance(event.entity, Enemy):
             self._drop_loot(event.entity)
+            self._maybe_show_tutorial("heat")
 
     def _drop_loot(self, enemy: Enemy) -> None:
         assert self.player is not None
@@ -324,6 +356,11 @@ class GameScene(Scene):
         tgt = event.target
         if self.floor.dungeon_map.visible[tgt.y, tgt.x]:
             self.floating_nums.add_miss(tgt.x, tgt.y)
+
+    def _on_enemy_burst(self, event: EnemyBurstQueueEvent) -> None:
+        """Stagger subsequent shots of an enemy burst weapon (e.g. turret double-tap)."""
+        for i, dmg_ev in enumerate(event.events, start=1):
+            self._burst_queue.append((i * self._BURST_INTERVAL, dmg_ev))
 
     def _on_objective(self, event: ObjectiveEvent) -> None:
         self._trigger_game_over(victory=True)
@@ -469,6 +506,8 @@ class GameScene(Scene):
             if self._cheat_menu_open:
                 if event.type == pygame.MOUSEMOTION:
                     self.cheat_menu.handle_mouse_motion(event.pos)
+                elif event.type == pygame.MOUSEWHEEL:
+                    self.cheat_menu.handle_scroll(event.y)
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     action = self.cheat_menu.handle_mouse_button(event)
                     if action:
@@ -1137,6 +1176,10 @@ class GameScene(Scene):
         from dungeoneer.minigame.hack_scene_grid import HackGridScene
         from dungeoneer.minigame.hack_grid_generator import HackGridParams
         params = HackGridParams.for_difficulty(self.difficulty)
+        if self.heat_system is not None:
+            modifier = self.heat_system.hack_time_modifier()
+            params.time_limit = max(settings.HEAT_HACK_TIME_FLOOR,
+                                    params.time_limit + modifier)
         self.app.scenes.push(HackGridScene(
             self.app, params=params, on_complete=on_complete, on_cancel=on_cancel
         ))
@@ -1168,6 +1211,7 @@ class GameScene(Scene):
             log.info("Spawned alert drone at (%d,%d) after failed hack", sx, sy)
 
         self._hack_just_completed = True
+        self._maybe_show_tutorial("heat")
 
     # ------------------------------------------------------------------
     # Aim minigame integration
@@ -1300,10 +1344,17 @@ class GameScene(Scene):
             if pos is None:
                 return
             tx, ty = pos
-            if enemy_id == "guard":
-                enemy = make_guard(tx, ty)
-            else:
-                enemy = make_drone(tx, ty)
+            _cheat_factories = {
+                "guard":        make_guard,
+                "drone":        make_drone,
+                "dog":          make_dog,
+                "heavy":        make_heavy,
+                "turret":       make_turret,
+                "sniper_drone": make_sniper_drone,
+                "riot_guard":   make_riot_guard,
+            }
+            factory = _cheat_factories.get(enemy_id, make_drone)
+            enemy = factory(tx, ty)
             self.floor.add_actor(enemy)
             self.turn_manager.build_queue(self.floor)
             bus.post(LogMessageEvent(f"[CHEAT] {enemy.name}", (80, 220, 120)))
@@ -1332,6 +1383,14 @@ class GameScene(Scene):
         elif action == "credits:+100":
             self.player.credits += 100
             bus.post(LogMessageEvent(f"[CHEAT] +¥100 → ¥{self.player.credits}", (80, 220, 120)))
+
+        elif action.startswith("heat_level:"):
+            level = int(action.split(":", 1)[1])
+            if self.heat_system is not None:
+                new_heat = (level - 1) * settings.HEAT_PER_LEVEL
+                self.heat_system.set_heat(new_heat)
+                from dungeoneer.systems.heat import LEVEL_NAMES
+                bus.post(LogMessageEvent(f"[CHEAT] Heat → {LEVEL_NAMES[level]}", (80, 220, 120)))
 
     @staticmethod
     def _make_cheat_item(item_id: str):
@@ -1379,6 +1438,84 @@ class GameScene(Scene):
                         continue
                     return tx, ty
         return None
+
+    def _on_turn_end_heat(self, _event: TurnEndEvent) -> None:
+        """Add heat only when at least one enemy is in CombatState (active combat)."""
+        if self.heat_system is None or self.floor is None:
+            return
+        from dungeoneer.ai.states import CombatState
+        in_combat = any(
+            isinstance(a, Enemy) and isinstance(a.ai_brain.current_state, CombatState)
+            for a in self.floor.actors
+        )
+        if in_combat:
+            self.heat_system.add_heat(settings.HEAT_COMBAT_ROUND)
+
+    def _on_heat_level_up(self, event: HeatLevelUpEvent) -> None:
+        """Spawn a patrol when heat crosses into a new level (levels 2–5)."""
+        import random as _rnd
+        from dungeoneer.ai.states import CombatState
+        from dungeoneer.world.dungeon_generator import _ENEMY_POOL
+
+        if self.player is None or self.floor is None or self._game_over:
+            return
+
+        tier_cap = self.heat_system.tier_cap() if self.heat_system else 1
+        available = [
+            kind
+            for tier, kinds in sorted(_ENEMY_POOL.items())
+            if tier <= tier_cap
+            for kind in kinds
+        ]
+        _factories = {
+            "guard": make_guard, "drone": make_drone, "dog": make_dog,
+            "heavy": make_heavy, "turret": make_turret,
+            "sniper_drone": make_sniper_drone, "riot_guard": make_riot_guard,
+        }
+        count = _rnd.randint(*settings.HEAT_PATROL_COUNT)
+        for _ in range(count):
+            pos = self._find_patrol_spawn()
+            if pos is None:
+                continue
+            kind = _rnd.choice(available)
+            enemy = _factories[kind](*pos)
+            enemy.ai_brain.set_state(CombatState())
+            self.floor.add_actor(enemy)
+
+        self.turn_manager.build_queue(self.floor)
+        from dungeoneer.systems.heat import LEVEL_NAMES
+        lvl_name = LEVEL_NAMES[event.new_level]
+        bus.post(LogMessageEvent(
+            t("log.heat_level_up").format(level=lvl_name),
+            (220, 100, 40),
+        ))
+        self.alert_banner.trigger()
+
+    def _find_patrol_spawn(self) -> tuple[int, int] | None:
+        """Find a free walkable tile 4–8 tiles from the player for a patrol spawn."""
+        import random as _rnd
+        from dungeoneer.combat.line_of_sight import has_los
+        assert self.player is not None
+        assert self.floor is not None
+        px, py = self.player.x, self.player.y
+        dm = self.floor.dungeon_map
+        candidates: list[tuple[int, int]] = []
+        for dy in range(-9, 10):
+            for dx in range(-9, 10):
+                tx, ty = px + dx, py + dy
+                dist = abs(dx) + abs(dy)
+                if dist < 4 or dist > 9:
+                    continue
+                if not dm.in_bounds(tx, ty) or not dm.is_walkable(tx, ty):
+                    continue
+                if self.floor.get_actor_at(tx, ty) is not None:
+                    continue
+                candidates.append((tx, ty))
+        if not candidates:
+            return None
+        los_cands = [(x, y) for x, y in candidates if has_los(x, y, px, py, dm)]
+        pool = los_cands if los_cands else candidates
+        return _rnd.choice(pool)
 
     def _find_drone_spawn(self, container: "ContainerEntity") -> tuple[int, int]:
         """Find the best tile to spawn a drone near a container: walkable, LOS to player,

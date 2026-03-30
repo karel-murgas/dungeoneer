@@ -79,6 +79,14 @@ _DEFAULT_GUARDS      = 5
 _DEFAULT_DRONES      = 3
 _DEFAULT_CONTAINERS  = 3
 
+# Tier-based enemy pool — keys are tier numbers (1=lowest, 3=highest).
+# heat mechanic will raise tier_cap to unlock stronger enemies.
+_ENEMY_POOL: dict[int, list[str]] = {
+    1: ["guard", "drone", "dog"],
+    2: ["heavy", "turret"],
+    3: ["sniper_drone", "riot_guard"],
+}
+
 
 class DungeonGenerator:
     def __init__(self, seed: Optional[int] = None) -> None:
@@ -92,6 +100,7 @@ class DungeonGenerator:
         guards: int = _DEFAULT_GUARDS,
         drones: int = _DEFAULT_DRONES,
         containers: int = _DEFAULT_CONTAINERS,
+        tier_cap: int = 1,
     ) -> GenerationResult:
         dungeon_map = DungeonMap(width, height)
         root = BSPNode(0, 0, width, height)
@@ -124,17 +133,22 @@ class DungeonGenerator:
         dungeon_map.set_type(sx, sy, TileType.ELEVATOR_CLOSED)
 
         # Distribute enemies in middle rooms (not start or end room)
+        total_enemies = guards + drones
         middle_rooms = [r for r in rooms if r is not start_room and r is not end_room]
         enemy_rooms = self._rng.sample(
             middle_rooms,
-            min(guards + drones, len(middle_rooms)),
+            min(total_enemies, len(middle_rooms)),
         )
-        for i, room in enumerate(enemy_rooms):
+        available_kinds = [
+            kind
+            for tier, kinds in sorted(_ENEMY_POOL.items())
+            if tier <= tier_cap
+            for kind in kinds
+        ]
+        for room in enemy_rooms:
             ex, ey = room.random_inner_point()
-            if i < guards:
-                spawns.append(SpawnDesc("guard", ex, ey))
-            else:
-                spawns.append(SpawnDesc("drone", ex, ey))
+            kind = self._rng.choice(available_kinds)
+            spawns.append(SpawnDesc(kind, ex, ey))
 
         # Pre-compute room-interior tile set for entrance detection
         room_tile_set: set[tuple[int, int]] = set()

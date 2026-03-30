@@ -64,7 +64,7 @@ set_language("cs")
 | `inv.*` | InventoryUI: title, labels, buttons (inv.btn_use=[E], inv.btn_close=[I]; equip/drop buttons removed) |
 | `weapon_picker.*` | WeaponPickerUI: title, empty msg, close btn, hint |
 | `item.*` | Item names + descriptions (weapons, consumables, ammo, armor) |
-| `entity.*` | Entity names (player, guard, drone, crate, corp_vault) |
+| `entity.*` | Entity names (player, guard, drone, dog, heavy, turret, sniper_drone, riot_guard, crate, corp_vault) |
 | `log.*` | Gameplay log messages (combat, pickup, containers, healing, equip, reload, drop, descent, credits_drop, action-denied feedback) |
 | `hint.*` | In-world contextual hints: `hint.elevator_descend` (adjacent to descent elevator), `hint.elevator_no_return` (adjacent to entry/arrival elevator — "no way back"), `hint.container_open` (adjacent to unopened container — "[E] Open container") |
 | `hack.status.*` | HackScene footer status bar text |
@@ -85,8 +85,19 @@ set_language("cs")
 | `overheal_confirm.*` | Overheal warning dialog reusing QuitConfirmDialog (title, question, confirm, cancel) |
 | `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `settings.gameplay.map_size`, `menu.map_size.large/small`, `menu.heal.threshold_pct` |
 | `minimap.*` | MinimapOverlay (title, legend labels: player/enemy/container/elevator, hint_close) |
-| `help_catalog.*` | HelpCatalogOverlay (title, 7 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing) |
-| `tutorial.*` | TutorialOverlay: `tutorial.<step>.title`, `tutorial.<step>.body` (steps: movement/enemy/container/ammo/medipack/melee), `tutorial.continue`, `menu.tutorial_on/off` |
+| `help_catalog.*` | HelpCatalogOverlay (title, 9 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing/Heat/Enemies) |
+| `help_catalog.enem.*` | HelpCatalog ENEMIES tab (h1/h2/h3 section headers, 7 enemy bullets, tag.* chip labels) |
+| `tutorial.*` | TutorialOverlay: `tutorial.<step>.title`, `tutorial.<step>.body` (steps: movement/enemy/container/ammo/medipack/melee/heat), `tutorial.continue`, `menu.tutorial_on/off` |
+| `help_catalog.items.icon.*` | HelpCatalog ITEMS tab illustration: `icon.9mm/rifle/shell` — ammo type PNG icon labels (en/cs/es) |
+| `help_catalog.heat.*` | HelpCatalog HEAT tab (h1: What is Heat, h2: What Raises Heat, h3: Effects); illustration: 5 level colour strips |
+| `tutorial.heat.*` | Tutorial step shown after first combat kill or first hack completion |
+| `hud.heat_level` | HUD heat bar level name label (param: `level`) |
+| `log.heat_level_up` | Combat log when heat escalates (param: `level` = level name string) |
+| `hack.status.purge` | HackScene status bar when COOLANT node collected |
+| `hack.overlay.purge_title/sub` | HackScene overlay banner for COOLANT node (no params — heat amount not shown) |
+| `hack.loot.coolant` | COOLANT loot kind display name in HackScene extracting status |
+| `cheat.section.heat` | Cheat menu section header |
+| `cheat.heat.level1–5` | Cheat menu rows to set heat level |
 
 ## Rule (from CLAUDE.md)
 - Every user-visible string goes through `t("key")`

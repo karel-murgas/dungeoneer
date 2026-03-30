@@ -78,7 +78,7 @@ def _get_tileset():
 class TutorialManager:
     """Tracks which tutorial steps have been shown this run."""
 
-    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee")
+    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee", "heat")
 
     def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
@@ -556,6 +556,54 @@ def _draw_melee(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Heat illustration — mock heat bar with 5 level colour strips
+# ---------------------------------------------------------------------------
+
+def _draw_heat(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Heat bar illustration: 5 level strips (GHOST → BURN) with colour fill."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    _HEAT_COLS = [
+        (80,  200,  80),   # 1 GHOST
+        (180, 210,  60),   # 2 TRACE
+        (220, 150,  40),   # 3 ALERT
+        (220,  60,  60),   # 4 PURSUIT
+        (180,  20,  20),   # 5 BURN
+    ]
+    _NAMES = ["1  GHOST", "2  TRACE", "3  ALERT", "4  PURSUIT", "5  BURN"]
+
+    font = pygame.font.SysFont("consolas", 12, bold=True)
+    bar_w   = rect.width - 28
+    bx      = rect.left + 14
+    strip_h = 20
+    gap     = 5
+    total_h = 5 * strip_h + 4 * gap
+    sy      = rect.centery - total_h // 2
+
+    for i, (col, name) in enumerate(zip(_HEAT_COLS, _NAMES)):
+        dark = (max(0, col[0] // 5), max(0, col[1] // 5), max(0, col[2] // 5))
+        by_i = sy + i * (strip_h + gap)
+
+        # Background track
+        pygame.draw.rect(screen, dark, (bx, by_i, bar_w, strip_h), border_radius=3)
+
+        # Colour fill — gets progressively fuller at higher levels
+        fill_frac = 0.20 + i * 0.17
+        fill_w = round(bar_w * fill_frac)
+        if fill_w > 0:
+            pygame.draw.rect(screen, col, (bx, by_i, fill_w, strip_h), border_radius=3)
+
+        # Border
+        pygame.draw.rect(screen, col, (bx, by_i, bar_w, strip_h), 1, border_radius=3)
+
+        # Level name centred inside the strip
+        lbl = font.render(name, True, col)
+        screen.blit(lbl, (bx + bar_w // 2 - lbl.get_width() // 2,
+                           by_i + strip_h // 2 - font.get_height() // 2 + 1))
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -566,4 +614,5 @@ _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "ammo":      _draw_ammo,
     "medipack":  _draw_medipack,
     "melee":     _draw_melee,
+    "heat":      _draw_heat,
 }

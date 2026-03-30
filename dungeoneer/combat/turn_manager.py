@@ -95,17 +95,31 @@ class TurnManager:
         log.debug("advance → actor=%s (Player=%s)", actor.name, isinstance(actor, Player))
 
         if not isinstance(actor, Player):
-            try:
-                action = actor.ai_brain.take_turn(floor)
-            except Exception:
-                log.exception("AI brain error for %s — skipping turn", actor.name)
-                action = None
+            from dungeoneer.combat.action import MeleeAttackAction, RangedAttackAction
+            actions_per_turn   = getattr(actor, 'actions_per_turn',   1)
+            max_attacks        = getattr(actor, 'max_attacks_per_turn', 1)
+            attacks_used       = 0
 
-            if action is not None:
+            for _step in range(actions_per_turn):
+                try:
+                    action = actor.ai_brain.take_turn(floor)
+                except Exception:
+                    log.exception("AI brain error for %s — skipping turn", actor.name)
+                    action = None
+
+                if action is None:
+                    log.debug("AI returned None action for %s", actor.name)
+                    break
+
+                is_attack = isinstance(action, (MeleeAttackAction, RangedAttackAction))
+                if is_attack and attacks_used >= max_attacks:
+                    log.debug("Max attacks reached for %s — stopping multi-action", actor.name)
+                    break
+
                 valid = action.validate(actor, floor)
                 log.debug(
-                    "AI action %s for %s  valid=%s",
-                    type(action).__name__, actor.name, valid,
+                    "AI action %s for %s  valid=%s  step=%d",
+                    type(action).__name__, actor.name, valid, _step,
                 )
                 if valid:
                     try:
@@ -118,10 +132,15 @@ class TurnManager:
                         result = None
 
                     if result and result.message:
-                        from dungeoneer.core.event_bus import bus, LogMessageEvent
+                        from dungeoneer.core.event_bus import bus, LogMessageEvent, EnemyBurstQueueEvent
                         bus.post(LogMessageEvent(result.message, result.msg_colour))
-            else:
-                log.debug("AI returned None action for %s", actor.name)
+                        if result.burst_events:
+                            bus.post(EnemyBurstQueueEvent(result.burst_events))
+
+                if is_attack:
+                    attacks_used += 1
+                    if attacks_used >= max_attacks:
+                        break
 
             self.advance(floor, resolver)
 

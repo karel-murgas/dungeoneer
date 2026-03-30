@@ -1,0 +1,6 @@
+- [x] Doplnit heat do nápovědy
+- [x] Doplnit heat do tutoriálu (po prvním fightu nebo po prvním hacku)
+- [ ] Doplnit do nápovědy obrázky nábojů
+- [ ] Doplnit do nápovědy popisky nepřátel
+- [ ] Purge icon nefunguje (čelá zelený čtveteček)
+- [ ] U purge nepsat, o kolik heat to šlo dolů (během minigame)

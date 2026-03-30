@@ -42,9 +42,7 @@ class IdleState(BehaviorState):
 class CombatState(BehaviorState):
     def execute(self, owner: "Actor", floor: "Floor") -> Optional["Action"]:
         from dungeoneer.entities.player import Player
-        from dungeoneer.combat.action import (
-            MoveAction, MeleeAttackAction, RangedAttackAction, WaitAction
-        )
+        from dungeoneer.combat.action import WaitAction
         from dungeoneer.core.settings import DRONE_PREFERRED_DIST
 
         player = next((a for a in floor.actors if isinstance(a, Player) and a.alive), None)
@@ -53,10 +51,16 @@ class CombatState(BehaviorState):
             return WaitAction()
 
         dist = abs(owner.x - player.x) + abs(owner.y - player.y)
-        is_drone = getattr(owner, "is_drone", False)
 
+        can_move = getattr(owner, "can_move", True)
+        if not can_move:
+            return self._turret_action(owner, player, floor, dist)
+
+        is_drone = getattr(owner, "is_drone", False)
         if is_drone:
-            return self._drone_action(owner, player, floor, dist, DRONE_PREFERRED_DIST)
+            raw_pref = getattr(owner, "preferred_dist", 0)
+            preferred_dist = raw_pref if raw_pref > 0 else DRONE_PREFERRED_DIST
+            return self._drone_action(owner, player, floor, dist, preferred_dist)
         else:
             return self._guard_action(owner, player, floor, dist)
 
@@ -70,30 +74,47 @@ class CombatState(BehaviorState):
         # Path toward player
         return self._step_toward(owner, player, floor) or WaitAction()
 
-    def _drone_action(self, owner, player, floor, dist, preferred_dist) -> "Action":
-        from dungeoneer.combat.action import (
-            MoveAction, RangedAttackAction, WaitAction
-        )
+    def _turret_action(self, owner, player, floor, dist) -> "Action":
+        from dungeoneer.combat.action import RangedAttackAction, WaitAction
         from dungeoneer.combat.line_of_sight import has_los
+
+        weapon_range = getattr(getattr(owner, 'equipped_weapon', None), 'range_tiles', 8)
+        has_line = has_los(owner.x, owner.y, player.x, player.y, floor.dungeon_map)
+        if has_line and dist <= weapon_range:
+            return RangedAttackAction(player, max_range=weapon_range)
+        # Lost sight — return to idle (turrets don't pursue)
+        owner.ai_brain.set_state(IdleState())
+        return WaitAction()
+
+    def _drone_action(self, owner, player, floor, dist, preferred_dist) -> "Action":
+        from dungeoneer.combat.action import RangedAttackAction, WaitAction
+        from dungeoneer.combat.line_of_sight import has_los
+
+        weapon_range = getattr(getattr(owner, 'equipped_weapon', None), 'range_tiles', 8)
+        always_retreat     = getattr(owner, 'always_retreat', False)
+        retreat_when_close = getattr(owner, 'retreat_when_close', True)
 
         # Read and clear the "was shot at" flag set by ActionResolver.
         was_shot_at = getattr(owner, 'was_shot_at', False)
         owner.was_shot_at = False
 
-        # Only flee when the player is actively closing in.
+        # Only flee when the player is actively closing in (for normal drones).
         prev_dist = getattr(self, '_prev_dist', dist)
         self._prev_dist = dist
         player_approaching = dist < prev_dist
 
         has_line = has_los(owner.x, owner.y, player.x, player.y, floor.dungeon_map)
 
-        if has_line and dist <= 8:
-            if dist < preferred_dist and not was_shot_at and player_approaching:
-                # Too close, player is advancing, and not under fire — back away
+        if has_line and dist <= weapon_range:
+            retreat = (
+                dist < preferred_dist
+                and (always_retreat or (retreat_when_close and not was_shot_at and player_approaching))
+            )
+            if retreat:
                 step = self._step_away(owner, player, floor)
                 if step:
                     return step
-            return RangedAttackAction(player, max_range=8)
+            return RangedAttackAction(player, max_range=weapon_range)
 
         # No LOS or out of range — move toward player
         return self._step_toward(owner, player, floor) or WaitAction()
