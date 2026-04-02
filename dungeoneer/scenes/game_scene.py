@@ -43,7 +43,7 @@ from dungeoneer.rendering.ui.inventory_ui import InventoryUI
 from dungeoneer.rendering.ui.weapon_picker import WeaponPickerUI
 from dungeoneer.rendering.ui.help_catalog import (
     HelpCatalogOverlay, _TAB_EXPLORATION, _TAB_AIMING, _TAB_MELEE, _TAB_HEALING,
-    _TAB_ITEMS, _TAB_HEAT,
+    _TAB_ITEMS, _TAB_HEAT, _TAB_VAULT,
 )
 from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
@@ -124,6 +124,11 @@ class GameScene(Scene):
         self._aim_target: Enemy | None = None   # currently highlighted ranged target
         self._aim_overlay = None                # AimOverlay instance when aiming
         self._melee_overlay = None              # MeleeOverlay instance when charging melee
+        self._vault_overlay = None              # VaultOverlay instance when draining
+        self._vault_container = None            # the objective ContainerEntity
+        self._vault_credits_banked: int = 0     # credits accumulated across sessions
+        self._vault_fully_drained: bool = False
+        self._vault_session_state: dict | None = None  # cursor/drain state saved between sessions
         # Elevator animation state machine: None | "opening" | "entering" | "closing" | "descending"
         self._elevator_phase: str | None = None
         self._elevator_timer: float = 0.0
@@ -136,12 +141,11 @@ class GameScene(Scene):
         self._hint_font   = pygame.font.SysFont("consolas", 14, bold=True)
 
     def on_enter(self) -> None:
-        log.info("GameScene.on_enter")
+        log.info(f"GameScene.on_enter  tutorial_enabled={self.tutorial_manager.enabled}")
         self._subscribe_events()
         self.audio.attach()
         self._load_floor(depth=1)
         self.music.start()
-        self._maybe_show_tutorial("movement")
 
     def on_exit(self) -> None:
         log.info("GameScene.on_exit  game_over=%s", self._game_over)
@@ -265,21 +269,45 @@ class GameScene(Scene):
             elif spawn.kind == "container":
                 self.floor.add_container(self._make_container(spawn.x, spawn.y))
 
-        # On the final floor replace the elevator with the mission objective.
-        # The vault is placed on the walkable floor tile adjacent to the elevator.
+        # On the final floor keep the elevator for extraction and place the vault
+        # in the same room but at least 3 tiles away so [E] doesn't trigger both.
         if depth == FLOORS_PER_RUN:
-            ex, ey = result.stair_pos  # elevator position
-            self.floor.dungeon_map.set_type(ex, ey, TileType.WALL)  # revert to wall
-            # Find the adjacent floor tile (the one side the elevator was accessible from)
-            vault_x, vault_y = ex, ey
-            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
-                if self.floor.dungeon_map.is_walkable(ex + dx, ey + dy):
-                    vault_x, vault_y = ex + dx, ey + dy
+            import random as _rnd
+            ex, ey = result.stair_pos  # exit elevator stays as ELEVATOR_CLOSED
+            # Find the room containing the elevator and pick a far floor tile for vault
+            vault_x, vault_y = None, None
+            candidates = []
+            for room in result.rooms:
+                if room.x <= ex < room.x + room.w and room.y <= ey < room.y + room.h:
+                    for ty in range(room.y, room.y + room.h):
+                        for tx in range(room.x, room.x + room.w):
+                            if not self.floor.dungeon_map.is_walkable(tx, ty):
+                                continue
+                            if abs(tx - ex) + abs(ty - ey) >= 3:
+                                candidates.append((tx, ty))
                     break
-            obj_credits = self.difficulty.objective_credits
-            self.floor.add_container(
-                ContainerEntity(vault_x, vault_y, credits=obj_credits, is_objective=True, name=t("entity.corp_vault.name"))
-            )
+            if candidates:
+                vault_x, vault_y = _rnd.choice(candidates)
+            else:
+                # Fallback: adjacent tile (shouldn't happen in normal maps)
+                for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                    if self.floor.dungeon_map.is_walkable(ex + dx, ey + dy):
+                        vault_x, vault_y = ex + dx, ey + dy
+                        break
+            if vault_x is not None:
+                obj_credits = self.difficulty.objective_credits
+                self.floor.add_container(
+                    ContainerEntity(vault_x, vault_y, credits=obj_credits,
+                                    is_objective=True, name=t("entity.corp_vault.name"))
+                )
+            # Reset vault state for this run (only on floor 1 load, but depth==FLOORS_PER_RUN
+            # means a fresh run reaching floor 3 — vault is always fresh here)
+            self._vault_credits_banked = 0
+            self._vault_fully_drained = False
+            self._vault_overlay = None
+            self._vault_container = None
+            self._vault_session_state = None
+            self.hud.vault_credits_banked = 0
 
         # Start the arrival animation from the entry elevator on every floor
         # (floor 1: game start; floors 2+: descending from above).
@@ -392,6 +420,19 @@ class GameScene(Scene):
         next_depth = self.player.floor_depth + 1
         log.info("_elevator_descend  next_depth=%d  FLOORS_PER_RUN=%d", next_depth, FLOORS_PER_RUN)
         if next_depth > FLOORS_PER_RUN:
+            # Final extraction: award vault credits before victory
+            if self._vault_credits_banked > 0:
+                total = self._vault_credits_banked
+                if self._vault_fully_drained:
+                    bonus = round(total * settings.VAULT_FULL_DRAIN_BONUS)
+                    self.player.credits += bonus
+                    bus.post(LogMessageEvent(
+                        t("log.vault_bonus").format(bonus=bonus), (200, 200, 80)
+                    ))
+                self.player.credits += total
+                bus.post(LogMessageEvent(
+                    t("log.vault_extract").format(credits=self.player.credits), (80, 230, 160)
+                ))
             self._trigger_game_over(victory=True)
         else:
             self._load_floor(next_depth, existing_player=self.player)
@@ -473,6 +514,8 @@ class GameScene(Scene):
                     self.help_catalog.open_tab(_TAB_MELEE)
                 elif self._heal_overlay is not None:
                     self.help_catalog.open_tab(_TAB_HEALING)
+                elif self._vault_overlay is not None:
+                    self.help_catalog.open_tab(_TAB_VAULT)
                 else:
                     self.help_catalog.open_tab(_TAB_EXPLORATION)
                 self._help_open = True
@@ -494,6 +537,12 @@ class GameScene(Scene):
         if self._melee_overlay is not None:
             for event in events:
                 self._melee_overlay.handle_event(event)
+            return
+
+        # Vault overlay takes exclusive input while active
+        if self._vault_overlay is not None:
+            for event in events:
+                self._vault_overlay.handle_event(event)
             return
 
         # Tutorial overlay takes exclusive input while active
@@ -770,7 +819,9 @@ class GameScene(Scene):
                 if container is not None:
                     action = OpenContainerAction(container)
                     if action.validate(self.player, self.floor):
-                        if not container.is_objective and self.use_minigame:
+                        if container.is_objective:
+                            self._launch_vault(container)
+                        elif self.use_minigame:
                             self._launch_hack(container)
                         else:
                             result = action.execute(self.player, self.floor, self.resolver)
@@ -820,6 +871,11 @@ class GameScene(Scene):
                         bus.post(LogMessageEvent(t("log.reload_no_reserves"), (180, 80, 80)))
                     self.audio.play("no_ammo")
                 continue
+
+            # Objective containers → vault drain minigame
+            if isinstance(action, OpenContainerAction) and action.container.is_objective:
+                self._launch_vault(action.container)
+                break
 
             # Non-objective containers trigger the hack minigame (when enabled).
             if (
@@ -889,6 +945,7 @@ class GameScene(Scene):
     # ------------------------------------------------------------------
 
     _COMBAT_DELAY      = 0.14   # seconds to pause after player acts while enemies visible
+    _ENEMY_INTER_DELAY = 0.08   # seconds between individual enemy turns (visual pacing)
     _BURST_INTERVAL    = 0.09   # seconds between burst shots (visual/audio only)
     _MOVE_HOLD_INITIAL = 0.25   # initial hold delay before auto-repeat begins
     _MOVE_HOLD_REPEAT  = 0.10   # interval between repeated steps (~10 steps/sec)
@@ -908,7 +965,11 @@ class GameScene(Scene):
             self._pending_advance = True
             self._advance_timer   = self._COMBAT_DELAY + extra_delay
         else:
-            self.turn_manager.advance(self.floor, self.resolver)
+            # No enemies on screen — process all remaining AI turns instantly.
+            _safety = 256
+            while not self.turn_manager.is_player_turn() and _safety > 0:
+                self.turn_manager.advance(self.floor, self.resolver)
+                _safety -= 1
             self._update_music_state()
 
     def _is_any_enemy_alert(self) -> bool:
@@ -1105,17 +1166,26 @@ class GameScene(Scene):
     def _enqueue_tutorial(self, step: str) -> None:
         """Mark step as pending and show it immediately or queue it."""
         if not self.tutorial_manager.should_show(step):
+            log.debug(f"Tutorial step '{step}' not shown (disabled or already seen)")
             return
+        log.info(f"Tutorial step '{step}' enqueued")
         self._tutorial_queue.append(step)
         if not self._tutorial_open:
             self._drain_tutorial_queue()
+        else:
+            log.debug(f"Tutorial step '{step}' queued (tutorial already open)")
 
     def _drain_tutorial_queue(self) -> None:
         """Show the next queued step if nothing is currently displayed."""
         if not self._tutorial_open and self._tutorial_queue:
             step = self._tutorial_queue.pop(0)
             self._tutorial_open = True
+            log.info(f"Showing tutorial step '{step}'")
             self.tutorial_overlay.show(step, on_close=self._on_tutorial_close)
+        elif self._tutorial_open:
+            log.debug("Tutorial already open, not draining queue")
+        elif not self._tutorial_queue:
+            log.debug("Tutorial queue empty")
 
     def _on_tutorial_close(self) -> None:
         self._tutorial_open = False
@@ -1323,6 +1393,58 @@ class GameScene(Scene):
         self._had_visible_enemies = now_visible
 
     # ------------------------------------------------------------------
+    # Vault drain minigame integration
+    # ------------------------------------------------------------------
+
+    def _launch_vault(self, container: "ContainerEntity") -> None:
+        """Open the vault drain overlay for an objective container."""
+        if self._vault_fully_drained:
+            bus.post(LogMessageEvent(t("log.vault_empty"), (120, 100, 80)))
+            return
+        if self._vault_overlay is not None:
+            return  # already open
+        from dungeoneer.ai.states import CombatState
+        if any(
+            isinstance(a, Enemy) and isinstance(a.ai_brain.current_state, CombatState)
+            for a in self.floor.actors
+        ):
+            bus.post(LogMessageEvent(t("log.vault_in_combat"), (200, 100, 60)))
+            return
+
+        self._held_move_key = None
+        self._vault_container = container
+        self._maybe_show_tutorial("vault")
+
+        def on_complete(credits_this_session: int, fully_drained: bool) -> None:
+            self._on_vault_complete(credits_this_session, fully_drained)
+
+        from dungeoneer.minigame.vault_scene import VaultOverlay
+        self._vault_overlay = VaultOverlay(
+            total_credits=container.credits,
+            credits_already_drained=self._vault_credits_banked,
+            player=self.player,
+            heat_system=self.heat_system,
+            difficulty=self.difficulty,
+            on_complete=on_complete,
+            session_state=self._vault_session_state,
+        )
+        self.music.start_vault()
+
+    def _on_vault_complete(self, credits_this_session: int, fully_drained: bool) -> None:
+        if self._vault_overlay is not None:
+            self._vault_session_state = self._vault_overlay.get_session_state()
+        self._vault_overlay = None
+        if credits_this_session > 0:
+            self._vault_credits_banked += credits_this_session
+            self.hud.vault_credits_banked = self._vault_credits_banked
+            bus.post(LogMessageEvent(
+                t("log.vault_drained").format(credits=credits_this_session),
+                (80, 230, 160),
+            ))
+        if fully_drained:
+            self._vault_fully_drained = True
+
+    # ------------------------------------------------------------------
     # Cheat / debug menu
     # ------------------------------------------------------------------
 
@@ -1392,6 +1514,52 @@ class GameScene(Scene):
                 from dungeoneer.systems.heat import LEVEL_NAMES
                 bus.post(LogMessageEvent(f"[CHEAT] Heat → {LEVEL_NAMES[level]}", (80, 220, 120)))
 
+        elif action == "vault:open":
+            pos = self._cheat_find_spawn_pos()
+            if pos is None:
+                return
+            tx, ty = pos
+            vault = ContainerEntity(tx, ty, credits=300,
+                                    is_objective=True, name=t("entity.corp_vault.name"))
+            self.floor.add_container(vault)
+            self._vault_session_state = None
+            self._vault_credits_banked = 0
+            self._vault_fully_drained = False
+            self._cheat_menu_open = False
+            self._launch_vault(vault)
+            bus.post(LogMessageEvent("[CHEAT] vault spawned", (80, 220, 120)))
+
+        elif action.startswith("vault:credits:"):
+            amount = int(action.split(":")[-1])
+            self._vault_credits_banked = 0
+            self._vault_fully_drained = False
+            self._vault_overlay = None
+            self._vault_session_state = None
+            # Spawn a fresh vault container so the player can open it
+            pos = self._cheat_find_spawn_pos()
+            if pos is None:
+                return
+            tx, ty = pos
+            vault = ContainerEntity(tx, ty, credits=amount,
+                                    is_objective=True, name=t("entity.corp_vault.name"))
+            self.floor.add_container(vault)
+            bus.post(LogMessageEvent(f"[CHEAT] vault credits set to {amount}", (80, 220, 120)))
+
+        elif action == "vault:drain50":
+            if self._vault_container is not None:
+                self._vault_credits_banked = self._vault_container.credits // 2
+                bus.post(LogMessageEvent("[CHEAT] vault drained 50%", (80, 220, 120)))
+            else:
+                bus.post(LogMessageEvent("[CHEAT] no vault container set", (180, 80, 80)))
+
+        elif action == "vault:reset":
+            self._vault_credits_banked = 0
+            self._vault_fully_drained = False
+            self._vault_overlay = None
+            self._vault_container = None
+            self._vault_session_state = None
+            bus.post(LogMessageEvent("[CHEAT] vault state reset", (80, 220, 120)))
+
     @staticmethod
     def _make_cheat_item(item_id: str):
         """Return a fresh item instance for the given id, or None if unknown."""
@@ -1459,6 +1627,10 @@ class GameScene(Scene):
 
         if self.player is None or self.floor is None or self._game_over:
             return
+
+        # Force-close vault overlay — player can re-enter after combat
+        if self._vault_overlay is not None:
+            self._vault_overlay.force_close()
 
         tier_cap = self.heat_system.tier_cap() if self.heat_system else 1
         available = [
@@ -1765,6 +1937,7 @@ class GameScene(Scene):
                     self._arrival_elevator_pos = None
                     self._arrival_spawn_pos = None
                     compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+                    self._maybe_show_tutorial("movement")
 
         if self._aim_overlay is not None:
             self._aim_overlay.update(dt)
@@ -1790,6 +1963,12 @@ class GameScene(Scene):
             if not self._melee_overlay.is_active:
                 self._melee_overlay = None
 
+        if self._vault_overlay is not None and not self._tutorial_open:
+            _vault_ov = self._vault_overlay
+            _vault_ov.update(dt)
+            if not _vault_ov.is_active:
+                self._vault_overlay = None
+
         # Fire deferred burst-shot DamageEvents at staggered intervals
         if self._burst_queue:
             remaining = []
@@ -1807,6 +1986,10 @@ class GameScene(Scene):
                 self._pending_advance = False
                 self.turn_manager.advance(self.floor, self.resolver)
                 self._update_music_state()
+                # If more enemy turns remain, pace them with a short inter-enemy delay.
+                if not self.turn_manager.is_player_turn() and not self._game_over:
+                    self._pending_advance = True
+                    self._advance_timer   = self._ENEMY_INTER_DELAY
 
         # Auto-repeat movement when a move key is held
         if self._held_move_key is not None and self.player is not None and self.floor is not None:
@@ -1819,6 +2002,7 @@ class GameScene(Scene):
                     and self._aim_overlay is None
                     and self._heal_overlay is None
                     and self._melee_overlay is None
+                    and self._vault_overlay is None
                     and self._elevator_phase is None
                     and self._arrival_phase is None
                     and not self._inventory_open
@@ -1879,6 +2063,7 @@ class GameScene(Scene):
                 and self._aim_overlay is None
                 and self._heal_overlay is None
                 and self._melee_overlay is None
+                and self._vault_overlay is None
             )
             _hint_text: str | None = None
             _hint_col: tuple = (220, 220, 100)
@@ -1887,7 +2072,10 @@ class GameScene(Scene):
                     _hint_text = t("hint.container_open")
                     _hint_col  = (80, 200, 200)
                 elif self._adjacent_elevator_pos() is not None:
-                    _hint_text = t("hint.elevator_descend")
+                    if self.player and self.player.floor_depth == FLOORS_PER_RUN:
+                        _hint_text = t("hint.elevator_extract")
+                    else:
+                        _hint_text = t("hint.elevator_descend")
                 elif self._adjacent_entry_elevator_pos() is not None:
                     _hint_text = t("hint.elevator_no_return")
                     _hint_col  = (160, 130, 90)
@@ -1924,6 +2112,9 @@ class GameScene(Scene):
             if self._melee_overlay is not None:
                 cam = self.renderer.camera
                 self._melee_overlay.render(screen, cam.offset_x, cam.offset_y)
+            # Vault overlay (centred panel, no scene push)
+            if self._vault_overlay is not None:
+                self._vault_overlay.render(screen)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:

@@ -4,9 +4,32 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-29, in dev)
+## Current State (2026-03-31, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+
+### New (2026-03-31) — Vault drain minigame
+- **VaultOverlay** (`minigame/vault_scene.py`) — cursor-tracking credit-drain minigame on floor 3
+- 1D vertical cursor (0–1), physics: velocity + VAULT_DAMPING damping + Gaussian drift
+- Drift scales with heat level and difficulty.vault_drift_mult (Easy=0.7×, Hard=1.3×)
+- Last 20% of total credits: drift×2.0 (player doesn't see % but feels it)
+- **Zone checks** every 1.5s: Perfect/Good/Bad/Fail → adjust multiplier [0.3–2.0] + add heat
+- Credits drain at base_rate × multiplier; player sees earned total only (no remaining/total)
+- Voluntary disconnect: Q/Esc — player can re-enter vault later
+- Patrol interrupt: force_close() called from `_on_heat_level_up` — re-entry still allowed
+- Vault fully drained → +25% bonus applied at extraction
+- **GameScene integration**: _vault_overlay/container/credits_banked/fully_drained state vars
+  - Floor 3: elevator KEPT for extraction (E→Extract); vault placed ≥3 tiles away in same room
+  - Extraction: _elevator_descend on floor 3 awards vault_credits_banked (+ bonus) → victory
+  - OpenContainerAction on is_objective → _launch_vault(); bypass action_resolver
+  - LMB on objective container also routes to _launch_vault()
+  - music.duck(0.15) on open, unduck on complete
+- **i18n**: `vault.*`, `log.vault_*`, `hint.elevator_extract`, `tutorial.vault.*`, `help_catalog.vault.*`, `cheat.*vault*` (en/cs/es)
+- **help_catalog**: VAULT tab (_TAB_VAULT=9) with zone gauge illustration
+- **tutorial_overlay**: "vault" step added; procedural gauge illustration
+- **cheat_menu**: VAULT section — open overlay, set credits 100/300/500, drain 50%, reset
+- **settings**: VAULT_* constants in core/settings.py; vault_drift_mult in Difficulty
+- Music: vault.mp3 plays from first vault open until run ends (death or escape); ducks 0.15 while overlay is open; MusicManager.start_vault() on ch2, idempotent on re-entry
 
 ### New (2026-03-29) — Heat system
 - **HeatSystem** (`systems/heat.py`) — 5 levels (GHOST/TRACE/ALERT/PURSUIT/BURN), stored on `Player.heat` (0–500)

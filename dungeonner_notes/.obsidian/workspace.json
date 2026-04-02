@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Fatures/Heat.md",
+                "file": "Fatures/Metagame — perky, skilly, progrese.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Heat"
+              "title": "Metagame — perky, skilly, progrese"
             }
           },
           {
@@ -27,16 +27,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Progress/Rebalanc obtížností.md",
+                "file": "Fatures/Rebalanc.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Rebalanc obtížností"
+              "title": "Rebalanc"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -195,19 +194,19 @@
       "bases:Create new base": false
     }
   },
-  "active": "cb4ef874230baae3",
+  "active": "5d9ca364465c6477",
   "lastOpenFiles": [
+    "Fatures/Hackovací minihra.md",
+    "Done/Finální vault - minihra.md",
+    "Done/Heat.md",
     "Fatures/Rebalanc.md",
-    "Progress/Rebalanc obtížností.md",
     "Progress/TODO.md",
+    "Progress/Rebalanc obtížností.md",
     "Fatures/Metagame — perky, skilly, progrese.md",
-    "Fatures/Heat.md",
+    "Progress/Obrázky.md",
     "Done/Enemies.md",
     "Done.md",
     "Done",
-    "Fatures/Finální vault - minihra.md",
-    "Fatures/Hackovací minihra.md",
-    "Progress/Obrázky.md",
     "Progress/Next steps.md",
     "Fatures/Enemies.md.tmp.5596.1774807121369",
     "Fatures/Ukládání hry.md",

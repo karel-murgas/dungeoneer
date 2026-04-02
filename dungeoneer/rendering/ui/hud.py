@@ -31,7 +31,8 @@ class HUD:
         self.weapon_rect:   pygame.Rect | None = None
         self.heal_rect:     pygame.Rect | None = None
         self.help_btn_rect: pygame.Rect | None = None
-        self.heat_system = None   # set by GameScene after HeatSystem is created
+        self.heat_system = None          # set by GameScene after HeatSystem is created
+        self.vault_credits_banked: int = 0  # set by GameScene when vault credits change
 
     # ------------------------------------------------------------------
     # Helpers
@@ -178,19 +179,31 @@ class HUD:
         self._blit_text(screen, self._font_small, armor_str, armor_col,
                         (bar_x, _WY + 2 * line_h))
 
-        # ── right panel (floor depth + credits) ───────────────────────
-        depth_str = t("hud.floor").format(n=player.floor_depth)
-        cr_str    = f"¥ {player.credits}"
-        lh_large  = self._font_large.get_height()
-        r_w  = max(self._font_large.size(depth_str)[0],
-                   self._font_large.size(cr_str)[0])
-        r_h  = 2 * lh_large + 4 + 2 * _M
+        # ── right panel (floor depth + credits [+ vault pending]) ────
+        depth_str  = t("hud.floor").format(n=player.floor_depth)
+        cr_str     = f"¥ {player.credits}"
+        vault_str  = (
+            t("hud.vault_pending").format(n=self.vault_credits_banked)
+            if self.vault_credits_banked > 0 else None
+        )
+        lh_large   = self._font_large.get_height()
+        lh_small   = self._font_small.get_height()
+        r_w = max(self._font_large.size(depth_str)[0],
+                  self._font_large.size(cr_str)[0])
+        if vault_str:
+            r_w = max(r_w, self._font_small.size(vault_str)[0])
+        r_h = 2 * lh_large + 4 + 2 * _M
+        if vault_str:
+            r_h += lh_small + 4
         r_x  = sw - r_w - 12
         self._draw_panel(screen, r_x - _M, 12 - _M, r_w + 2 * _M, r_h)
 
         self._blit_text(screen, self._font_large, depth_str, (120, 200, 180), (r_x, 12))
         self._blit_text(screen, self._font_large, cr_str, (200, 190, 80),
                         (r_x, 12 + lh_large + 4))
+        if vault_str:
+            self._blit_text(screen, self._font_small, vault_str, (60, 210, 180),
+                            (r_x, 12 + 2 * lh_large + 8))
 
         # ── heat bar (centre-top) ─────────────────────────────────────
         self._draw_heat_bar(screen)

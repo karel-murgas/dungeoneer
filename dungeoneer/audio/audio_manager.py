@@ -50,8 +50,9 @@ class AudioManager:
         sound = self._sounds.get(name)
         if sound:
             actual = max(0.0, min(1.0, volume * settings.SFX_VOLUME * settings.MASTER_VOLUME))
-            sound.set_volume(actual)
-            sound.play()
+            channel = sound.play()
+            if channel is not None:
+                channel.set_volume(actual)
 
     # ------------------------------------------------------------------
     # Event handlers
@@ -286,13 +287,13 @@ class AudioManager:
 
     def _gen_heart_du(self) -> np.ndarray:
         # Deep short thump — first beat of du-dum (contraction)
-        thump = self._tone(55, 85, vol=0.75, freq_end=35, exp=0.5)
-        body  = self._tone(110, 65, vol=0.45, freq_end=55, exp=0.8)
+        thump = self._tone(55, 85, vol=1.0, freq_end=35, exp=0.5)
+        body  = self._tone(110, 65, vol=0.85, freq_end=55, exp=0.8)
         return self._mix(thump, body[:len(thump)])
 
     def _gen_heart_dum(self) -> np.ndarray:
         # Softer secondary beat — second beat of du-dum (relaxation)
-        beat = self._tone(80, 65, vol=0.50, freq_end=50, exp=0.7)
+        beat = self._tone(80, 65, vol=0.90, freq_end=50, exp=0.7)
         return beat
 
     def _gen_action_denied(self) -> np.ndarray:

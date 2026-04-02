@@ -122,14 +122,28 @@ class CombatState(BehaviorState):
     def _step_toward(self, owner, player, floor) -> Optional["Action"]:
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
+        from dungeoneer.core.settings import AI_REPOSITION_MAX_DETOUR
 
+        # Block containers and other alive actors (allies) so A* routes around them.
         blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
+        blocked += [
+            (a.x, a.y) for a in floor.actors
+            if a is not owner and a is not player and a.alive
+        ]
+
         path = Pathfinder().find_path(
             (owner.x, owner.y), (player.x, player.y), floor.dungeon_map,
             extra_blocked=blocked,
         )
         if not path:
             return None
+
+        # Reject paths that require a large detour — enemy waits instead of
+        # wandering the whole map to find another route.
+        direct_dist = abs(owner.x - player.x) + abs(owner.y - player.y)
+        if len(path) > direct_dist + AI_REPOSITION_MAX_DETOUR:
+            return None
+
         nx, ny = path[0]
         if floor.get_actor_at(nx, ny) is None:
             return MoveAction(nx - owner.x, ny - owner.y)

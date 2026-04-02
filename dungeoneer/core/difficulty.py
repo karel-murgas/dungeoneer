@@ -33,6 +33,9 @@ class Difficulty:
     # Melee minigame — oscillation frequency multiplier
     melee_freq_mult: float = 1.0
 
+    # Vault drain minigame — random cursor drift multiplier
+    vault_drift_mult: float = 1.0
+
     # Healing minigame — timing thresholds (ms).
     # Quality tier = first threshold the sum |press_off| + |release_off| falls below.
     # Tuple: (perfect_ms, great_ms, good_ms, poor_ms); anything ≥ poor_ms → miss.
@@ -56,6 +59,7 @@ EASY = Difficulty(
     player_aim_skill=4.0,   # mostly hits when minigame is OFF
     melee_freq_mult=0.75,
     heal_timing_thresholds=(100, 200, 300, 400),
+    vault_drift_mult=0.7,
 )
 
 NORMAL = Difficulty(
@@ -81,4 +85,5 @@ HARD = Difficulty(
     aim_needle_speed_mult=1.35,
     player_aim_skill=1.5,   # more misses when minigame is OFF
     melee_freq_mult=1.3,
+    vault_drift_mult=1.3,
 )

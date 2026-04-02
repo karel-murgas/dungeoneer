@@ -19,21 +19,21 @@ Perky mohou být **aktivní (A)** nebo **pasivní (P)**. Lze je zapínat a vypí
 
 ### Perky — přehled
 
-| Typ | Efekt                                                                                                                      |
-| --- | -------------------------------------------------------------------------------------------------------------------------- |
-| (A) | **Counteruje efekt ICE** — udělá z ICE uzlu neutral uzel. Musí stihnout během warning zprávy, jinak energie přijde vniveč. |
-| (P) | **Bonus při criticalu** — statusy? Lze nakoupit víc, ale vybíráš jen jeden?                                                |
-| (P) | Zrychlí ručičku při aimu o 20 %, zvýší damage o 20 %.                                                                      |
-| (A) | **Neviditelnost** — stojí energii za každé kolo, zruší se útokem nebo hackem.                                              |
-| (A) | **Otevírání tajných chodeb** — stojí energii za použití zvenku.                                                            |
-| (P) | **Odemykání zbraní a zbrojí** — bez toho zbroj nefunguje a zbraně mají poloviční dmg nebo přesnost (rozmyslet).            |
-| (P) | **Odemknutí výbušnin**.                                                                                                    |
-| (A) | **Past** — nastražíš na políčko, kdo do ní vstoupí dostane dmg.                                                            |
-| (A) | **Strip armor** — příští zásah sníží armor cíle o 1. 2 levely.                                                             |
-| (P) | **Pohyb a střelba** (aktivní, zadarmo) — provedeš obojí, ale s poloviční přesností.                                        |
-| (P) | Vyšší **dohled** o 1.                                                                                                      |
-| (A) | **Heal** (5 nebo 10?) — sníží přesnost na příští fight o x % (kumulativně).                                                |
-| (P) | Zviditelní loot při hackovací minihře (které náboje, která zbraň, ...) - více levelů (heal, munice, zbraně)                |
+| Typ | Efekt                                                                                                                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------------- |
+| (A) | **Counteruje efekt ICE** — udělá z ICE uzlu neutral uzel. Musí stihnout během warning zprávy, jinak energie přijde vniveč.   |
+| (P) | **Bonus při criticalu** — statusy? Lze nakoupit víc, ale vybíráš jen jeden?                                                  |
+| (P) | Zrychlí ručičku při aimu o 20 %, zvýší damage o 20 %.                                                                        |
+| (A) | **Neviditelnost** — stojí energii za každé kolo, zruší se útokem nebo hackem.                                                |
+| (A) | **Otevírání tajných chodeb** — stojí energii za použití zvenku.                                                              |
+| (P) | **Odemykání zbraní a zbrojí** — bez toho zbroj nefunguje a zbraně mají poloviční dmg nebo přesnost (rozmyslet).              |
+| (P) | **Odemknutí výbušnin**.                                                                                                      |
+| (A) | **Past** — nastražíš na políčko, kdo do ní vstoupí dostane dmg.                                                              |
+| (A) | **Strip armor** — příští zásah sníží armor cíle o 1. 2 levely.                                                               |
+| (P) | **Pohyb a střelba** (aktivní, zadarmo) — provedeš obojí, ale s poloviční přesností.                                          |
+| (P) | Vyšší **dohled** o 1.                                                                                                        |
+| (A) | **Heal** (5 nebo 10?) — sníží přesnost na příští fight o x % (kumulativně).                                                  |
+| (P) | **Network scan** Zviditelní loot při hackovací minihře (které náboje, která zbraň, ...) - více levelů (heal, munice, zbraně) |
 
 
 Perky mohou mít **více levelů**.

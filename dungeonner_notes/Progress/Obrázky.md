@@ -12,8 +12,7 @@
 - [ ] Final vault / mainframe
 ## Bytosti
 - [ ] Hráč
-- [ ] Guard
-- [ ] Dron
+- [ ] Enemies
 ## Menu
 - [ ] Nápověda
 - [ ] Nastavení

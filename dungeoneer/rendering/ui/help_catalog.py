@@ -286,6 +286,21 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.enem.3.riot",
         ]),
     ]),
+    ("help_catalog.tab.vault", [
+        ("help_catalog.vault.header", [
+            "help_catalog.vault.cursor",
+            "help_catalog.vault.checks",
+            "help_catalog.vault.multiplier",
+            "help_catalog.vault.heat",
+            "help_catalog.vault.volatility",
+            "help_catalog.vault.patrol",
+            "help_catalog.vault.finale",
+            "help_catalog.vault.reenter",
+            "help_catalog.vault.bonus",
+            "help_catalog.vault.credits_on_leave",
+            "help_catalog.vault.extract",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
@@ -296,6 +311,7 @@ _TAB_HACKING     = 5
 _TAB_ITEMS       = 6
 _TAB_HEAT        = 7
 _TAB_ENEMIES     = 8
+_TAB_VAULT       = 9
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -540,6 +556,8 @@ class HelpCatalogOverlay:
             return self._draw_enemies_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_ITEMS:
             return self._draw_items_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_VAULT:
+            return self._draw_vault_illustration(screen, ox, cy, pw)
         return 0
 
     # ------------------------------------------------------------------
@@ -1105,6 +1123,67 @@ class HelpCatalogOverlay:
             lbl_surf = self._font_ill.render(label, True, _COL_TXT)
             screen.blit(lbl_surf,
                         (cell_cx - lbl_surf.get_width() // 2, iy + spr_size + 3))
+
+        return panel_h
+
+    # ------------------------------------------------------------------
+    # Vault illustration — vertical gauge with zone colours + cursor
+    # ------------------------------------------------------------------
+
+    def _draw_vault_illustration(self, screen: pygame.Surface,
+                                  ox: int, cy: int, pw: int) -> int:
+        """Draw a static vertical gauge showing the four zone bands."""
+        from dungeoneer.core.settings import (
+            VAULT_ZONE_PERFECT, VAULT_ZONE_GOOD, VAULT_ZONE_BAD,
+        )
+        panel_h = 160
+        bx = ox + pw // 2 - 14
+        gh = 120
+        gw = 28
+        gy = cy + 12
+
+        _C_FAIL    = (220,  40,  40)
+        _C_BAD     = (220, 140,  20)
+        _C_GOOD    = (160, 220,  40)
+        _C_PERFECT = (0,   220,  80)
+
+        def _band(lo: float, hi: float, col: tuple) -> None:
+            top_y = gy + gh - round(hi * gh)
+            bot_y = gy + gh - round(lo * gh)
+            if bot_y > top_y:
+                pygame.draw.rect(screen, col, (bx, top_y, gw, bot_y - top_y))
+
+        pygame.draw.rect(screen, (20, 35, 30), (bx, gy, gw, gh), border_radius=3)
+        _band(0.0, 0.5 - VAULT_ZONE_BAD, _C_FAIL)
+        _band(0.5 + VAULT_ZONE_BAD, 1.0,  _C_FAIL)
+        _band(0.5 - VAULT_ZONE_BAD,  0.5 - VAULT_ZONE_GOOD, _C_BAD)
+        _band(0.5 + VAULT_ZONE_GOOD, 0.5 + VAULT_ZONE_BAD,  _C_BAD)
+        _band(0.5 - VAULT_ZONE_GOOD, 0.5 - VAULT_ZONE_PERFECT, _C_GOOD)
+        _band(0.5 + VAULT_ZONE_PERFECT, 0.5 + VAULT_ZONE_GOOD, _C_GOOD)
+        _band(0.5 - VAULT_ZONE_PERFECT, 0.5 + VAULT_ZONE_PERFECT, _C_PERFECT)
+        pygame.draw.rect(screen, (50, 120, 100), (bx, gy, gw, gh), 1, border_radius=3)
+
+        # Cursor marker at centre (0.5)
+        marker_y = gy + gh - round(0.5 * gh)
+        pygame.draw.rect(screen, (240, 240, 255),
+                         (bx - 4, marker_y - 2, gw + 8, 4), border_radius=2)
+
+        # Zone labels
+        font_s = pygame.font.SysFont("consolas", 11, bold=True)
+        right_x = bx + gw + 6
+        for label, col, frac in [
+            ("PERFECT", _C_PERFECT, 0.5),
+            ("GOOD",    _C_GOOD,    0.5 - VAULT_ZONE_GOOD + 0.05),
+            ("BAD",     _C_BAD,     0.5 - VAULT_ZONE_BAD  + 0.02),
+            ("FAIL",    _C_FAIL,    0.05),
+        ]:
+            lbl_y = gy + gh - round(frac * gh) - font_s.get_height() // 2
+            screen.blit(font_s.render(label, True, col), (right_x, lbl_y))
+
+        # Key hint
+        font_k = pygame.font.SysFont("consolas", 12, bold=True)
+        hint = font_k.render("\u2191\u2193 / WS", True, (0, 200, 160))
+        screen.blit(hint, (ox + pw // 2 - hint.get_width() // 2, gy + gh + 8))
 
         return panel_h
 

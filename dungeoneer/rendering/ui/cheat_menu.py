@@ -68,6 +68,13 @@ _ROWS: list[tuple[str, str, str | None]] = [
     ("item",    "cheat.heat.level3",        "heat_level:3"),
     ("item",    "cheat.heat.level4",        "heat_level:4"),
     ("item",    "cheat.heat.level5",        "heat_level:5"),
+    ("section", "cheat.section.vault",      None),
+    ("item",    "cheat.vault.open",         "vault:open"),
+    ("item",    "cheat.vault.credits100",   "vault:credits:100"),
+    ("item",    "cheat.vault.credits300",   "vault:credits:300"),
+    ("item",    "cheat.vault.credits500",   "vault:credits:500"),
+    ("item",    "cheat.vault.drain50",      "vault:drain50"),
+    ("item",    "cheat.vault.reset",        "vault:reset"),
 ]
 
 # Indices of selectable rows (kind == "item")

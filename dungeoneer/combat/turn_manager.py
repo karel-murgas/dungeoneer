@@ -142,6 +142,4 @@ class TurnManager:
                     if attacks_used >= max_attacks:
                         break
 
-            self.advance(floor, resolver)
-
         self._depth -= 1

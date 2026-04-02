@@ -81,16 +81,16 @@ dungeoneer/
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
-│       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing); open_tab(idx) for context-specific tab; used in MainMenu + GameScene + HackGridScene
+│       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Aiming/Melee/Healing/Hacking/Items/Heat/Enemies/Vault); open_tab(idx); _TAB_VAULT=9
 │       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
-│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 6 steps incl. melee, procedural illustrations)
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 8 steps incl. melee, heat, vault; procedural illustrations)
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
-│   ├── music_manager.py — MusicManager: equal-power crossfade BGM (calm↔action); channels 0+1 reserved; pause()/resume(); refresh_volume() for live updates
+│   ├── music_manager.py — MusicManager: equal-power crossfade BGM (calm↔action); channels 0+1+2 reserved; start_vault() switches to vault.mp3 on ch2 (idempotent, persists until stop()); pause()/resume(); refresh_volume() for live updates
 │   └── sound_events.py  — sound event types
 │
-├── assets/audio/music/  — calm.mp3, action.mp3, hacking.mp3, menu.mp3 (copied from sources/music/)
+├── assets/audio/music/  — calm.mp3, action.mp3, hacking.mp3, menu.mp3, vault.mp3 (copied from sources/music/)
 │
 ├── scenes/
 │   ├── main_menu_scene.py — MainMenuScene(Scene): hub with Start/Quit + ⚙ Settings + ? Help icons; all config in SettingsOverlay; ? opens HelpCatalogOverlay
@@ -106,7 +106,8 @@ dungeoneer/
 │   ├── hack_common.py       — shared colours (neon palette), draw helpers (corner bracket, glow circle), make_loot_item()
 │   ├── aim_scene.py         — AimOverlay (plain class, NOT a Scene): in-world arc overlay owned by GameScene; on_complete(list[float])
 │   ├── heal_scene.py        — HealOverlay (plain class, NOT a Scene): centred panel overlay; heartbeat rhythm minigame; 5-tier scoring (Perfect/Great/Good/Poor/Miss); on_complete(int actual_heal)
-│   └── melee_scene.py       — MeleeOverlay (plain class, NOT a Scene): in-world power bar overlay; 2-phase (IDLE→CHARGING); compound sine oscillation (no accel); timer countdown in CHARGING; on_complete(float power)
+│   ├── melee_scene.py       — MeleeOverlay (plain class, NOT a Scene): in-world power bar overlay; 2-phase (IDLE→CHARGING); compound sine oscillation (no accel); timer countdown in CHARGING; on_complete(float power)
+│   └── vault_scene.py       — VaultOverlay (plain class, NOT a Scene): centred panel; 1D vertical cursor drain; physics (velocity+damping+drift); periodic zone checks; on_complete(credits_this_session, fully_drained)
 │
 main.py                  — entry point
 main_hack.py             — standalone hack minigame entry point (dev/test)

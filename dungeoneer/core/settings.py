@@ -55,6 +55,7 @@ FOV_RADIUS = 10
 BASE_MELEE_DAMAGE   = 4
 BASE_RANGED_DAMAGE  = 5
 DRONE_PREFERRED_DIST = 4    # tiles drone tries to stay away
+AI_REPOSITION_MAX_DETOUR = 2  # extra tiles an enemy will walk to go around a friendly blocker
 
 # Aiming minigame
 AIM_ARC_DEGREES:    float = 90.0   # arc span in degrees — adjust for different "feel"
@@ -103,3 +104,36 @@ HEAT_COOLANT_REDUCE:   int   = 12    # heat removed by a COOLANT node (applied a
 HEAT_HACK_TIME_OFFSET: float = 2.0   # seconds added at level 1; formula: (2 − level) seconds
 HEAT_HACK_TIME_FLOOR:  float = 4.0   # minimum time_limit (hard + high heat)
 HEAT_PATROL_COUNT:     tuple = (1, 2) # (min, max) enemies in a heat-triggered patrol
+
+# Vault drain minigame
+VAULT_CHECK_INTERVAL:    float = 1.0    # seconds between position checks
+VAULT_IMPULSE:           float = 3.0    # velocity added per frame while key held (strong push, needs dosing)
+VAULT_DAMPING:           float = 0.960  # velocity damping per frame — low = momentum/overshoot
+VAULT_DRIFT_SIGMA:       float = 0.3    # base random drift (frame noise, cancels out quickly)
+VAULT_DRIFT_HEAT_SCALE:  float = 0.35   # drift+spring increase per heat level above 1
+VAULT_DRIFT_FINALE_MULT: float = 1.0    # disabled — heat scaling handles late-game difficulty naturally
+VAULT_OUTWARD_BIAS:      float = 1.2    # anti-spring: pushes cursor away from centre (sqrt-scaled, main force)
+VAULT_DRIFT_SPEED_VARY:  float = 0.60   # amplitude of oscillating drift-speed multiplier (0 = constant)
+VAULT_DRIFT_SPEED_FREQ:  float = 0.45   # Hz of drift-speed oscillation cycle
+VAULT_WIND_SIGMA:        float = 1.5    # how fast the persistent wind changes each frame
+VAULT_WIND_DAMPING:      float = 0.990  # wind persistence per frame
+VAULT_ZONE_PERFECT:      float = 0.06   # |pos-0.5| threshold for Perfect (tight)
+VAULT_ZONE_GOOD:         float = 0.15   # |pos-0.5| threshold for Good
+VAULT_ZONE_BAD:          float = 0.30   # |pos-0.5| threshold for Bad
+VAULT_DRAIN_SECONDS:     float = 30.0   # base time for full drain at 1.0x mult
+VAULT_MULT_MIN:          float = 0.   # minimum drain multiplier
+VAULT_MULT_MAX:          float = 2.0    # maximum — perfect play sustains full speed, bad slows down
+VAULT_FULL_DRAIN_BONUS:  float = 0.25   # +25% credits for draining everything
+VAULT_RESULT_PAUSE:      float = 0.8    # seconds to show result before closing
+
+# Heat per vault check by zone
+VAULT_HEAT_PERFECT:      int = 6
+VAULT_HEAT_GOOD:         int = 7
+VAULT_HEAT_BAD:          int = 9
+VAULT_HEAT_FAIL:         int = 12
+
+# Multiplier changes per vault check by zone
+VAULT_MULT_PERFECT:      float =  0.15
+VAULT_MULT_GOOD:         float =  0.00
+VAULT_MULT_BAD:          float = -0.15
+VAULT_MULT_FAIL:         float = -0.30

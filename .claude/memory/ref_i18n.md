@@ -66,7 +66,14 @@ set_language("cs")
 | `item.*` | Item names + descriptions (weapons, consumables, ammo, armor) |
 | `entity.*` | Entity names (player, guard, drone, dog, heavy, turret, sniper_drone, riot_guard, crate, corp_vault) |
 | `log.*` | Gameplay log messages (combat, pickup, containers, healing, equip, reload, drop, descent, credits_drop, action-denied feedback) |
-| `hint.*` | In-world contextual hints: `hint.elevator_descend` (adjacent to descent elevator), `hint.elevator_no_return` (adjacent to entry/arrival elevator — "no way back"), `hint.container_open` (adjacent to unopened container — "[E] Open container") |
+| `hint.*` | In-world contextual hints: `hint.elevator_descend` (adjacent to descent elevator), `hint.elevator_no_return` (adjacent to entry/arrival elevator — "no way back"), `hint.container_open` (adjacent to unopened container — "[E] Open container"), `hint.elevator_extract` (adjacent to elevator on final floor) |
+| `vault.*` | VaultOverlay: title, credits, multiplier, heat label, controls hint, disconnect hint, drained/severed messages |
+| `vault.zone.*` | Zone result names: perfect / good / bad / fail |
+| `log.vault_*` | Vault log messages: drained, bonus, interrupted, empty, extract, in_combat |
+| `tutorial.vault.*` | Vault tutorial step (title + body) |
+| `help_catalog.vault.*` | VAULT tab content in help catalog |
+| `cheat.section.vault` | Vault section header in cheat menu |
+| `cheat.vault.*` | Vault cheat row labels (open, credits, drain50, reset) |
 | `hack.status.*` | HackScene footer status bar text |
 | `hack.overlay.*` | HackScene security/loot overlay banners (title + sub) |
 | `hack.result.*` | HackScene final result overlay |

@@ -1,6 +1,6 @@
-- Dynamicky generovaní dynamicky, ne na začátku hry. Při odhalení místnosti se vygeneruje, jestli v ní někdo je a kdo.
+- Generovaní nepřátel dynamicky, ne na začátku hry. Při odhalení místnosti se vygeneruje, jestli v ní někdo je a kdo.
 - Může se generovat víc nepřátel najednou (záleží na heat levelu)
--  Nikdy víc než 2 střelci
+-  Nikdy ne víc než 2 střelci najednou
 - Typ nepřátel bude také daný heatem
 - Heat:
 	- Lvl 1 - osamělí nepřátelé (jaké teď)
