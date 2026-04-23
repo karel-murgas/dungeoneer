@@ -112,8 +112,8 @@ def make_guard(x: int, y: int) -> Enemy:
             (0.15, "stim_pack"),
             (0.05, "energy_sword"),
         ],
-        credits_range=(3, 10),
-        credits_chance=0.50,
+        credits_range=(1, 5),
+        credits_chance=0.30,
     )
     enemy.equipped_weapon = make_combat_knife()
     return enemy
@@ -134,8 +134,8 @@ def make_drone(x: int, y: int) -> Enemy:
             (0.30, "stim_pack"),
             (0.10, "medkit"),
         ],
-        credits_range=(8, 18),
-        credits_chance=0.50,
+        credits_range=(2, 6),
+        credits_chance=0.30,
     )
     enemy.equipped_weapon = make_pistol()
     return enemy
@@ -157,8 +157,8 @@ def make_dog(x: int, y: int) -> Enemy:
         loot_table=[
             (0.15, "stim_pack"),
         ],
-        credits_range=(2, 8),
-        credits_chance=0.30,
+        credits_range=(1, 3),
+        credits_chance=0.20,
     )
     enemy.equipped_weapon = make_k9_bite()
     return enemy
@@ -181,8 +181,8 @@ def make_heavy(x: int, y: int) -> Enemy:
             (0.30, "ammo_9mm"),
             (0.10, "medkit"),
         ],
-        credits_range=(10, 20),
-        credits_chance=0.60,
+        credits_range=(3, 8),
+        credits_chance=0.40,
     )
     enemy.equipped_weapon = make_pistol()
     return enemy
@@ -205,8 +205,8 @@ def make_turret(x: int, y: int) -> Enemy:
         loot_table=[
             (0.50, "ammo_9mm"),
         ],
-        credits_range=(5, 12),
-        credits_chance=0.40,
+        credits_range=(2, 6),
+        credits_chance=0.30,
     )
     gun = make_pistol()
     gun.shots = 2  # double-tap with visual stagger so player can react
@@ -231,8 +231,8 @@ def make_sniper_drone(x: int, y: int) -> Enemy:
             (0.40, "ammo_rifle"),
             (0.10, "medkit"),
         ],
-        credits_range=(12, 25),
-        credits_chance=0.60,
+        credits_range=(4, 10),
+        credits_chance=0.40,
     )
     enemy.equipped_weapon = make_rifle()
     return enemy
@@ -253,8 +253,8 @@ def make_riot_guard(x: int, y: int) -> Enemy:
             (0.20, "medkit"),
             (0.20, "ammo_9mm"),
         ],
-        credits_range=(15, 30),
-        credits_chance=0.70,
+        credits_range=(5, 12),
+        credits_chance=0.50,
     )
     enemy.equipped_weapon = make_combat_knife()
     return enemy

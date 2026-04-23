@@ -1,6 +1,7 @@
 """AI behaviour states."""
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional, TYPE_CHECKING
 
@@ -8,6 +9,8 @@ if TYPE_CHECKING:
     from dungeoneer.entities.actor import Actor
     from dungeoneer.world.floor import Floor
     from dungeoneer.combat.action import Action
+
+log = logging.getLogger(__name__)
 
 _SEARCH_MAX_TURNS = 8  # turns before giving up and returning to Idle
 
@@ -40,13 +43,19 @@ class IdleState(BehaviorState):
 # ---------------------------------------------------------------------------
 
 class CombatState(BehaviorState):
+    def __init__(self) -> None:
+        self._last_known: Optional[tuple[int, int]] = None
+        self._prev_dist: int = 0
+
     def execute(self, owner: "Actor", floor: "Floor") -> Optional["Action"]:
         from dungeoneer.entities.player import Player
         from dungeoneer.combat.action import WaitAction
         from dungeoneer.core.settings import DRONE_PREFERRED_DIST
 
+        log.debug("CombatState.execute  owner=%s at (%d,%d)", owner.name, owner.x, owner.y)
         player = next((a for a in floor.actors if isinstance(a, Player) and a.alive), None)
         if player is None:
+            log.debug("  → no living player, IdleState")
             owner.ai_brain.set_state(IdleState())
             return WaitAction()
 
@@ -65,14 +74,39 @@ class CombatState(BehaviorState):
             return self._guard_action(owner, player, floor, dist)
 
     def _guard_action(self, owner, player, floor, dist) -> "Action":
-        from dungeoneer.combat.action import MoveAction, MeleeAttackAction, WaitAction
+        from dungeoneer.combat.action import MeleeAttackAction, WaitAction
+        from dungeoneer.ai.perception import can_see
 
-        # Adjacent — attack
-        if dist == 1:
-            return MeleeAttackAction(player)
+        visible = can_see(owner.x, owner.y, player.x, player.y, floor.dungeon_map)
+        log.debug(
+            "guard %s at (%d,%d) dist=%d to player(%d,%d) visible=%s last_known=%s",
+            owner.name, owner.x, owner.y, dist, player.x, player.y, visible, self._last_known,
+        )
 
-        # Path toward player
-        return self._step_toward(owner, player, floor) or WaitAction()
+        if visible:
+            self._last_known = (player.x, player.y)
+            if dist == 1:
+                return MeleeAttackAction(player)
+            step = self._step_toward(owner, player, floor)
+            if step is not None:
+                return step
+            # Length-limited path failed (blocked by allies / detour too long).
+            # Fall back to plain pathfind to player — don't just stop.
+            step = self._step_toward_tile(owner, player.x, player.y, floor)
+            if step is not None:
+                log.debug("guard %s fell back to unconstrained path toward player", owner.name)
+                return step
+            log.debug("guard %s has no path to player — waiting", owner.name)
+            return WaitAction()
+
+        # Lost sight — investigate last known position.
+        if self._last_known:
+            log.debug("guard %s lost sight → SearchState(%s)", owner.name, self._last_known)
+            owner.ai_brain.set_state(SearchState(*self._last_known))
+            return owner.ai_brain.current_state.execute(owner, floor)
+        log.debug("guard %s lost sight with no last_known → Idle", owner.name)
+        owner.ai_brain.set_state(IdleState())
+        return WaitAction()
 
     def _turret_action(self, owner, player, floor, dist) -> "Action":
         from dungeoneer.combat.action import RangedAttackAction, WaitAction
@@ -122,7 +156,15 @@ class CombatState(BehaviorState):
     def _step_toward(self, owner, player, floor) -> Optional["Action"]:
         from dungeoneer.ai.pathfinder import Pathfinder
         from dungeoneer.combat.action import MoveAction
-        from dungeoneer.core.settings import AI_REPOSITION_MAX_DETOUR
+
+        pf = Pathfinder()
+
+        # Wall-only shortest path — baseline length ignoring entities.
+        base_path = pf.find_path(
+            (owner.x, owner.y), (player.x, player.y), floor.dungeon_map,
+        )
+        if not base_path:
+            return None  # player is walled off entirely
 
         # Block containers and other alive actors (allies) so A* routes around them.
         blocked = [(c.x, c.y) for c in floor.containers if not c.opened]
@@ -131,17 +173,17 @@ class CombatState(BehaviorState):
             if a is not owner and a is not player and a.alive
         ]
 
-        path = Pathfinder().find_path(
+        path = pf.find_path(
             (owner.x, owner.y), (player.x, player.y), floor.dungeon_map,
             extra_blocked=blocked,
         )
         if not path:
             return None
 
-        # Reject paths that require a large detour — enemy waits instead of
-        # wandering the whole map to find another route.
-        direct_dist = abs(owner.x - player.x) + abs(owner.y - player.y)
-        if len(path) > direct_dist + AI_REPOSITION_MAX_DETOUR:
+        # Reject paths that deviate too far from the wall-only baseline —
+        # prevents enemies from doubling back through a long corridor just to
+        # route around another actor, while still allowing corners and 1-tile gaps.
+        if len(path) > len(base_path) + 3:
             return None
 
         nx, ny = path[0]
@@ -200,19 +242,27 @@ class SearchState(BehaviorState):
         from dungeoneer.entities.player import Player
         from dungeoneer.combat.action import WaitAction
 
+        log.debug(
+            "SearchState.execute  owner=%s at (%d,%d) target=(%d,%d) turns_left=%d",
+            owner.name, owner.x, owner.y, self.last_x, self.last_y, self._turns_left,
+        )
         player = next((a for a in floor.actors if isinstance(a, Player) and a.alive), None)
 
         # Player spotted — switch to full combat
         if player and can_see(owner.x, owner.y, player.x, player.y, floor.dungeon_map):
+            log.debug("  → spotted player, back to CombatState")
             owner.ai_brain.set_state(CombatState())
             return owner.ai_brain.current_state.execute(owner, floor)
 
         # Reached destination or ran out of time — give up
         self._turns_left -= 1
         if self._turns_left <= 0 or (owner.x == self.last_x and owner.y == self.last_y):
+            log.debug("  → give up, IdleState")
             owner.ai_brain.set_state(IdleState())
             return WaitAction()
 
         # Move toward last known position
         step = CombatState()._step_toward_tile(owner, self.last_x, self.last_y, floor)
+        if step is None:
+            log.debug("  → no path to (%d,%d), waiting", self.last_x, self.last_y)
         return step or WaitAction()

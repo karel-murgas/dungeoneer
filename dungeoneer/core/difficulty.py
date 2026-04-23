@@ -36,6 +36,9 @@ class Difficulty:
     # Vault drain minigame — random cursor drift multiplier
     vault_drift_mult: float = 1.0
 
+    # Fraction of non-end rooms that spawn no encounter (higher = more empty rooms)
+    empty_room_chance: float = 0.25
+
     # Healing minigame — timing thresholds (ms).
     # Quality tier = first threshold the sum |press_off| + |release_off| falls below.
     # Tuple: (perfect_ms, great_ms, good_ms, poor_ms); anything ≥ poor_ms → miss.
@@ -50,27 +53,26 @@ EASY = Difficulty(
     name="Easy",
     guards_per_floor=3,
     drones_per_floor=2,
-    containers_per_floor=4,
+    containers_per_floor=5,
     player_max_hp=35,
     starting_ammo={"9mm": 8},   # one spare magazine
-    # 3g×10 + 2d×15 + 4c×15 = 120/floor × 3 floors = 360
-    objective_credits=360,
+    objective_credits=400,
     aim_needle_speed_mult=0.65,
     player_aim_skill=4.0,   # mostly hits when minigame is OFF
     melee_freq_mult=0.75,
     heal_timing_thresholds=(100, 200, 300, 400),
     vault_drift_mult=0.7,
+    empty_room_chance=0.35,
 )
 
 NORMAL = Difficulty(
     name="Normal",
     guards_per_floor=5,
     drones_per_floor=3,
-    containers_per_floor=3,
+    containers_per_floor=4,
     player_max_hp=30,
     # starting_ammo left empty — only what's already in the pistol
-    # 5g×10 + 3d×15 + 3c×15 = 140/floor × 3 floors = 420
-    objective_credits=420,
+    objective_credits=500,
     heal_timing_thresholds=(70, 140, 210, 280),
 )
 
@@ -78,12 +80,12 @@ HARD = Difficulty(
     name="Hard",
     guards_per_floor=7,
     drones_per_floor=4,
-    containers_per_floor=2,
+    containers_per_floor=3,
     player_max_hp=25,
-    # 7g×10 + 4d×15 + 2c×15 = 160/floor × 3 floors = 480
-    objective_credits=480,
+    objective_credits=600,
     aim_needle_speed_mult=1.35,
     player_aim_skill=1.5,   # more misses when minigame is OFF
     melee_freq_mult=1.3,
     vault_drift_mult=1.3,
+    empty_room_chance=0.15,
 )

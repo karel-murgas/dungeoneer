@@ -10,8 +10,9 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent, RoomRevealedEvent
 from dungeoneer.systems.heat import HeatSystem
+from dungeoneer.systems.encounter import EncounterSystem
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -101,6 +102,7 @@ class GameScene(Scene):
         self.player: Player | None = None
         self.floor:  Floor  | None = None
         self.heat_system: HeatSystem | None = None
+        self.encounter_system: EncounterSystem | None = None
         self._game_over          = False
         self._subscribed         = False
         self._inventory_open     = False
@@ -150,6 +152,8 @@ class GameScene(Scene):
     def on_exit(self) -> None:
         log.info("GameScene.on_exit  game_over=%s", self._game_over)
         self._unsubscribe_events()
+        if self.encounter_system is not None:
+            self.encounter_system.teardown()
         self.audio.detach()
         self.music.stop()
         self.combat_log.close()
@@ -172,12 +176,13 @@ class GameScene(Scene):
             # Recompute FOV so a freshly spawned drone's visibility is up-to-date,
             # then trigger the alert banner immediately (before the player can act).
             if self.player and self.floor:
-                compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+                compute_fov(self.player.x, self.player.y, self.floor.dungeon_map, rooms=self.floor.rooms)
                 now_visible = self._any_enemy_visible()
                 if now_visible and not self._had_visible_enemies:
                     self.alert_banner.trigger()
                     self.music.to_action(fast=True)
                     self._maybe_show_tutorial("enemy")
+                    bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
                 self._had_visible_enemies = now_visible
             self._schedule_advance()
 
@@ -224,17 +229,13 @@ class GameScene(Scene):
         # Heat system must exist before generate() call so tier_cap is correct.
         # On floor 1 the player is freshly created below, so we bootstrap with
         # a temporary player if needed, then hand it to HeatSystem after.
-        _tier_cap = self.heat_system.tier_cap() if self.heat_system else 1
-
         result = gen.generate(
             mw, mh,
             floor_depth=depth,
-            guards=self.difficulty.guards_per_floor,
-            drones=self.difficulty.drones_per_floor,
             containers=self.difficulty.containers_per_floor,
-            tier_cap=_tier_cap,
         )
         self.floor = Floor(result.dungeon_map, depth)
+        self.floor.rooms = result.rooms
 
         player_spawn = next(s for s in result.spawns if s.kind == "player")
         if existing_player is None:
@@ -253,20 +254,8 @@ class GameScene(Scene):
         self.player.floor_depth = depth
         self.floor.add_actor(self.player)
 
-        _enemy_factories = {
-            "guard":       make_guard,
-            "drone":       make_drone,
-            "dog":         make_dog,
-            "heavy":       make_heavy,
-            "turret":      make_turret,
-            "sniper_drone": make_sniper_drone,
-            "riot_guard":  make_riot_guard,
-        }
         for spawn in result.spawns:
-            factory = _enemy_factories.get(spawn.kind)
-            if factory is not None:
-                self.floor.add_actor(factory(spawn.x, spawn.y))
-            elif spawn.kind == "container":
+            if spawn.kind == "container":
                 self.floor.add_container(self._make_container(spawn.x, spawn.y))
 
         # On the final floor keep the elevator for extraction and place the vault
@@ -283,7 +272,7 @@ class GameScene(Scene):
                         for tx in range(room.x, room.x + room.w):
                             if not self.floor.dungeon_map.is_walkable(tx, ty):
                                 continue
-                            if abs(tx - ex) + abs(ty - ey) >= 3:
+                            if max(abs(tx - ex), abs(ty - ey)) >= 3:
                                 candidates.append((tx, ty))
                     break
             if candidates:
@@ -331,7 +320,21 @@ class GameScene(Scene):
         self._arrival_timer = 0.35
         fov_x, fov_y = entry_spawn_x, entry_spawn_y
 
-        compute_fov(fov_x, fov_y, self.floor.dungeon_map)
+        # Tear down previous floor's encounter system, then create a new one.
+        # Must happen before compute_fov so that the starting-room RoomRevealedEvent
+        # is handled by the new EncounterSystem.
+        if self.encounter_system is not None:
+            self.encounter_system.teardown()
+        end_room = self.floor.room_for_tile(*result.stair_pos)
+        self.encounter_system = EncounterSystem(
+            self.floor, self.heat_system, self.difficulty, end_room, self.turn_manager
+        )
+        try:
+            bus.unsubscribe(RoomRevealedEvent, self._on_room_revealed)
+        except (KeyError, ValueError):
+            pass
+        bus.subscribe(RoomRevealedEvent, self._on_room_revealed)
+        compute_fov(fov_x, fov_y, self.floor.dungeon_map, rooms=self.floor.rooms)
         self.turn_manager.build_queue(self.floor)
         self._had_visible_enemies = False
 
@@ -344,6 +347,9 @@ class GameScene(Scene):
     # ------------------------------------------------------------------
     # Event handlers
     # ------------------------------------------------------------------
+
+    def _on_room_revealed(self, event: RoomRevealedEvent) -> None:
+        log.debug("RoomRevealedEvent  room=(%d,%d,%dx%d)", event.room.x, event.room.y, event.room.w, event.room.h)
 
     def _on_death(self, event: DeathEvent) -> None:
         log.info(
@@ -937,6 +943,7 @@ class GameScene(Scene):
                 self.alert_banner.trigger()
                 self.music.to_action(fast=True)
                 self._maybe_show_tutorial("enemy")
+                bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
             self._had_visible_enemies = now_visible
             break
 
@@ -966,10 +973,16 @@ class GameScene(Scene):
             self._advance_timer   = self._COMBAT_DELAY + extra_delay
         else:
             # No enemies on screen — process all remaining AI turns instantly.
+            # Advance at least once: the player's action does not touch the
+            # turn_manager index, so right now current_actor() is still the
+            # player and a plain `while not is_player_turn()` loop would be
+            # a no-op. Use do-while semantics.
             _safety = 256
-            while not self.turn_manager.is_player_turn() and _safety > 0:
+            while _safety > 0:
                 self.turn_manager.advance(self.floor, self.resolver)
                 _safety -= 1
+                if self.turn_manager.is_player_turn():
+                    break
             self._update_music_state()
 
     def _is_any_enemy_alert(self) -> bool:
@@ -1129,7 +1142,7 @@ class GameScene(Scene):
         for c in self.floor.containers:
             if c.opened:
                 continue
-            if abs(self.player.x - c.x) <= 1 and abs(self.player.y - c.y) <= 1:
+            if abs(self.player.x - c.x) + abs(self.player.y - c.y) <= 1:
                 return c
         return None
 
@@ -1344,6 +1357,7 @@ class GameScene(Scene):
             self.alert_banner.trigger()
             self.music.to_action(fast=True)
             self._maybe_show_tutorial("enemy")
+            bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
         self._had_visible_enemies = now_visible
 
     # ------------------------------------------------------------------
@@ -1390,6 +1404,7 @@ class GameScene(Scene):
             self.alert_banner.trigger()
             self.music.to_action(fast=True)
             self._maybe_show_tutorial("enemy")
+            bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
         self._had_visible_enemies = now_visible
 
     # ------------------------------------------------------------------
@@ -1621,10 +1636,6 @@ class GameScene(Scene):
 
     def _on_heat_level_up(self, event: HeatLevelUpEvent) -> None:
         """Spawn a patrol when heat crosses into a new level (levels 2–5)."""
-        import random as _rnd
-        from dungeoneer.ai.states import CombatState
-        from dungeoneer.world.dungeon_generator import _ENEMY_POOL
-
         if self.player is None or self.floor is None or self._game_over:
             return
 
@@ -1632,29 +1643,9 @@ class GameScene(Scene):
         if self._vault_overlay is not None:
             self._vault_overlay.force_close()
 
-        tier_cap = self.heat_system.tier_cap() if self.heat_system else 1
-        available = [
-            kind
-            for tier, kinds in sorted(_ENEMY_POOL.items())
-            if tier <= tier_cap
-            for kind in kinds
-        ]
-        _factories = {
-            "guard": make_guard, "drone": make_drone, "dog": make_dog,
-            "heavy": make_heavy, "turret": make_turret,
-            "sniper_drone": make_sniper_drone, "riot_guard": make_riot_guard,
-        }
-        count = _rnd.randint(*settings.HEAT_PATROL_COUNT)
-        for _ in range(count):
-            pos = self._find_patrol_spawn()
-            if pos is None:
-                continue
-            kind = _rnd.choice(available)
-            enemy = _factories[kind](*pos)
-            enemy.ai_brain.set_state(CombatState())
-            self.floor.add_actor(enemy)
+        if self.encounter_system is not None:
+            self.encounter_system.spawn_patrol(self.player.x, self.player.y)
 
-        self.turn_manager.build_queue(self.floor)
         from dungeoneer.systems.heat import LEVEL_NAMES
         lvl_name = LEVEL_NAMES[event.new_level]
         bus.post(LogMessageEvent(
@@ -1936,7 +1927,7 @@ class GameScene(Scene):
                     self._arrival_phase = None
                     self._arrival_elevator_pos = None
                     self._arrival_spawn_pos = None
-                    compute_fov(self.player.x, self.player.y, self.floor.dungeon_map)
+                    compute_fov(self.player.x, self.player.y, self.floor.dungeon_map, rooms=self.floor.rooms)
                     self._maybe_show_tutorial("movement")
 
         if self._aim_overlay is not None:
@@ -2029,6 +2020,7 @@ class GameScene(Scene):
                                 self.alert_banner.trigger()
                                 self.music.to_action(fast=True)
                                 self._maybe_show_tutorial("enemy")
+                                bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
                             self._had_visible_enemies = now_visible
                             self._move_hold_timer = self._MOVE_HOLD_REPEAT
                     else:

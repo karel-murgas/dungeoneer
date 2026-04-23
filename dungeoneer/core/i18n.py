@@ -321,6 +321,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.dropped":                  "Dropped {item}.",
         "log.credits_drop":             "+\u00a5{n}",
 
+        # --- Encounter messages ---
+        "log.room_encounter":           "Hostiles detected!",
+        "log.room_clear":               "Room clear.",
+
         # --- Consumable use ---
         "log.heal_restored":            "Restored {n} HP.",
         "log.item_used":                "Used {name}. ",
@@ -1023,6 +1027,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.dropped":                  "Zahozeno: {item}.",
         "log.credits_drop":             "+\u00a5{n}",
 
+        # --- Encounter messages ---
+        "log.room_encounter":           "Nep\u0159\u00e1tel\u00e9 detekov\u00e1ni!",
+        "log.room_clear":               "M\u00edstnost \u010dist\u00e1.",
+
         # --- Consumable use ---
         "log.heal_restored":            "Obnoveno {n} HP.",
         "log.item_used":                "Pou\u017eito: {name}. ",
@@ -1724,6 +1732,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.equipped":                 "Equipado: {item}.",
         "log.dropped":                  "Tirado: {item}.",
         "log.credits_drop":             "+\u00a5{n}",
+
+        # --- Encounter messages ---
+        "log.room_encounter":           "\u00a1Hostiles detectados!",
+        "log.room_clear":               "Habitaci\u00f3n despejada.",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restaurados {n} HP.",

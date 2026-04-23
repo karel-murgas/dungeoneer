@@ -55,7 +55,6 @@ FOV_RADIUS = 10
 BASE_MELEE_DAMAGE   = 4
 BASE_RANGED_DAMAGE  = 5
 DRONE_PREFERRED_DIST = 4    # tiles drone tries to stay away
-AI_REPOSITION_MAX_DETOUR = 2  # extra tiles an enemy will walk to go around a friendly blocker
 
 # Aiming minigame
 AIM_ARC_DEGREES:    float = 90.0   # arc span in degrees — adjust for different "feel"
@@ -137,3 +136,8 @@ VAULT_MULT_PERFECT:      float =  0.15
 VAULT_MULT_GOOD:         float =  0.00
 VAULT_MULT_BAD:          float = -0.15
 VAULT_MULT_FAIL:         float = -0.30
+
+# Encounter system (dynamic room-reveal spawning)
+ENCOUNTER_MIN_ROOM_AREA:   int   = 9     # inner tiles below this → no encounter
+ENCOUNTER_PACK_CHANCE:     float = 0.40  # probability of pack branch at heat 3+
+ENCOUNTER_T3_CHANCE_AT_H4: float = 0.10  # chance to unlock tier 3 at heat 4

@@ -132,24 +132,6 @@ class DungeonGenerator:
         sx, sy = self._find_elevator_wall(end_room, dungeon_map)
         dungeon_map.set_type(sx, sy, TileType.ELEVATOR_CLOSED)
 
-        # Distribute enemies in middle rooms (not start or end room)
-        total_enemies = guards + drones
-        middle_rooms = [r for r in rooms if r is not start_room and r is not end_room]
-        enemy_rooms = self._rng.sample(
-            middle_rooms,
-            min(total_enemies, len(middle_rooms)),
-        )
-        available_kinds = [
-            kind
-            for tier, kinds in sorted(_ENEMY_POOL.items())
-            if tier <= tier_cap
-            for kind in kinds
-        ]
-        for room in enemy_rooms:
-            ex, ey = room.random_inner_point()
-            kind = self._rng.choice(available_kinds)
-            spawns.append(SpawnDesc(kind, ex, ey))
-
         # Pre-compute room-interior tile set for entrance detection
         room_tile_set: set[tuple[int, int]] = set()
         for r in rooms:

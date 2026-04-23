@@ -10,6 +10,7 @@ class Room:
     y: int          # top-left tile row
     w: int          # width in tiles (including walls)
     h: int          # height in tiles (including walls)
+    revealed: bool = False
 
     @property
     def inner_x(self) -> int:

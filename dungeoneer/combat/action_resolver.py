@@ -22,7 +22,7 @@ class ActionResolver:
         actor.y += action.dy
 
         if isinstance(actor, Player):
-            compute_fov(actor.x, actor.y, floor.dungeon_map)
+            compute_fov(actor.x, actor.y, floor.dungeon_map, rooms=floor.rooms)
             bus.post(MoveEvent(actor, actor.x, actor.y))
             # Auto-pickup items on this tile
             self._auto_pickup(actor, floor)

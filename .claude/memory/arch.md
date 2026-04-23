@@ -54,13 +54,17 @@ dungeoneer/
 │   ├── pathfinder.py    — A* pathfinding
 │   └── perception.py    — sight radius, LOS checks for enemies
 │
+├── systems/
+│   ├── heat.py          — HeatSystem: 5 heat levels, sources, patrol spawning
+│   └── encounter.py     — EncounterSystem: dynamic room-reveal spawning; "pack vs elite" model by heat level; ranged cap (≤2); spawn_patrol() for heat level-up
+│
 ├── world/
-│   ├── dungeon_generator.py — BSP tree generator → DungeonMap
+│   ├── dungeon_generator.py — BSP tree generator → DungeonMap (enemy spawning removed in rebalance)
 │   ├── map.py           — DungeonMap: tiles 2D array, entities list, items list
-│   ├── floor.py         — Floor: wraps map + entity lists for a single depth level
-│   ├── room.py          — Room dataclass
+│   ├── floor.py         — Floor: wraps map + entity lists for a single depth level; rooms: list[Room]; room_for_tile(x,y)
+│   ├── room.py          — Room dataclass; revealed: bool
 │   ├── tile.py          — Tile: walkable, transparent, explored, visible
-│   └── fov.py           — FOV via python-tcod shadowcasting
+│   └── fov.py           — FOV via python-tcod shadowcasting; posts RoomRevealedEvent on first room reveal
 │
 ├── rendering/
 │   ├── renderer.py      — Renderer: orchestrates all sub-renderers
@@ -117,7 +121,7 @@ main_hack.py             — standalone hack minigame entry point (dev/test)
 `MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` (legacy) | `ElevatorAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
 
 ## Key Events (core/event_bus.py)
-`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` (legacy) | `ElevatorEvent(elevator_x, elevator_y)` | `ObjectiveEvent` | `LogMessageEvent`
+`MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` (legacy) | `ElevatorEvent(elevator_x, elevator_y)` | `ObjectiveEvent` | `LogMessageEvent` | `RoomRevealedEvent(room)` | `HeatChangeEvent` | `HeatLevelUpEvent` | `HackNodesCollectedEvent`
 
 ## Scene Lifecycle (core/scene.py)
 `on_enter()` → `handle_events(events)` → `update(dt)` → `render(screen)` → `on_exit()`

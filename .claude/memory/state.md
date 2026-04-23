@@ -4,9 +4,16 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-31, in dev)
+## Current State (2026-04-23, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+**Rebalance (dynamic spawning + loot/credit economy) ✅ complete (all 4 chunks).**
+
+### New (2026-04-23) — Dynamic spawning + loot/credit rebalance (4 chunks)
+- **Chunk 1**: `RoomRevealedEvent` infrastructure — `room.revealed`, `floor.rooms`, `fov.py` posts event on first reveal
+- **Chunk 2**: `systems/encounter.py` — EncounterSystem subscribes to RoomRevealedEvent; "pack vs elite" model by heat level; ranged cap ≤2; replaces static dungeon_generator spawning; `spawn_patrol()` for heat level-up; `empty_room_chance` on Difficulty
+- **Chunk 3**: Loot/credit economy — vault ≈ 500 credits (Normal), enemy credit drops reduced to symbolic, containers_per_floor +1, hack pool HEAL weight 4→boosted, MYSTERY weight 2→1
+- **Chunk 4**: i18n (`log.room_encounter` / `log.room_clear` in en/cs/es), encounter log messages, memory + arch updated, plan files moved to `.claude/plans/`
 
 ### New (2026-03-31) — Vault drain minigame
 - **VaultOverlay** (`minigame/vault_scene.py`) — cursor-tracking credit-drain minigame on floor 3

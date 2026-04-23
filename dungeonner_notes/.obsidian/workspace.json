@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Fatures/Metagame — perky, skilly, progrese.md",
+                "file": "Progress/TODO.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Metagame — perky, skilly, progrese"
+              "title": "TODO"
             }
           },
           {
@@ -196,13 +196,13 @@
   },
   "active": "5d9ca364465c6477",
   "lastOpenFiles": [
+    "Fatures/Rebalanc.md",
+    "Progress/TODO.md",
+    "Fatures/Metagame — perky, skilly, progrese.md",
     "Fatures/Hackovací minihra.md",
     "Done/Finální vault - minihra.md",
     "Done/Heat.md",
-    "Fatures/Rebalanc.md",
-    "Progress/TODO.md",
     "Progress/Rebalanc obtížností.md",
-    "Fatures/Metagame — perky, skilly, progrese.md",
     "Progress/Obrázky.md",
     "Done/Enemies.md",
     "Done.md",

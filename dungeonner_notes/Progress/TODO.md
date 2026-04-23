@@ -9,7 +9,7 @@
 - [x] Test, že vylootovat není automatika (lze zpomalit drain)
 - [x] Fix toho, že nepřátelé co nemohou útočit, někdy nic nedělají (místo obejití překážky - jdou na jediné konkrétní místo)
 - [x] Fix toho, že minihra začíná mimo střed (asi oddriftuje před začátkem) a naopak se resetuje při přerušení
-- [ ] Do overlaye dát instrukce (W/S nahoru/dolů pro udržení drainu v optimu)
+- [x] Do overlaye dát instrukce (W/S nahoru/dolů pro udržení drainu v optimu)
 - [ ] Vyzkoušet vault v reálné hře i s únikem
 - [ ] Kolik dává vault? Optimalizováno na cca 500 kreditů...jinak bychom museli zpomalit, kolik se čerpá za vteřinu...- nechat na rebalanc
 ## Úklid
@@ -25,3 +25,5 @@
 - [ ] Plán si udržuj stejný (kvůli cachování), informace o stavu si ukládej bokem
 
 - [ ] Přejít na agentní flow - přepsat komplet claude.md a věci kolem toho. Ušetříme kontext.
+
+- [ ] `showThinkingSummaries: true`

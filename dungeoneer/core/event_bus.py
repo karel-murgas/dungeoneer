@@ -91,6 +91,11 @@ class HackNodesCollectedEvent(Event):
     success:           bool  # False → extra HEAT_HACK_FAIL on top
     coolant_reduction: int   # total heat removed by COOLANT nodes
 
+@dataclass
+class RoomRevealedEvent(Event):
+    """Posted the first time a room enters the player's FOV."""
+    room: Any
+
 
 # ---------------------------------------------------------------------------
 # Bus
