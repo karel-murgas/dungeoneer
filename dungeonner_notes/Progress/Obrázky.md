@@ -8,12 +8,11 @@
 - [x] Zbroj
 - [x] Kredity
 - [ ] Random loot
-- [ ] Truhly
+- [x] Truhly
 - [ ] Final vault / mainframe
 ## Bytosti
 - [ ] Hráč
-- [ ] Guard
-- [ ] Dron
+- [ ] Enemies
 ## Menu
 - [ ] Nápověda
 - [ ] Nastavení

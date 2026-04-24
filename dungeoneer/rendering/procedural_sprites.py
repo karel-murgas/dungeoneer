@@ -6,6 +6,7 @@ keys are defined in _BUILDERS at the bottom of this module.
 """
 from __future__ import annotations
 
+import math
 import pygame
 
 _CACHE: dict[str, pygame.Surface] = {}
@@ -92,6 +93,160 @@ def _make_guard_sprite() -> pygame.Surface:
         body_col=(175, 38, 38),
         accent_col=(220, 60, 60),
     )
+
+
+def _make_dog_sprite() -> pygame.Surface:
+    """K9 Unit — low quadruped silhouette, orange-brown, fast and scrappy."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — warm orange
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (200, 80, 40, 35), (cx, cy), 11)
+    surf.blit(glow, (0, 0))
+
+    # Body — low oval (wider than tall = crouched quadruped)
+    pygame.draw.ellipse(surf, (20, 15, 10), (cx - 9, cy - 5, 18, 11))
+    pygame.draw.ellipse(surf, (200, 80, 40), (cx - 9, cy - 5, 18, 11), 1)
+
+    # Head — small circle front-left
+    pygame.draw.circle(surf, (22, 16, 10), (cx - 5, cy - 4), 4)
+    pygame.draw.circle(surf, (200, 80, 40), (cx - 5, cy - 4), 4, 1)
+
+    # Eyes — two bright orange dots
+    pygame.draw.circle(surf, (255, 140, 30), (cx - 7, cy - 5), 1)
+    pygame.draw.circle(surf, (255, 140, 30), (cx - 4, cy - 5), 1)
+
+    # Legs — four short rects
+    for lx in (cx - 8, cx - 4, cx + 1, cx + 5):
+        pygame.draw.rect(surf, (160, 65, 30), (lx, cy + 5, 2, 4))
+
+    # Tail — short line at rear
+    pygame.draw.line(surf, (200, 80, 40), (cx + 8, cy - 3), (cx + 11, cy - 6), 2)
+
+    return surf
+
+
+def _make_heavy_sprite() -> pygame.Surface:
+    """Heavy Enforcer — bulky armoured ranged unit, violet with silver plating."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — violet
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (140, 80, 220, 35), (cx, cy), 13)
+    surf.blit(glow, (0, 0))
+
+    # Larger armoured body (12 r instead of 10)
+    pygame.draw.circle(surf, (20, 15, 30), (cx, cy), 12)
+    pygame.draw.circle(surf, (140, 80, 220), (cx, cy), 12, 2)
+
+    # Chest plate (rectangular, silver)
+    pygame.draw.rect(surf, (55, 48, 72), (cx - 5, cy - 2, 10, 8))
+    pygame.draw.rect(surf, (175, 165, 200), (cx - 5, cy - 2, 10, 8), 1)
+
+    # Visor — violet, wider than guard
+    pygame.draw.ellipse(surf, (140, 80, 220), (cx - 4, cy - 6, 8, 4))
+    pygame.draw.circle(surf, (210, 180, 255), (cx - 1, cy - 5), 1)  # specular
+
+    # Heavy pauldrons — wider shoulder bars
+    pygame.draw.rect(surf, (100, 80, 140), (cx - 11, cy + 2, 5, 4))
+    pygame.draw.rect(surf, (100, 80, 140), (cx + 6,  cy + 2, 5, 4))
+
+    return surf
+
+
+def _make_turret_sprite() -> pygame.Surface:
+    """Auto-Turret — immobile weapon mount, steel blue, barrel pointing right."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — steel blue
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (80, 100, 200, 40), (cx, cy), 12)
+    surf.blit(glow, (0, 0))
+
+    # Base mount — dark octagon-ish (use polygon)
+    pygame.draw.circle(surf, (18, 22, 42), (cx, cy), 10)
+    pygame.draw.circle(surf, (80, 100, 200), (cx, cy), 10, 2)
+
+    # Rotating turret head — slightly smaller inner disc
+    pygame.draw.circle(surf, (28, 34, 62), (cx, cy), 6)
+    pygame.draw.circle(surf, (110, 135, 220), (cx, cy), 6, 1)
+
+    # Barrel — pointing right
+    pygame.draw.rect(surf, (60, 75, 140), (cx + 5, cy - 2, 9, 4))
+    pygame.draw.rect(surf, (130, 155, 230), (cx + 5, cy - 2, 9, 4), 1)
+
+    # Muzzle tip — bright dot
+    pygame.draw.circle(surf, (200, 220, 255), (cx + 13, cy), 1)
+
+    # Side vents (left side)
+    for vy in (cy - 3, cy, cy + 3):
+        pygame.draw.line(surf, (70, 90, 165), (cx - 10, vy), (cx - 7, vy), 1)
+
+    return surf
+
+
+def _make_sniper_drone_sprite() -> pygame.Surface:
+    """Sniper Drone — elongated body with rifle barrel, yellow-green glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — yellow-green
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (180, 220, 40, 38), (cx, cy), 12)
+    surf.blit(glow, (0, 0))
+
+    # Elongated drone body (horizontal ellipse)
+    pygame.draw.ellipse(surf, (20, 25, 10), (cx - 9, cy - 5, 18, 10))
+    pygame.draw.ellipse(surf, (180, 220, 40), (cx - 9, cy - 5, 18, 10), 1)
+
+    # Sensor eye — centre, bright lime
+    pygame.draw.circle(surf, (180, 220, 40), (cx, cy), 3)
+    pygame.draw.circle(surf, (230, 255, 100), (cx - 1, cy - 1), 1)  # specular
+
+    # Long rifle barrel extending right
+    pygame.draw.rect(surf, (40, 50, 20), (cx + 8, cy - 1, 11, 3))
+    pygame.draw.rect(surf, (180, 220, 40), (cx + 8, cy - 1, 11, 3), 1)
+
+    # Stabiliser fins — top and bottom
+    pygame.draw.line(surf, (140, 180, 30), (cx - 4, cy - 5), (cx - 1, cy - 8), 2)
+    pygame.draw.line(surf, (140, 180, 30), (cx - 4, cy + 4), (cx - 1, cy + 7), 2)
+
+    return surf
+
+
+def _make_riot_guard_sprite() -> pygame.Surface:
+    """Riot Guard — heavily armoured melee, orange-red with thick shield plating."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — orange-red
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (220, 80, 40, 38), (cx, cy), 13)
+    surf.blit(glow, (0, 0))
+
+    # Heavy body disc
+    pygame.draw.circle(surf, (22, 12, 8), (cx, cy), 12)
+    pygame.draw.circle(surf, (220, 80, 40), (cx, cy), 12, 2)
+
+    # Large shield panel (left side — rectangular)
+    pygame.draw.rect(surf, (40, 22, 14), (cx - 13, cy - 7, 7, 14))
+    pygame.draw.rect(surf, (220, 80, 40), (cx - 13, cy - 7, 7, 14), 1)
+    # Shield highlight
+    pygame.draw.line(surf, (255, 140, 80), (cx - 12, cy - 5), (cx - 12, cy + 4), 1)
+
+    # Riot visor — full-width dark slit
+    pygame.draw.rect(surf, (12, 8, 4), (cx - 6, cy - 5, 12, 3))
+    pygame.draw.rect(surf, (220, 80, 40), (cx - 6, cy - 5, 12, 3), 1)
+    # Visor red glow slit
+    pygame.draw.line(surf, (255, 100, 50), (cx - 5, cy - 4), (cx + 4, cy - 4), 1)
+
+    # Right pauldron (weapon arm side)
+    pygame.draw.rect(surf, (160, 55, 28), (cx + 7, cy + 2, 5, 4))
+
+    return surf
 
 
 def _make_container_closed() -> pygame.Surface:
@@ -407,6 +562,39 @@ def _make_item_hack_bonus_time() -> pygame.Surface:
     return surf
 
 
+def _make_item_hack_coolant() -> pygame.Surface:
+    """Hack loot: coolant / trace purge — teal hexagon with downward-sweep arrow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+    _TEAL = (0, 210, 200)
+    _TEAL_DIM = (0, 100, 100)
+    _TEAL_GLOW = (0, 210, 200, 40)
+
+    # Glow halo
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.circle(glow, _TEAL_GLOW, (cx, cy), 13)
+    surf.blit(glow, (0, 0))
+
+    # Hexagon outline (flat-top, 6 vertices)
+    r = 9
+    pts = [(cx + round(r * math.cos(math.radians(60 * i - 30))),
+            cy + round(r * math.sin(math.radians(60 * i - 30))))
+           for i in range(6)]
+    pygame.draw.polygon(surf, (8, 30, 32), pts)     # dark fill
+    pygame.draw.polygon(surf, _TEAL, pts, 2)         # teal border
+
+    # Downward sweep arrow (↓ with tail)
+    ax, ay = cx, cy - 4
+    pygame.draw.line(surf, _TEAL, (ax, ay), (ax, ay + 8), 2)          # shaft
+    pygame.draw.line(surf, _TEAL, (ax, ay + 8), (ax - 3, ay + 5), 2)  # left head
+    pygame.draw.line(surf, _TEAL, (ax, ay + 8), (ax + 3, ay + 5), 2)  # right head
+
+    # Small horizontal "wipe" line above arrow
+    pygame.draw.line(surf, _TEAL_DIM, (ax - 4, ay - 1), (ax + 4, ay - 1), 1)
+
+    return surf
+
+
 def _make_item_hack_mystery() -> pygame.Surface:
     """Hack loot: mystery — purple glow disc with ? character centered."""
     surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
@@ -434,6 +622,11 @@ _BUILDERS: dict[str, object] = {
     "wall_dark":             lambda: _make_wall_tile(dark=True),
     "player":                _make_player_sprite,
     "guard":                 _make_guard_sprite,
+    "dog":                   _make_dog_sprite,
+    "heavy":                 _make_heavy_sprite,
+    "turret":                _make_turret_sprite,
+    "sniper_drone":          _make_sniper_drone_sprite,
+    "riot_guard":            _make_riot_guard_sprite,
     "container_closed":      _make_container_closed,
     "container_open":        _make_container_open,
     "vault_closed":          _make_vault_closed,
@@ -446,6 +639,7 @@ _BUILDERS: dict[str, object] = {
     "item_loot_consumable":  _make_item_loot_consumable,
     "item_hack_credits":     _make_item_hack_credits,
     "item_hack_bonus_time":  _make_item_hack_bonus_time,
+    "item_hack_coolant":     _make_item_hack_coolant,
     "item_hack_mystery":     _make_item_hack_mystery,
 }
 

@@ -1,0 +1,5 @@
+- Zkontrolovat, jestli se někde příliš nesčítají postihy za vyšší obtížnost.
+- Hlavně hard, jestli je hratelná (třeba hackování - méně času, méně lootu, více pastí?)
+- Méně hp, těžší minihry
+- Atp. - hra má být výzva, ne hráče utlouct stackováním penalt
+- Easy může být celkem easy (nevadí, když se nedaří vylootit moc z truhel a někdy se míjí nepřátelé)

@@ -239,7 +239,7 @@ class OpenContainerAction(Action):
             return False
         dx = abs(actor.x - self.container.x)
         dy = abs(actor.y - self.container.y)
-        return dx <= 1 and dy <= 1
+        return (dx + dy) <= 1
 
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         return resolver.resolve_open_container(actor, self, floor)

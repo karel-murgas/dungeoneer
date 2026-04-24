@@ -43,13 +43,14 @@ _loot_pool = (
     [LootKind.AMMO]         * 3 +
     [LootKind.RIFLE_AMMO]   * 2 +
     [LootKind.SHOTGUN_AMMO] * 2 +
-    [LootKind.HEAL]         * 3 +
+    [LootKind.HEAL]         * 4 +
     [LootKind.MEDKIT]       * 1 +
     [LootKind.WEAPON]       * 1 +
     [LootKind.CREDITS]      * 3 +
     [LootKind.BONUS_TIME]   * 1 +
     [LootKind.ARMOR]        * 1 +
-    [LootKind.MYSTERY]      * 2
+    [LootKind.COOLANT]      * 1 +
+    [LootKind.MYSTERY]      * 1
 )
 
 

@@ -1,6 +1,8 @@
 """HUD — health bar, weapon info, floor depth, controls hint."""
 from __future__ import annotations
 
+import math
+
 import pygame
 
 from dungeoneer.core import settings
@@ -12,6 +14,15 @@ _PANEL  = (10, 10, 18, 185)   # dark navy, semi-transparent
 _M      = 6                    # panel margin
 
 
+_HEAT_COLOURS = [
+    (80,  200,  80),   # level 1  GHOST    — green
+    (180, 210,  60),   # level 2  TRACE    — yellow-green
+    (220, 150,  40),   # level 3  ALERT    — orange
+    (220,  60,  60),   # level 4  PURSUIT  — red
+    (180,  20,  20),   # level 5  BURN     — deep red
+]
+
+
 class HUD:
     def __init__(self, heal_threshold_pct: int = 100) -> None:
         self._heal_threshold_pct = heal_threshold_pct
@@ -20,6 +31,8 @@ class HUD:
         self.weapon_rect:   pygame.Rect | None = None
         self.heal_rect:     pygame.Rect | None = None
         self.help_btn_rect: pygame.Rect | None = None
+        self.heat_system = None          # set by GameScene after HeatSystem is created
+        self.vault_credits_banked: int = 0  # set by GameScene when vault credits change
 
     # ------------------------------------------------------------------
     # Helpers
@@ -166,19 +179,34 @@ class HUD:
         self._blit_text(screen, self._font_small, armor_str, armor_col,
                         (bar_x, _WY + 2 * line_h))
 
-        # ── right panel (floor depth + credits) ───────────────────────
-        depth_str = t("hud.floor").format(n=player.floor_depth)
-        cr_str    = f"¥ {player.credits}"
-        lh_large  = self._font_large.get_height()
-        r_w  = max(self._font_large.size(depth_str)[0],
-                   self._font_large.size(cr_str)[0])
-        r_h  = 2 * lh_large + 4 + 2 * _M
+        # ── right panel (floor depth + credits [+ vault pending]) ────
+        depth_str  = t("hud.floor").format(n=player.floor_depth)
+        cr_str     = f"¥ {player.credits}"
+        vault_str  = (
+            t("hud.vault_pending").format(n=self.vault_credits_banked)
+            if self.vault_credits_banked > 0 else None
+        )
+        lh_large   = self._font_large.get_height()
+        lh_small   = self._font_small.get_height()
+        r_w = max(self._font_large.size(depth_str)[0],
+                  self._font_large.size(cr_str)[0])
+        if vault_str:
+            r_w = max(r_w, self._font_small.size(vault_str)[0])
+        r_h = 2 * lh_large + 4 + 2 * _M
+        if vault_str:
+            r_h += lh_small + 4
         r_x  = sw - r_w - 12
         self._draw_panel(screen, r_x - _M, 12 - _M, r_w + 2 * _M, r_h)
 
         self._blit_text(screen, self._font_large, depth_str, (120, 200, 180), (r_x, 12))
         self._blit_text(screen, self._font_large, cr_str, (200, 190, 80),
                         (r_x, 12 + lh_large + 4))
+        if vault_str:
+            self._blit_text(screen, self._font_small, vault_str, (60, 210, 180),
+                            (r_x, 12 + 2 * lh_large + 8))
+
+        # ── heat bar (centre-top) ─────────────────────────────────────
+        self._draw_heat_bar(screen)
 
         # ── help button [?] to the left of the right panel ───────────
         f1_text = t("hud.help_hint")
@@ -206,3 +234,48 @@ class HUD:
         f1_surf = self._font_small.render(f1_text, True, lbl_col)
         screen.blit(f1_surf, (btn_x + btn_pad + icon_d + 4,
                                icon_cy - self._font_small.get_height() // 2 + 1))
+
+    # ------------------------------------------------------------------
+    # Heat bar
+    # ------------------------------------------------------------------
+
+    def _draw_heat_bar(self, screen: pygame.Surface) -> None:
+        if self.heat_system is None:
+            return
+
+        from dungeoneer.systems.heat import LEVEL_NAMES
+        level    = self.heat_system.level
+        progress = self.heat_system.progress
+        fill_col = _HEAT_COLOURS[level - 1]
+
+        bar_w, bar_h = 180, 14
+        bar_x = (settings.SCREEN_WIDTH - bar_w) // 2
+        bar_y = 16
+
+        lbl_h  = self._font_small.get_height()
+        panel_h = bar_h + lbl_h + 3 * _M
+        self._draw_panel(screen, bar_x - _M, bar_y - _M, bar_w + 2 * _M, panel_h)
+
+        # Background track
+        pygame.draw.rect(screen, (30, 15, 15), (bar_x, bar_y, bar_w, bar_h))
+
+        # Fill
+        fill_w = round(bar_w * progress)
+        if fill_w > 0:
+            pygame.draw.rect(screen, fill_col, (bar_x, bar_y, fill_w, bar_h))
+
+        # Pulse overlay at level 5
+        if level == 5 and fill_w > 0:
+            alpha = int(30 + 25 * math.sin(pygame.time.get_ticks() / 200))
+            pulse = pygame.Surface((fill_w, bar_h), pygame.SRCALPHA)
+            pulse.fill((255, 80, 80, alpha))
+            screen.blit(pulse, (bar_x, bar_y))
+
+        # Border
+        pygame.draw.rect(screen, (100, 100, 100), (bar_x, bar_y, bar_w, bar_h), 1)
+
+        # Level name label
+        lbl = t("hud.heat_level").format(level=LEVEL_NAMES[level])
+        lbl_surf = self._font_small.render(lbl, True, fill_col)
+        screen.blit(lbl_surf, (bar_x + (bar_w - lbl_surf.get_width()) // 2,
+                                bar_y + bar_h + 2))

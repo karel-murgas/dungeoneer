@@ -22,7 +22,7 @@ class ActionResolver:
         actor.y += action.dy
 
         if isinstance(actor, Player):
-            compute_fov(actor.x, actor.y, floor.dungeon_map)
+            compute_fov(actor.x, actor.y, floor.dungeon_map, rooms=floor.rooms)
             bus.post(MoveEvent(actor, actor.x, actor.y))
             # Auto-pickup items on this tile
             self._auto_pickup(actor, floor)
@@ -171,10 +171,13 @@ class ActionResolver:
             aim_skill = getattr(actor, "aim_skill", 2.5)
             accuracy_values = [simulate_aim_enemy(dist, aim_skill) for _ in range(shots)]
 
-        # For player burst weapons (shots > 1), DamageEvents are collected and returned
+        # For burst weapons (shots > 1), DamageEvents are collected and returned
         # so GameScene can post them with staggered delays for visual/audio effect.
-        # For single-shot and enemy actions, post immediately as usual.
+        # Player burst: all shots collected, GameScene posts them staggered.
+        # Enemy burst: first shot posts immediately, remaining go to burst_events
+        #              → turn_manager posts EnemyBurstQueueEvent → GameScene staggers.
         is_player_burst = isinstance(actor, Player) and shots > 1
+        is_enemy_burst  = not isinstance(actor, Player) and shots > 1
 
         total_actual = 0
         any_crit = False
@@ -207,6 +210,9 @@ class ActionResolver:
                 log.debug("ranged  %s→%s  raw=%d actual=%d crit=%s", actor.name, target.name, result.raw, result.actual, result.is_crit)
                 dmg_event = DamageEvent(actor, target, result.actual, is_ranged=True, is_crit=result.is_crit)
                 if is_player_burst:
+                    burst_events.append(dmg_event)
+                elif is_enemy_burst and i > 0:
+                    # Subsequent enemy shots are staggered by GameScene via EnemyBurstQueueEvent
                     burst_events.append(dmg_event)
                 else:
                     bus.post(dmg_event)

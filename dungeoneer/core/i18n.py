@@ -172,7 +172,21 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hp.plus10":              "Heal  +10 HP",
         "cheat.hp.plus20":              "Heal  +20 HP",
         "cheat.credits.plus100":        "+100 Credits",
-        "cheat.hint":                   "[↑↓] Navigate   [Enter] Use   [Esc] Close",
+        "cheat.section.heat":           "Heat Level",
+        "cheat.heat.level1":            "Heat \u2192 LV.1  GHOST",
+        "cheat.heat.level2":            "Heat \u2192 LV.2  TRACE",
+        "cheat.heat.level3":            "Heat \u2192 LV.3  ALERT",
+        "cheat.heat.level4":            "Heat \u2192 LV.4  PURSUIT",
+        "cheat.heat.level5":            "Heat \u2192 LV.5  BURN",
+        "cheat.hint":                   "[\u2191\u2193] Navigate   [Enter] Use   [Esc] Close",
+
+        # --- Heat system ---
+        "hud.heat_level":               "{level}",
+        "log.heat_level_up":            "Security escalated \u2014 {level}",
+        "hack.status.purge":            "Trace purged",
+        "hack.overlay.purge_title":     "TRACE PURGE",
+        "hack.overlay.purge_sub":       "HEAT REDUCED",
+        "hack.loot.coolant":            "Trace Purge",
 
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABORT RUN",
@@ -205,6 +219,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.energy_sword.desc":       "Military-grade energy blade. Cuts through armour.",
         "item.rifle.name":              "Rifle",
         "item.rifle.desc":              "Long-range precision. Lower burst than shotgun. 6 rounds.",
+        "item.k9_bite.name":            "K9 Bite",
+        "item.k9_bite.desc":            "Reinforced titanium jaws.",
         "item.stim_pack.name":          "Stim Pack",
         "item.stim_pack.desc":          "Combat stimulant. Restores 10 HP.",
         "item.medkit.name":             "Med Kit",
@@ -224,6 +240,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Corp Guard",
         "entity.drone.name":            "Sec Drone",
+        "entity.dog.name":              "K9 Unit",
+        "entity.heavy.name":            "Heavy Enforcer",
+        "entity.turret.name":           "Auto-Turret",
+        "entity.sniper_drone.name":     "Sniper Drone",
+        "entity.riot_guard.name":       "Riot Guard",
         "entity.crate.name":            "Crate",
         "entity.corp_vault.name":       "Corp Vault",
 
@@ -233,6 +254,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hud.no_heal":                  "[H] --",
         "hud.armor_label":              "[ARMOR]",
         "hud.armor_none":               "\u2014",
+        "hud.vault_pending":            "VAULT \u00a5{n} (escape reward)",
 
         # --- Inventory UI ---
         "inv.title":                    "INVENTORY  {n}/8",
@@ -298,6 +320,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.equipped":                 "Equipped {item}.",
         "log.dropped":                  "Dropped {item}.",
         "log.credits_drop":             "+\u00a5{n}",
+
+        # --- Encounter messages ---
+        "log.room_encounter":           "Hostiles detected!",
+        "log.room_clear":               "Room clear.",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restored {n} HP.",
@@ -493,6 +519,9 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # Items tab
         "help_catalog.items.h1":        "WEAPONS",
+        "help_catalog.items.icon.9mm":   "9mm",
+        "help_catalog.items.icon.rifle": "Rifle",
+        "help_catalog.items.icon.shell": "Shotgun",
 
         # Aiming tab
         "help_catalog.aim.h1":          "HOW AIMING WORKS",
@@ -606,6 +635,30 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.melee.3.2":       "[Esc] — cancel attack (no turn spent)",
         "help_catalog.melee.3.3":       "Auto-fires when the countdown timer expires",
 
+        # Help catalog — enemies tab
+        "help_catalog.tab.enemies":          "ENEMIES",
+        "help_catalog.enem.h1":              "Tier 1 — Common",
+        "help_catalog.enem.1.guard":         "Corp Guard — melee fighter, lightly armored",
+        "help_catalog.enem.1.drone":         "Sec Drone — precise ranged attacker, keeps distance",
+        "help_catalog.enem.1.dog":           "K9 Unit — moves twice per turn, fast melee rush",
+        "help_catalog.enem.h2":              "Tier 2 — Advanced",
+        "help_catalog.enem.2.heavy":         "Heavy Enforcer — armored, advances relentlessly and never retreats",
+        "help_catalog.enem.2.turret":        "Auto-Turret — immobile, fires twice per turn; loses lock when line of sight breaks",
+        "help_catalog.enem.h3":              "Tier 3 — Elite",
+        "help_catalog.enem.3.sniper":        "Sniper Drone — highly precise rifle, always retreats to maximum range",
+        "help_catalog.enem.3.riot":          "Riot Guard — heavily armored melee unit; use ranged weapons to keep distance",
+        # Trait chip labels (short — used in illustration)
+        "help_catalog.enem.tag.melee":       "MELEE",
+        "help_catalog.enem.tag.ranged":      "RANGED",
+        "help_catalog.enem.tag.fast":        "FAST",
+        "help_catalog.enem.tag.precise":     "PRECISE",
+        "help_catalog.enem.tag.lt_armor":    "LT. ARMOR",
+        "help_catalog.enem.tag.hvy_armor":   "HVY. ARMOR",
+        "help_catalog.enem.tag.immobile":    "IMMOBILE",
+        "help_catalog.enem.tag.rapid_fire":  "RAPID FIRE",
+        "help_catalog.enem.tag.retreats":    "RETREATS",
+        "help_catalog.enem.tag.advances":    "ADVANCES",
+
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Space / Enter ]  Continue",
         "settings.gameplay.tutorial":           "Tutorial",
@@ -633,6 +686,70 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.img.escape":                  "[Q]  escape!",
         "tutorial.img.switch_weapon":           "[C] switch weapon",
         "tutorial.img.reload":                  "[R] reload",
+
+        # --- Tutorial: heat ---
+        "tutorial.heat.title":                  "Heat — Stay Under the Radar",
+        "tutorial.heat.body":                   "Watch the HEAT bar at the top of the screen.\nYour actions draw security attention — keep it low.\nCombat raises heat with every round fought.\nHacking also raises heat with every node captured.\n>> High heat = tougher enemies and less time to hack.",
+
+        # --- Vault drain minigame ---
+        "vault.overlay.title":          "VAULT DRAIN",
+        "vault.overlay.credits":        "Credits: \u00a5{n}",
+        "vault.overlay.multiplier":     "Multiplier: {n}\u00d7",
+        "vault.overlay.heat":           "HEAT",
+        "vault.overlay.controls":       "\u2191\u2193 / W S \u2014 keep cursor in green",
+        "vault.overlay.disconnect":     "[Q] Disconnect",
+        "vault.overlay.drained":        "FULLY DRAINED",
+        "vault.overlay.severed":        "Connection severed!",
+        "vault.zone.perfect":           "PERFECT",
+        "vault.zone.good":              "GOOD",
+        "vault.zone.bad":               "BAD",
+        "vault.zone.fail":              "FAIL",
+        "log.vault_drained":            "Drained \u00a5{credits} from vault",
+        "log.vault_bonus":              "Full drain bonus: +\u00a5{bonus}",
+        "log.vault_interrupted":        "Security patrol \u2014 connection interrupted!",
+        "log.vault_empty":              "Vault already empty",
+        "log.vault_in_combat":          "End combat before accessing the vault",
+        "log.vault_extract":            "Extracted with \u00a5{credits}",
+        "hint.elevator_extract":        "[E] Extract",
+        "tutorial.vault.title":         "Corp Vault",
+        "tutorial.vault.body":          "Keep cursor in the green zone for faster credit drain.\nHeat increases with each check \u2014 worse position means more heat.\nMore heat = harder to maintain the connection.\nSecurity patrols may appear if heat rises too high.\nPress [Q] to disconnect \u2014 you can return later.\n>> Credits only yours once you extract via the elevator!",
+        "help_catalog.tab.vault":       "VAULT",
+        "help_catalog.vault.header":    "VAULT DRAIN",
+        "help_catalog.vault.cursor":    "Use \u2191\u2193 / WS to keep cursor in the green zone",
+        "help_catalog.vault.checks":    "Position checked every 1.5s \u2014 Perfect / Good / Bad / Fail",
+        "help_catalog.vault.multiplier": "Better checks = faster credit drain multiplier",
+        "help_catalog.vault.heat":      "Each check increases your heat level",
+        "help_catalog.vault.volatility": "Higher heat = more cursor drift",
+        "help_catalog.vault.patrol":    "Heat level-up spawns a security patrol \u2014 kicks you out",
+        "help_catalog.vault.finale":    "Final portion is harder (more drift)",
+        "help_catalog.vault.reenter":   "Disconnect with [Q] and return to vault later",
+        "help_catalog.vault.bonus":     "Drain everything for a +25% credit bonus",
+        "help_catalog.vault.credits_on_leave": "Credits are only yours once you extract!",
+        "help_catalog.vault.extract":   "Use the elevator on floor 3 to extract with your credits",
+        "cheat.section.vault":          "VAULT",
+        "cheat.vault.open":             "Open Vault Overlay",
+        "cheat.vault.credits100":       "Set Vault Credits: 100",
+        "cheat.vault.credits300":       "Set Vault Credits: 300",
+        "cheat.vault.credits500":       "Set Vault Credits: 500",
+        "cheat.vault.drain50":          "Drain 50%",
+        "cheat.vault.reset":            "Reset Vault",
+
+        # --- Help catalog — HEAT tab ---
+        "help_catalog.tab.heat":                "HEAT",
+        "help_catalog.heat.h1":                 "WHAT IS HEAT",
+        "help_catalog.heat.1.1":                "Facility alert level — tracks how much attention you've drawn",
+        "help_catalog.heat.1.2":                "Bar at the top of the screen: colour and label show current level",
+        "help_catalog.heat.1.3":                "Five levels: GHOST \u2192 TRACE \u2192 ALERT \u2192 PURSUIT \u2192 BURN",
+        "help_catalog.heat.1.4":                "Higher level = more dangerous facility",
+        "help_catalog.heat.h2":                 "WHAT RAISES HEAT",
+        "help_catalog.heat.2.1":                "Combat — each round of fighting increases heat",
+        "help_catalog.heat.2.2":                "Hacking — each node captured increases heat",
+        "help_catalog.heat.2.3":                "Failed hack: large heat spike",
+        "help_catalog.heat.2.4":                "Loot purge nodes lower your heat",
+        "help_catalog.heat.h3":                 "EFFECTS OF HIGH HEAT",
+        "help_catalog.heat.3.1":                "Stronger and more numerous enemies spawn on new floors",
+        "help_catalog.heat.3.2":                "Hacking minigame timer is shorter at higher heat",
+        "help_catalog.heat.3.3":                "At maximum heat the bar stays full and pulses red",
     },
 
     "cs": {
@@ -761,7 +878,21 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hp.plus10":              "L\u00e9\u010dit  +10 HP",
         "cheat.hp.plus20":              "L\u00e9\u010dit  +20 HP",
         "cheat.credits.plus100":        "+100 Kredit\u016f",
+        "cheat.section.heat":           "\u00darovn\u011b heatu",
+        "cheat.heat.level1":            "Heat \u2192 LV.1  GHOST",
+        "cheat.heat.level2":            "Heat \u2192 LV.2  TRACE",
+        "cheat.heat.level3":            "Heat \u2192 LV.3  ALERT",
+        "cheat.heat.level4":            "Heat \u2192 LV.4  PURSUIT",
+        "cheat.heat.level5":            "Heat \u2192 LV.5  BURN",
         "cheat.hint":                   "[\u2191\u2193] Pohyb   [Enter] Pou\u017e\u00edt   [Esc] Zav\u0159\u00edt",
+
+        # --- Heat system ---
+        "hud.heat_level":               "{level}",
+        "log.heat_level_up":            "Bezpe\u010dnost eskalovala \u2014 {level}",
+        "hack.status.purge":            "Stopa vymaz\u00e1na",
+        "hack.overlay.purge_title":     "SMAZ\u00c1N\u00cd STOP",
+        "hack.overlay.purge_sub":       "HEAT SN\u00cdŽEN",
+        "hack.loot.coolant":            "Smaz\u00e1n\u00ed stop",
 
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "P\u0158ERU\u0160IT B\u011aH",
@@ -792,9 +923,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.smg.desc":                "D\u00e1vkov\u00e9 st\u0159\u00edlen\u00ed \u2014 3 n\u00e1boje za v\u00fdst\u0159el. Ni\u010d\u00ed na bl\u00edzko.",
         "item.energy_sword.name":       "Energetick\u00fd me\u010d",
         "item.energy_sword.desc":       "Vojensk\u00e1 energetick\u00e1 \u010depel. Pron\u00edk\u00e1 skrz zbroj.",
-        "item.rifle.name":              "Pu\u0161ka",
-        "item.rifle.desc":              "P\u0159esn\u00e1 na d\u00e1lku. Men\u0161\u00ed d\u00e1vka. 6 n\u00e1boj\u016f.",
-        "item.stim_pack.name":          "Stimul\u00e1tor",
+        "item.rifle.name":              "Puška",
+        "item.rifle.desc":              "Přesná na dálku. Menší dávka. 6 nábojů.",
+        "item.k9_bite.name":            "Čelisti K9",
+        "item.k9_bite.desc":            "Titanové čelisti hlídacího psa.",
+        "item.stim_pack.name":          "Stimulátor",
         "item.stim_pack.desc":          "Bojov\u00fd stimulant. Obnov\u00ed 10 HP.",
         "item.medkit.name":             "L\u00e9k\u00e1rni\u010dka",
         "item.medkit.desc":             "Z\u00e1chransk\u00e1 souprava. Obnov\u00ed 20 HP.",
@@ -811,8 +944,13 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # --- Entities ---
         "entity.player.name":           "Diver",
-        "entity.guard.name":            "Str\u00e1\u017en\u00fd",
+        "entity.guard.name":            "Strážný",
         "entity.drone.name":            "Bezp. dron",
+        "entity.dog.name":              "Hlídač K9",
+        "entity.heavy.name":            "Těžký",
+        "entity.turret.name":           "Auto-věž",
+        "entity.sniper_drone.name":     "Ostrostřelec",
+        "entity.riot_guard.name":       "Těžkooděnec",
         "entity.crate.name":            "Bedna",
         "entity.corp_vault.name":       "Korp. trezor",
 
@@ -822,6 +960,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hud.no_heal":                  "[H] --",
         "hud.armor_label":              "[ZBROJ]",
         "hud.armor_none":               "\u2014",
+        "hud.vault_pending":            "TREZOR \u00a5{n} (odměna za útěk)",
 
         # --- Inventory UI ---
         "inv.title":                    "INVENT\u00c1\u0158  {n}/8",
@@ -887,6 +1026,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.equipped":                 "Vybaveno: {item}.",
         "log.dropped":                  "Zahozeno: {item}.",
         "log.credits_drop":             "+\u00a5{n}",
+
+        # --- Encounter messages ---
+        "log.room_encounter":           "Nep\u0159\u00e1tel\u00e9 detekov\u00e1ni!",
+        "log.room_clear":               "M\u00edstnost \u010dist\u00e1.",
 
         # --- Consumable use ---
         "log.heal_restored":            "Obnoveno {n} HP.",
@@ -1095,6 +1238,9 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # Items tab
         "help_catalog.items.h1":        "ZBRAN\u011a",
+        "help_catalog.items.icon.9mm":   "9mm",
+        "help_catalog.items.icon.rifle": "Pu\u0161ka",
+        "help_catalog.items.icon.shell": "Broky",
 
         # Aiming tab
         "help_catalog.aim.h1":          "JAK FUNGUJE M\u00cd\u0158EN\u00cd",
@@ -1195,6 +1341,30 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.melee.3.2":       "[Esc] \u2014 zru\u0161it \u00fatok (\u017e\u00e1dn\u00fd tah)",
         "help_catalog.melee.3.3":       "Odpočet automaticky vybije \u00fatok po vypr\u0161en\u00ed",
 
+        # Help catalog — enemies tab
+        "help_catalog.tab.enemies":          "NEP\u0158\u00c1TEL\u00c9",
+        "help_catalog.enem.h1":              "Tier 1 \u2014 Z\u00e1kladn\u00ed",
+        "help_catalog.enem.1.guard":         "Str\u00e1\u017en\u00fd \u2014 bojovn\u00edk zbl\u00edzka, lehce obrn\u011bn\u00fd",
+        "help_catalog.enem.1.drone":         "Bezp. dron \u2014 p\u0159esn\u00fd st\u0159elec na d\u00e1lku, dr\u017e\u00ed odst\u00e1v",
+        "help_catalog.enem.1.dog":           "Hl\u00edda\u010d K9 \u2014 pohybuje se dvakr\u00e1t za tah, rychl\u00fd \u00fatok zbl\u00edzka",
+        "help_catalog.enem.h2":              "Tier 2 \u2014 Pokro\u010dil\u00ed",
+        "help_catalog.enem.2.heavy":         "T\u011b\u017ek\u00fd \u2014 obrn\u011bn\u00fd, neust\u00e1le postupuje, nikdy neustupuje",
+        "help_catalog.enem.2.turret":        "Auto-v\u011b\u017e \u2014 nehybn\u00e1, st\u0159\u00edl\u00ed dvakr\u00e1t za tah; p\u0159estane \u00fato\u010dit p\u0159i ztr\u00e1t\u011b v\u00fdhledu",
+        "help_catalog.enem.h3":              "Tier 3 \u2014 Elita",
+        "help_catalog.enem.3.sniper":        "Ostrost\u0159elec \u2014 velmi p\u0159esn\u00e1 pu\u0161ka, v\u017edy ustupuje na maxim\u00e1ln\u00ed vzd\u00e1lenost",
+        "help_catalog.enem.3.riot":          "T\u011b\u017ekoode\u011bnec \u2014 siln\u011b obrn\u011bn\u00fd bojovn\u00edk zbl\u00edzka; pou\u017eij st\u0159elnou zbra\u0148",
+        # Trait chip labels
+        "help_catalog.enem.tag.melee":       "ZBLÍZKA",
+        "help_catalog.enem.tag.ranged":      "ST\u0158ELEC",
+        "help_catalog.enem.tag.fast":        "RYCHL\u00dd",
+        "help_catalog.enem.tag.precise":     "P\u0158ESN\u00dd",
+        "help_catalog.enem.tag.lt_armor":    "LH. BRN\u011aN\u00cd",
+        "help_catalog.enem.tag.hvy_armor":   "T\u011a\u017d. BRN\u011aN\u00cd",
+        "help_catalog.enem.tag.immobile":    "NEHYBN\u00dd",
+        "help_catalog.enem.tag.rapid_fire":  "RYCH. PALBA",
+        "help_catalog.enem.tag.retreats":    "USTUPUJE",
+        "help_catalog.enem.tag.advances":    "POSTUPUJE",
+
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Mezerník / Enter ]  Pokračovat",
         "settings.gameplay.tutorial":           "Tutoriál",
@@ -1222,6 +1392,70 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.img.escape":                  "[Q]  útěk!",
         "tutorial.img.switch_weapon":           "[C] přepnout zbraň",
         "tutorial.img.reload":                  "[R] přebít",
+
+        # --- Tutorial: heat ---
+        "tutorial.heat.title":                  "Heat — zůstaň v ústraní",
+        "tutorial.heat.body":                   "Sleduj HEAT bar nahoře na obrazovce.\nTvoje akce přitahují pozornost ostrahy — udržuj ho nízko.\nBoj zvyšuje heat s každým odehraným kolem.\nHackování taky zvyšuje heat s každým získaným uzlem.\n>> Vysoký heat = silnější nepřátelé a méně času na hackování.",
+
+        # --- Vault drain minigame ---
+        "vault.overlay.title":          "VYS\u00c1V\u00c1N\u00cd TREZORU",
+        "vault.overlay.credits":        "Kredity: \u00a5{n}",
+        "vault.overlay.multiplier":     "Multiplik\u00e1tor: {n}\u00d7",
+        "vault.overlay.heat":           "HEAT",
+        "vault.overlay.controls":       "\u2191\u2193 / W S \u2014 udrž kurzor v zelené",
+        "vault.overlay.disconnect":     "[Q] Odpojit",
+        "vault.overlay.drained":        "KOMPLETN\u011a VYS\u00c1TO",
+        "vault.overlay.severed":        "Spojen\u00ed p\u0159eru\u0161eno!",
+        "vault.zone.perfect":           "PERFEKTN\u00cd",
+        "vault.zone.good":              "DOBR\u00c9",
+        "vault.zone.bad":               "\u0160PATN\u00c9",
+        "vault.zone.fail":              "SELH\u00c1N\u00cd",
+        "log.vault_drained":            "Vys\u00e1to \u00a5{credits} z trezoru",
+        "log.vault_bonus":              "Bonus za \u00favoln\u00e9 vys\u00e1t\u00ed: +\u00a5{bonus}",
+        "log.vault_interrupted":        "Bezpe\u010dnostn\u00ed hl\u00eddka \u2014 spojen\u00ed p\u0159eru\u0161eno!",
+        "log.vault_empty":              "Trezor je pr\u00e1zdn\u00fd",
+        "log.vault_in_combat":          "Ukon\u010di boj d\u0159\u00edve, ne\u017e se p\u0159ipoj\u00ed\u0161 k trezoru",
+        "log.vault_extract":            "Extrakce s \u00a5{credits}",
+        "hint.elevator_extract":        "[E] Extrakce",
+        "tutorial.vault.title":         "Trezor korporace",
+        "tutorial.vault.body":          "Udr\u017euj kurzor v zelen\u00e9 z\u00f3n\u011b pro rychlej\u0161\u00ed vys\u00e1v\u00e1n\u00ed kredit\u016f.\nHeat se zvy\u0161uje s ka\u017ed\u00fdm testem \u2014 hor\u0161\u00ed pozice = v\u00edce heat.\nV\u00edce heat = t\u011b\u017e\u0161\u00ed udr\u017een\u00ed spojen\u00ed.\nP\u0159i vysok\u00e9m heat m\u016f\u017ee dorazit bezpe\u010dnostn\u00ed hl\u00eddka.\nStiskni [Q] pro odpojen\u00ed \u2014 m\u016f\u017ee\u0161 se vr\u00e1tit pozd\u011bji.\n>> Kredity m\u00e1\u0161 a\u017e po extrakci v\u00fdtahem!",
+        "help_catalog.tab.vault":       "TREZOR",
+        "help_catalog.vault.header":    "VYS\u00c1V\u00c1N\u00cd TREZORU",
+        "help_catalog.vault.cursor":    "Pou\u017eij \u2191\u2193 / WS k udr\u017een\u00ed kurzoru v zelen\u00e9 z\u00f3n\u011b",
+        "help_catalog.vault.checks":    "Pozice testov\u00e1na ka\u017ed\u00e9 1,5s \u2014 Perfektn\u00ed / Dobr\u00e9 / \u0160patn\u00e9 / Selh\u00e1n\u00ed",
+        "help_catalog.vault.multiplier": "Lep\u0161\u00ed testy = vy\u0161\u0161\u00ed multiplik\u00e1tor vys\u00e1v\u00e1n\u00ed",
+        "help_catalog.vault.heat":      "Ka\u017ed\u00fd test zvy\u0161uje \u00farove\u0148 heat",
+        "help_catalog.vault.volatility": "Vy\u0161\u0161\u00ed heat = v\u011bt\u0161\u00ed drift kurzoru",
+        "help_catalog.vault.patrol":    "Zv\u00fd\u0161en\u00ed heat vyvol\u00e1 hl\u00eddku \u2014 vyhodila t\u011b",
+        "help_catalog.vault.finale":    "Posledn\u00ed \u00fasek je t\u011b\u017e\u0161\u00ed (v\u00edce drift)",
+        "help_catalog.vault.reenter":   "Odpoj se [Q] a vr\u00e1\u0165 se k trezoru pozd\u011bji",
+        "help_catalog.vault.bonus":     "Vys\u00e1j v\u0161echno pro bonus +25 % kredit\u016f",
+        "help_catalog.vault.credits_on_leave": "Kredity m\u00e1\u0161 a\u017e po extrakci!",
+        "help_catalog.vault.extract":   "Pou\u017eij v\u00fdtah na 3. pat\u0159e pro extrakci s kredity",
+        "cheat.section.vault":          "TREZOR",
+        "cheat.vault.open":             "Otev\u0159\u00edt Vault Overlay",
+        "cheat.vault.credits100":       "Nastavit kredity trezoru: 100",
+        "cheat.vault.credits300":       "Nastavit kredity trezoru: 300",
+        "cheat.vault.credits500":       "Nastavit kredity trezoru: 500",
+        "cheat.vault.drain50":          "Vys\u00e1t 50 %",
+        "cheat.vault.reset":            "Resetovat trezor",
+
+        # --- Help catalog — HEAT tab ---
+        "help_catalog.tab.heat":                "HEAT",
+        "help_catalog.heat.h1":                 "CO JE HEAT",
+        "help_catalog.heat.1.1":                "Úroveň poplachu facility — měří, kolik pozornosti jsi přitáhl",
+        "help_catalog.heat.1.2":                "Bar nahoře na obrazovce: barva a popis ukazují aktuální úroveň",
+        "help_catalog.heat.1.3":                "Pět úrovní: GHOST \u2192 TRACE \u2192 ALERT \u2192 PURSUIT \u2192 BURN",
+        "help_catalog.heat.1.4":                "Vyšší úroveň = nebezpečnější facility",
+        "help_catalog.heat.h2":                 "CO ZVYŠUJE HEAT",
+        "help_catalog.heat.2.1":                "Boj — každé kolo souboje zvyšuje heat",
+        "help_catalog.heat.2.2":                "Hackování — každý získaný uzel zvyšuje heat",
+        "help_catalog.heat.2.3":                "Zkažený hack: velký skok heatu",
+        "help_catalog.heat.2.4":                "Loot purge uzly snižují heat",
+        "help_catalog.heat.h3":                 "DOPADY VYSOKÉHO HEATU",
+        "help_catalog.heat.3.1":                "Silnější a četnější nepřátelé v nových místnostech",
+        "help_catalog.heat.3.2":                "Časovač hackování je kratší při vyšším heatu",
+        "help_catalog.heat.3.3":                "Na maximálním heatu bar zůstane plný a pulzuje červeně",
     },
 
     "es": {
@@ -1350,7 +1584,21 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hp.plus10":              "Curar  +10 HP",
         "cheat.hp.plus20":              "Curar  +20 HP",
         "cheat.credits.plus100":        "+100 Cr\u00e9ditos",
+        "cheat.section.heat":           "Nivel de Calor",
+        "cheat.heat.level1":            "Calor \u2192 LV.1  GHOST",
+        "cheat.heat.level2":            "Calor \u2192 LV.2  TRACE",
+        "cheat.heat.level3":            "Calor \u2192 LV.3  ALERT",
+        "cheat.heat.level4":            "Calor \u2192 LV.4  PURSUIT",
+        "cheat.heat.level5":            "Calor \u2192 LV.5  BURN",
         "cheat.hint":                   "[\u2191\u2193] Navegar   [Enter] Usar   [Esc] Cerrar",
+
+        # --- Heat system ---
+        "hud.heat_level":               "{level}",
+        "log.heat_level_up":            "Seguridad escalada \u2014 {level}",
+        "hack.status.purge":            "Rastro eliminado",
+        "hack.overlay.purge_title":     "ELIMINAR RASTRO",
+        "hack.overlay.purge_sub":       "HEAT REDUCIDO",
+        "hack.loot.coolant":            "Eliminar rastro",
 
         # --- Quit confirm dialog (in-game) ---
         "quit_confirm.title":           "ABANDONAR PARTIDA",
@@ -1382,7 +1630,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "item.energy_sword.name":       "Espada de energ\u00eda",
         "item.energy_sword.desc":       "Hoja de energ\u00eda militar. Atraviesa la armadura.",
         "item.rifle.name":              "Fusil",
-        "item.rifle.desc":              "Precisi\u00f3n a larga distancia. 6 rondas.",
+        "item.rifle.desc":              "Precisión a larga distancia. 6 rondas.",
+        "item.k9_bite.name":            "Mandíbulas K9",
+        "item.k9_bite.desc":            "Mandíbulas de titanio reforzado.",
         "item.stim_pack.name":          "Estimulante",
         "item.stim_pack.desc":          "Estimulante de combate. Restaura 10 HP.",
         "item.medkit.name":             "Botiquin",
@@ -1402,6 +1652,11 @@ _STRINGS: dict[str, dict[str, str]] = {
         "entity.player.name":           "Diver",
         "entity.guard.name":            "Guardia Corp.",
         "entity.drone.name":            "Dron Seg.",
+        "entity.dog.name":              "Unidad K9",
+        "entity.heavy.name":            "Ejecutor Pesado",
+        "entity.turret.name":           "Torreta Auto.",
+        "entity.sniper_drone.name":     "Dron Francotirador",
+        "entity.riot_guard.name":       "Guardia Antidisturbios",
         "entity.crate.name":            "Cajón",
         "entity.corp_vault.name":       "Cámara Corp.",
 
@@ -1411,6 +1666,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "hud.no_heal":                  "[H] --",
         "hud.armor_label":              "[ARMADURA]",
         "hud.armor_none":               "\u2014",
+        "hud.vault_pending":            "BÓVEDA ¥{n} (recompensa escape)",
 
         # --- Inventory UI ---
         "inv.title":                    "INVENTARIO  {n}/8",
@@ -1476,6 +1732,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "log.equipped":                 "Equipado: {item}.",
         "log.dropped":                  "Tirado: {item}.",
         "log.credits_drop":             "+\u00a5{n}",
+
+        # --- Encounter messages ---
+        "log.room_encounter":           "\u00a1Hostiles detectados!",
+        "log.room_clear":               "Habitaci\u00f3n despejada.",
 
         # --- Consumable use ---
         "log.heal_restored":            "Restaurados {n} HP.",
@@ -1684,6 +1944,9 @@ _STRINGS: dict[str, dict[str, str]] = {
 
         # Items tab
         "help_catalog.items.h1":        "ARMAS",
+        "help_catalog.items.icon.9mm":   "9mm",
+        "help_catalog.items.icon.rifle": "Rifle",
+        "help_catalog.items.icon.shell": "Escopeta",
 
         # Aiming tab
         "help_catalog.aim.h1":          "C\u00d3MO FUNCIONA EL APUNTADO",
@@ -1784,6 +2047,30 @@ _STRINGS: dict[str, dict[str, str]] = {
         "help_catalog.melee.3.2":       "[Esc] \u2014 cancelar ataque (sin turno)",
         "help_catalog.melee.3.3":       "El temporizador dispara autom\u00e1ticamente al expirar",
 
+        # Help catalog — enemies tab
+        "help_catalog.tab.enemies":          "ENEMIGOS",
+        "help_catalog.enem.h1":              "Tier 1 \u2014 B\u00e1sicos",
+        "help_catalog.enem.1.guard":         "Guardia Corp. \u2014 luchador cuerpo a cuerpo, ligeramente blindado",
+        "help_catalog.enem.1.drone":         "Dron Seg. \u2014 atacante a distancia preciso, mantiene distancia",
+        "help_catalog.enem.1.dog":           "Unidad K9 \u2014 se mueve dos veces por turno, ataque cuerpo a cuerpo r\u00e1pido",
+        "help_catalog.enem.h2":              "Tier 2 \u2014 Avanzados",
+        "help_catalog.enem.2.heavy":         "Ejecutor Pesado \u2014 blindado, avanza sin parar, nunca retrocede",
+        "help_catalog.enem.2.turret":        "Torreta Auto. \u2014 inm\u00f3vil, dispara dos veces por turno; cesa al perder visi\u00f3n",
+        "help_catalog.enem.h3":              "Tier 3 \u2014 \u00c9lite",
+        "help_catalog.enem.3.sniper":        "Dron Francotirador \u2014 rifle muy preciso, siempre retrocede a distancia m\u00e1xima",
+        "help_catalog.enem.3.riot":          "Guardia Antidisturbios \u2014 cuerpo a cuerpo fuertemente blindado; usa armas de fuego",
+        # Trait chip labels
+        "help_catalog.enem.tag.melee":       "C. A C.",
+        "help_catalog.enem.tag.ranged":      "DISPARO",
+        "help_catalog.enem.tag.fast":        "R\u00c1PIDO",
+        "help_catalog.enem.tag.precise":     "PRECISO",
+        "help_catalog.enem.tag.lt_armor":    "ARM. LIG.",
+        "help_catalog.enem.tag.hvy_armor":   "ARM. PESADA",
+        "help_catalog.enem.tag.immobile":    "INM\u00d3VIL",
+        "help_catalog.enem.tag.rapid_fire":  "FUEGO R\u00c1P.",
+        "help_catalog.enem.tag.retreats":    "RETROCEDE",
+        "help_catalog.enem.tag.advances":    "AVANZA",
+
         # --- Tutorial overlay ---
         "tutorial.continue":                    "[ Espacio / Enter ]  Continuar",
         "settings.gameplay.tutorial":           "Tutorial",
@@ -1811,6 +2098,70 @@ _STRINGS: dict[str, dict[str, str]] = {
         "tutorial.img.escape":                  "[Q]  ¡escapar!",
         "tutorial.img.switch_weapon":           "[C] cambiar arma",
         "tutorial.img.reload":                  "[R] recargar",
+
+        # --- Tutorial: heat ---
+        "tutorial.heat.title":                  "Heat — mantén un perfil bajo",
+        "tutorial.heat.body":                   "Observa la barra HEAT en la parte superior de la pantalla.\nTus acciones atraen la atención de la seguridad — mantenla baja.\nEl combate aumenta el heat con cada ronda peleada.\nEl hackeo también aumenta el heat con cada nodo capturado.\n>> Heat alto = enemigos más fuertes y menos tiempo para hackear.",
+
+        # --- Vault drain minigame ---
+        "vault.overlay.title":          "DRENAJE DE B\u00d3VEDA",
+        "vault.overlay.credits":        "Cr\u00e9ditos: \u00a5{n}",
+        "vault.overlay.multiplier":     "Multiplicador: {n}\u00d7",
+        "vault.overlay.heat":           "HEAT",
+        "vault.overlay.controls":       "\u2191\u2193 / W S \u2014 mantén el cursor en verde",
+        "vault.overlay.disconnect":     "[Q] Desconectar",
+        "vault.overlay.drained":        "COMPLETAMENTE DRENADO",
+        "vault.overlay.severed":        "\u00a1Conexi\u00f3n cortada!",
+        "vault.zone.perfect":           "PERFECTO",
+        "vault.zone.good":              "BUENO",
+        "vault.zone.bad":               "MALO",
+        "vault.zone.fail":              "FALLO",
+        "log.vault_drained":            "Drenado \u00a5{credits} de la b\u00f3veda",
+        "log.vault_bonus":              "Bono por drenaje total: +\u00a5{bonus}",
+        "log.vault_interrupted":        "\u00a1Patrulla \u2014 conexi\u00f3n interrumpida!",
+        "log.vault_empty":              "La b\u00f3veda est\u00e1 vac\u00eda",
+        "log.vault_in_combat":          "Termina el combate antes de acceder a la b\u00f3veda",
+        "log.vault_extract":            "Extracci\u00f3n con \u00a5{credits}",
+        "hint.elevator_extract":        "[E] Extracci\u00f3n",
+        "tutorial.vault.title":         "B\u00f3veda corporativa",
+        "tutorial.vault.body":          "Mant\u00e9n el cursor en la zona verde para drenar cr\u00e9ditos m\u00e1s r\u00e1pido.\nEl heat aumenta con cada prueba \u2014 peor posici\u00f3n = m\u00e1s heat.\nM\u00e1s heat = m\u00e1s dif\u00edcil mantener la conexi\u00f3n.\nPueden aparecer patrullas si el heat sube demasiado.\nPresiona [Q] para desconectarte \u2014 puedes volver despu\u00e9s.\n>> \u00a1Los cr\u00e9ditos son tuyos s\u00f3lo al extraer por el ascensor!",
+        "help_catalog.tab.vault":       "B\u00d3VEDA",
+        "help_catalog.vault.header":    "DRENAJE DE B\u00d3VEDA",
+        "help_catalog.vault.cursor":    "Usa \u2191\u2193 / WS para mantener el cursor en la zona verde",
+        "help_catalog.vault.checks":    "Posici\u00f3n verificada cada 1,5s \u2014 Perfecto / Bueno / Malo / Fallo",
+        "help_catalog.vault.multiplier": "Mejores verificaciones = multiplicador de drenaje m\u00e1s alto",
+        "help_catalog.vault.heat":      "Cada verificaci\u00f3n aumenta tu nivel de heat",
+        "help_catalog.vault.volatility": "M\u00e1s heat = m\u00e1s deriva del cursor",
+        "help_catalog.vault.patrol":    "Subir nivel de heat genera una patrulla \u2014 te expulsa",
+        "help_catalog.vault.finale":    "La parte final es m\u00e1s dif\u00edcil (m\u00e1s deriva)",
+        "help_catalog.vault.reenter":   "Desc\u00f3nectate con [Q] y vuelve a la b\u00f3veda despu\u00e9s",
+        "help_catalog.vault.bonus":     "Dr\u00e9nalo todo para un bono de +25 % de cr\u00e9ditos",
+        "help_catalog.vault.credits_on_leave": "\u00a1Los cr\u00e9ditos son tuyos solo al extraer!",
+        "help_catalog.vault.extract":   "Usa el ascensor en el piso 3 para extraer con tus cr\u00e9ditos",
+        "cheat.section.vault":          "B\u00d3VEDA",
+        "cheat.vault.open":             "Abrir Vault Overlay",
+        "cheat.vault.credits100":       "Establecer cr\u00e9ditos b\u00f3veda: 100",
+        "cheat.vault.credits300":       "Establecer cr\u00e9ditos b\u00f3veda: 300",
+        "cheat.vault.credits500":       "Establecer cr\u00e9ditos b\u00f3veda: 500",
+        "cheat.vault.drain50":          "Drenar 50 %",
+        "cheat.vault.reset":            "Resetear b\u00f3veda",
+
+        # --- Help catalog — HEAT tab ---
+        "help_catalog.tab.heat":                "HEAT",
+        "help_catalog.heat.h1":                 "QUÉ ES EL HEAT",
+        "help_catalog.heat.1.1":                "Nivel de alerta de la instalación — rastrea cuánta atención has llamado",
+        "help_catalog.heat.1.2":                "Barra en la parte superior: color y etiqueta muestran el nivel actual",
+        "help_catalog.heat.1.3":                "Cinco niveles: GHOST \u2192 TRACE \u2192 ALERT \u2192 PURSUIT \u2192 BURN",
+        "help_catalog.heat.1.4":                "Nivel más alto = instalación más peligrosa",
+        "help_catalog.heat.h2":                 "QUÉ AUMENTA EL HEAT",
+        "help_catalog.heat.2.1":                "Combate — cada ronda de pelea aumenta el heat",
+        "help_catalog.heat.2.2":                "Hackeo — cada nodo capturado aumenta el heat",
+        "help_catalog.heat.2.3":                "Hackeo fallido: gran aumento de heat",
+        "help_catalog.heat.2.4":                "Los nodos de purga reducen el heat",
+        "help_catalog.heat.h3":                 "EFECTOS DEL HEAT ALTO",
+        "help_catalog.heat.3.1":                "Enemigos más fuertes y numerosos en nuevos pisos",
+        "help_catalog.heat.3.2":                "Menos tiempo en el minijuego de hackeo con heat alto",
+        "help_catalog.heat.3.3":                "Al máximo heat la barra permanece llena y pulsa en rojo",
     },
 }
 

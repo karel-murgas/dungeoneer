@@ -1,0 +1,19 @@
+- Generovaní nepřátel dynamicky, ne na začátku hry. Při odhalení místnosti se vygeneruje, jestli v ní někdo je a kdo.
+- Může se generovat víc nepřátel najednou (záleží na heat levelu)
+-  Nikdy ne víc než 2 střelci najednou
+- Typ nepřátel bude také daný heatem
+- Heat:
+	- Lvl 1 - osamělí nepřátelé (jaké teď)
+	- Lvl 2 - malé skupinky (2 psi, dron a guard, ...)
+	- Lvl 3 - tier 2 enemy, nebo 2-3 ve skupince (spíš 2)
+	- Lvl 4 - tier 2 enemy + tier 1 enemy, 3 tier 1 enemy, velmi vzáceně tier 3 enemy
+	- Lvl 5 - tier 3 enemy, tier 2 enemy + 1-2 tier 1, 3-4 tier 1 enemies
+- Nepřátelé nemusí být v každé místnosti, ale mapa by neměla být příliš prázdná
+- Bude potřeba vhodně upravit dropy (munice, léčení) a počty lockerů, aby hra byla vybalancovaná
+	- Na normal by mělo být nutné získávat zásoby i z lockerů a občas muset šetřit municí / moc nemíjet
+	- Na normal by se neměly moc hromadit léčivé předměty
+- Kredity by měly být:
+	- Primárně ze závěrečného vaultu (cca jako celá facilita dohromady)
+	- Sekundárně z kontejnerů (měl by to bý lákavý loot node)
+	- Symbolicky ze zabitých nepřátel (přes ně se nemá vyplatit farmit)
+- Později nás bude čekat další rebalance, až přidáme metagame s progresem mezi runy - pak bude v pořádku první runy prohrát a postupně se zlepšovat - teď chceme cílit challeng na to run projít celý

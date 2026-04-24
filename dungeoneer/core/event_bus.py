@@ -66,6 +66,36 @@ class LogMessageEvent(Event):
     message: str
     colour: tuple = field(default_factory=lambda: (200, 200, 200))
 
+@dataclass
+class EnemyBurstQueueEvent(Event):
+    """Subsequent shots of an enemy burst weapon — staggered visually by GameScene."""
+    events: list  # list of DamageEvent
+
+@dataclass
+class HeatChangeEvent(Event):
+    """Heat value changed (gain or reduction)."""
+    old_value: int
+    new_value: int
+    old_level: int
+    new_level: int
+
+@dataclass
+class HeatLevelUpEvent(Event):
+    """Heat crossed into a higher level — triggers patrol spawn."""
+    new_level: int
+
+@dataclass
+class HackNodesCollectedEvent(Event):
+    """Posted when hack minigame finishes — reports heat impact to HeatSystem."""
+    nodes_collected:   int   # total nodes hacked (each +HEAT_HACK_NODE)
+    success:           bool  # False → extra HEAT_HACK_FAIL on top
+    coolant_reduction: int   # total heat removed by COOLANT nodes
+
+@dataclass
+class RoomRevealedEvent(Event):
+    """Posted the first time a room enters the player's FOV."""
+    room: Any
+
 
 # ---------------------------------------------------------------------------
 # Bus

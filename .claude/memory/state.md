@@ -4,9 +4,64 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-03-22, in dev)
+## Current State (2026-04-23, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
+**Rebalance (dynamic spawning + loot/credit economy) ✅ complete (all 4 chunks).**
+
+### New (2026-04-23) — Dynamic spawning + loot/credit rebalance (4 chunks)
+- **Chunk 1**: `RoomRevealedEvent` infrastructure — `room.revealed`, `floor.rooms`, `fov.py` posts event on first reveal
+- **Chunk 2**: `systems/encounter.py` — EncounterSystem subscribes to RoomRevealedEvent; "pack vs elite" model by heat level; ranged cap ≤2; replaces static dungeon_generator spawning; `spawn_patrol()` for heat level-up; `empty_room_chance` on Difficulty
+- **Chunk 3**: Loot/credit economy — vault ≈ 500 credits (Normal), enemy credit drops reduced to symbolic, containers_per_floor +1, hack pool HEAL weight 4→boosted, MYSTERY weight 2→1
+- **Chunk 4**: i18n (`log.room_encounter` / `log.room_clear` in en/cs/es), encounter log messages, memory + arch updated, plan files moved to `.claude/plans/`
+
+### New (2026-03-31) — Vault drain minigame
+- **VaultOverlay** (`minigame/vault_scene.py`) — cursor-tracking credit-drain minigame on floor 3
+- 1D vertical cursor (0–1), physics: velocity + VAULT_DAMPING damping + Gaussian drift
+- Drift scales with heat level and difficulty.vault_drift_mult (Easy=0.7×, Hard=1.3×)
+- Last 20% of total credits: drift×2.0 (player doesn't see % but feels it)
+- **Zone checks** every 1.5s: Perfect/Good/Bad/Fail → adjust multiplier [0.3–2.0] + add heat
+- Credits drain at base_rate × multiplier; player sees earned total only (no remaining/total)
+- Voluntary disconnect: Q/Esc — player can re-enter vault later
+- Patrol interrupt: force_close() called from `_on_heat_level_up` — re-entry still allowed
+- Vault fully drained → +25% bonus applied at extraction
+- **GameScene integration**: _vault_overlay/container/credits_banked/fully_drained state vars
+  - Floor 3: elevator KEPT for extraction (E→Extract); vault placed ≥3 tiles away in same room
+  - Extraction: _elevator_descend on floor 3 awards vault_credits_banked (+ bonus) → victory
+  - OpenContainerAction on is_objective → _launch_vault(); bypass action_resolver
+  - LMB on objective container also routes to _launch_vault()
+  - music.duck(0.15) on open, unduck on complete
+- **i18n**: `vault.*`, `log.vault_*`, `hint.elevator_extract`, `tutorial.vault.*`, `help_catalog.vault.*`, `cheat.*vault*` (en/cs/es)
+- **help_catalog**: VAULT tab (_TAB_VAULT=9) with zone gauge illustration
+- **tutorial_overlay**: "vault" step added; procedural gauge illustration
+- **cheat_menu**: VAULT section — open overlay, set credits 100/300/500, drain 50%, reset
+- **settings**: VAULT_* constants in core/settings.py; vault_drift_mult in Difficulty
+- Music: vault.mp3 plays from first vault open until run ends (death or escape); ducks 0.15 while overlay is open; MusicManager.start_vault() on ch2, idempotent on re-entry
+
+### New (2026-03-29) — Heat system
+- **HeatSystem** (`systems/heat.py`) — 5 levels (GHOST/TRACE/ALERT/PURSUIT/BURN), stored on `Player.heat` (0–500)
+- **Sources**: +1/combat round (TurnEndEvent), +2/hacked node, +10/failed hack — hack heat applied at minigame end
+- **Effects**: tier cap for floor generation (lv1-2 → tier1, lv3-4 → tier2, lv5 → tier3); hack time modifier (2−level seconds, min 4s); patrol spawn on level-up (1-2 enemies, CombatState, near player)
+- **COOLANT loot node** (`LootKind.COOLANT`) — reduces heat by 12 at hack end; teal hexagon icon; +2 heat still applies for hacking it; added to `_loot_pool` weight 1
+- **HUD heat bar** — center-top, 180×14px, fills per level (resets visually at level-up); level name shown below in level colour; pulse at level 5
+- **Cheat menu** — Heat Level section, set to any level (1–5)
+- **Events**: `HeatChangeEvent`, `HeatLevelUpEvent`, `HackNodesCollectedEvent` in event_bus.py
+- **i18n**: `hud.heat_level`, `log.heat_level_up`, `hack.status.purge`, `hack.overlay.purge_*`, `hack.loot.coolant`, `cheat.section.heat`, `cheat.heat.level1-5` (en/cs/es)
+- Balance numbers TBD in rebalance; tier cap first kicks in at floor load (not mid-floor), patrol arrives mid-floor on level-up
+
+### New (2026-03-29) — 5 new enemy types + tier system
+- **7 enemy types** across 3 tiers; each Enemy has `tier: int` and `sprite_key: str`
+- **Tier 1**: Guard (existing), Drone (existing), Dog (K9 — 2 moves/turn, 1 attack, k9_bite 1–3 dmg)
+- **Tier 2**: Heavy (pistol, def=3, approaches to dist~4, never retreats), Turret (immobile, 2 shots/turn, LOS lost → Idle)
+- **Tier 3**: Sniper Drone (rifle, aim=6, always retreats, dist~7), Riot Guard (combat_knife, def=4)
+- **AI flags on Enemy**: `can_move`, `preferred_dist`, `always_retreat`, `retreat_when_close`, `actions_per_turn`, `max_attacks_per_turn`
+- **TurnManager** extended: multi-action loop (`actions_per_turn`, `max_attacks_per_turn`)
+- **AI states.py**: `_turret_action` (immobile); `_drone_action` reads enemy flags; weapon range from `equipped_weapon.range_tiles`
+- **Tier-aware spawn**: `dungeon_generator.generate(tier_cap=N)` — `_ENEMY_POOL` dict; default `tier_cap=1` (no change yet)
+- **Procedural sprites**: dog, heavy, turret, sniper_drone, riot_guard added to `procedural_sprites.py`
+- **EntityRenderer**: dispatches by `sprite_key`; `"drone_animated"` = spritesheet, others = procedural
+- **Cheat menu (F11)**: all 7 enemy types spawnable
+- **i18n**: entity + item keys added for all new types (en/cs/es); new weapon `k9_bite`
 
 ### New (2026-03-22) — melee power-charge minigame
 - **MeleeOverlay** (`minigame/melee_scene.py`) — in-world power bar overlay for melee attacks

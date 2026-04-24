@@ -1,2 +1,0 @@
-- [x] Zapsat si poznatky jak generovat
-- [x] Pushnout do devu (včetně tohohle vaultu)

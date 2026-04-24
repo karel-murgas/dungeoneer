@@ -168,21 +168,21 @@ class EntityRenderer:
                 continue
             sx, sy = camera.world_to_screen(actor.x, actor.y)
 
-            is_drone = getattr(actor, "is_drone", False)
             actor_type = type(actor).__name__  # "Player" or "Enemy"
+            sprite_key = getattr(actor, "sprite_key", None)
 
-            if is_drone:
+            if actor_type == "Player":
+                if hide_player:
+                    continue
+                screen.blit(procedural_sprites.get("player"), (sx, sy))
+            elif sprite_key == "drone_animated":
                 frame = self._current_drone_frame()
                 if frame is not None:
                     screen.blit(frame, (sx, sy))
                 else:
                     pygame.draw.circle(screen, actor.render_colour, (sx + half, sy + half), half - 3)
-            elif actor_type == "Player":
-                if hide_player:
-                    continue
-                screen.blit(procedural_sprites.get("player"), (sx, sy))
-            elif actor_type == "Enemy":
-                screen.blit(procedural_sprites.get("guard"), (sx, sy))
+            elif sprite_key is not None:
+                screen.blit(procedural_sprites.get(sprite_key), (sx, sy))
             else:
                 pygame.draw.circle(screen, actor.render_colour, (sx + half, sy + half), half - 3)
 

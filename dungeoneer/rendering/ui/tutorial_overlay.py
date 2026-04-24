@@ -78,7 +78,7 @@ def _get_tileset():
 class TutorialManager:
     """Tracks which tutorial steps have been shown this run."""
 
-    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee")
+    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee", "heat", "vault")
 
     def __init__(self, enabled: bool = False) -> None:
         self.enabled = enabled
@@ -120,6 +120,9 @@ class TutorialOverlay:
     # ------------------------------------------------------------------
 
     def show(self, step: str, on_close: Callable | None = None) -> None:
+        import logging
+        log = logging.getLogger(__name__)
+        log.info(f"TutorialOverlay.show('{step}')")
         self._step     = step
         self._on_close = on_close
 
@@ -159,6 +162,9 @@ class TutorialOverlay:
     def draw(self, screen: pygame.Surface) -> None:
         if self._step is None:
             return
+        import logging
+        log = logging.getLogger(__name__)
+        log.debug(f"TutorialOverlay.draw() rendering step '{self._step}'")
         sw, sh = settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT
         ox = (sw - _W) // 2
         oy = (sh - _H) // 2
@@ -556,8 +562,114 @@ def _draw_melee(screen: pygame.Surface, rect: pygame.Rect) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Heat illustration — mock heat bar with 5 level colour strips
+# ---------------------------------------------------------------------------
+
+def _draw_heat(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Heat bar illustration: 5 level strips (GHOST → BURN) with colour fill."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    _HEAT_COLS = [
+        (80,  200,  80),   # 1 GHOST
+        (180, 210,  60),   # 2 TRACE
+        (220, 150,  40),   # 3 ALERT
+        (220,  60,  60),   # 4 PURSUIT
+        (180,  20,  20),   # 5 BURN
+    ]
+    _NAMES = ["1  GHOST", "2  TRACE", "3  ALERT", "4  PURSUIT", "5  BURN"]
+
+    font = pygame.font.SysFont("consolas", 12, bold=True)
+    bar_w   = rect.width - 28
+    bx      = rect.left + 14
+    strip_h = 20
+    gap     = 5
+    total_h = 5 * strip_h + 4 * gap
+    sy      = rect.centery - total_h // 2
+
+    for i, (col, name) in enumerate(zip(_HEAT_COLS, _NAMES)):
+        dark = (max(0, col[0] // 5), max(0, col[1] // 5), max(0, col[2] // 5))
+        by_i = sy + i * (strip_h + gap)
+
+        # Background track
+        pygame.draw.rect(screen, dark, (bx, by_i, bar_w, strip_h), border_radius=3)
+
+        # Colour fill — gets progressively fuller at higher levels
+        fill_frac = 0.20 + i * 0.17
+        fill_w = round(bar_w * fill_frac)
+        if fill_w > 0:
+            pygame.draw.rect(screen, col, (bx, by_i, fill_w, strip_h), border_radius=3)
+
+        # Border
+        pygame.draw.rect(screen, col, (bx, by_i, bar_w, strip_h), 1, border_radius=3)
+
+        # Level name centred inside the strip
+        lbl = font.render(name, True, col)
+        screen.blit(lbl, (bx + bar_w // 2 - lbl.get_width() // 2,
+                           by_i + strip_h // 2 - font.get_height() // 2 + 1))
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
+
+def _draw_vault(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Vertical gauge with zone colours + cursor marker."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    from dungeoneer.core.settings import (
+        VAULT_ZONE_PERFECT, VAULT_ZONE_GOOD, VAULT_ZONE_BAD,
+    )
+
+    gw = 32
+    gh = 170
+    gx = rect.centerx - gw // 2
+    gy = rect.top + 18
+
+    _C_FAIL    = (220,  40,  40)
+    _C_BAD     = (220, 140,  20)
+    _C_GOOD    = (160, 220,  40)
+    _C_PERFECT = (0,   220,  80)
+
+    def _band(lo: float, hi: float, col: tuple) -> None:
+        top_y = gy + gh - round(hi * gh)
+        bot_y = gy + gh - round(lo * gh)
+        if bot_y > top_y:
+            pygame.draw.rect(screen, col, (gx, top_y, gw, bot_y - top_y))
+
+    pygame.draw.rect(screen, (20, 35, 30), (gx, gy, gw, gh), border_radius=3)
+    _band(0.0, 0.5 - VAULT_ZONE_BAD, _C_FAIL)
+    _band(0.5 + VAULT_ZONE_BAD, 1.0,  _C_FAIL)
+    _band(0.5 - VAULT_ZONE_BAD,  0.5 - VAULT_ZONE_GOOD, _C_BAD)
+    _band(0.5 + VAULT_ZONE_GOOD, 0.5 + VAULT_ZONE_BAD,  _C_BAD)
+    _band(0.5 - VAULT_ZONE_GOOD, 0.5 - VAULT_ZONE_PERFECT, _C_GOOD)
+    _band(0.5 + VAULT_ZONE_PERFECT, 0.5 + VAULT_ZONE_GOOD, _C_GOOD)
+    _band(0.5 - VAULT_ZONE_PERFECT, 0.5 + VAULT_ZONE_PERFECT, _C_PERFECT)
+    pygame.draw.rect(screen, (50, 120, 100), (gx, gy, gw, gh), 1, border_radius=3)
+
+    # Cursor marker at 0.5 (centre)
+    marker_y = gy + gh - round(0.5 * gh)
+    pygame.draw.rect(screen, (240, 240, 255),
+                     (gx - 4, marker_y - 2, gw + 8, 4), border_radius=2)
+
+    # Labels
+    font_s = pygame.font.SysFont("consolas", 10, bold=True)
+    rx = gx + gw + 5
+    for lbl, col, frac in [
+        ("PERFECT", _C_PERFECT, 0.5),
+        ("GOOD",    _C_GOOD,    0.5 - VAULT_ZONE_GOOD + 0.04),
+        ("BAD",     _C_BAD,     0.5 - VAULT_ZONE_BAD  + 0.02),
+        ("FAIL",    _C_FAIL,    0.04),
+    ]:
+        ly = gy + gh - round(frac * gh) - font_s.get_height() // 2
+        screen.blit(font_s.render(lbl, True, col), (rx, ly))
+
+    # Key hint at bottom
+    font_k = pygame.font.SysFont("consolas", 12, bold=True)
+    hint = font_k.render("\u2191\u2193 / WS", True, (0, 200, 160))
+    screen.blit(hint, (rect.centerx - hint.get_width() // 2, gy + gh + 8))
+
 
 _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "movement":  _draw_movement,
@@ -566,4 +678,6 @@ _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "ammo":      _draw_ammo,
     "medipack":  _draw_medipack,
     "melee":     _draw_melee,
+    "heat":      _draw_heat,
+    "vault":     _draw_vault,
 }

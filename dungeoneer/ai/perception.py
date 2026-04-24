@@ -12,7 +12,7 @@ def can_see(
     dungeon_map: DungeonMap,
     radius: int = FOV_RADIUS,
 ) -> bool:
-    dist = abs(observer_x - target_x) + abs(observer_y - target_y)
+    dist = max(abs(observer_x - target_x), abs(observer_y - target_y))
     if dist > radius:
         return False
     return has_los(observer_x, observer_y, target_x, target_y, dungeon_map)

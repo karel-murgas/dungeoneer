@@ -13,7 +13,11 @@ Karel builds from scratch iteratively with Claude as collaborator.
 - Cyberware unlocks support actions that *combine* with main action (not replace)
 - Turn order: player-first; each action resolves fully, then enemies go
 - 0.14s delay between turns when enemies are visible
-- Enemy types: Guard (melee, chase), Drone (ranged, maintain distance)
+- Enemy types — **3 tiers**, each with `tier` attribute; `dungeon_generator.generate(tier_cap=N)` controls which spawn:
+  - **Tier 1**: Guard (melee, chase), Drone (ranged, maintain dist ~4), Dog (melee, 2 moves/turn, 1 attack, k9_bite dmg 1–3)
+  - **Tier 2**: Heavy (ranged pistol, approaches to dist~4, never retreats, def=3), Turret (immobile, 2 shots/turn, returns to Idle on LOS lost)
+  - **Tier 3**: Sniper Drone (rifle, maintains dist~7, always retreats, aim_skill=6), Riot Guard (melee, def=4)
+- Enemy AI flags: `can_move`, `preferred_dist`, `always_retreat`, `retreat_when_close`, `actions_per_turn`, `max_attacks_per_turn`
 - Damage ranged (aimed): `damage_min + round(accuracy*(damage_max-damage_min)) - defence`; accuracy ∈ [0,1], -1 = miss
 - Damage melee (minigame ON): `damage_min + round(power*(damage_max-damage_min)) - defence`; power ∈ [0,1] from compound beat oscillation; crit when power ≥ 0.92; **always hits** (no miss zone)
 - Damage melee (minigame OFF / enemies): `roll(damage_min..damage_max) - defence`, min 1; crits on max roll
@@ -41,3 +45,11 @@ Karel builds from scratch iteratively with Claude as collaborator.
 ## Floors & Win Condition
 - 3 floors; final floor has Objective Vault instead of stairs → victory
 - Stair/Objective events fire via EventBus
+
+## Heat System
+- `Player.heat` int (0–500, persists across floors); level = `heat // 100 + 1`, clamped 1–5
+- Level names: 1=GHOST, 2=TRACE, 3=ALERT, 4=PURSUIT, 5=BURN
+- Sources: +1/combat round, +2/hacked node, +10/failed hack (hack totals applied at minigame end)
+- Effects: tier cap (lv1-2→tier1, lv3-4→tier2, lv5→tier3 at floor load), hack time mod (2−level s, floor 4s), patrol spawn on level-up
+- Counter: COOLANT loot node in hack minigame (+2 heat, -12 at end, net -10)
+- `HeatSystem` in `systems/heat.py`; subscribes to TurnEndEvent + HackNodesCollectedEvent; unsubscribes on game exit

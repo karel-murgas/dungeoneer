@@ -14,6 +14,7 @@ class LootKind(Enum):
     CREDITS      = auto()
     BONUS_TIME   = auto()
     ARMOR        = auto()
+    COOLANT      = auto()   # purges trace — reduces player heat at hack end
     MYSTERY      = auto()   # resolves to a random non-mystery kind on collection
 
 

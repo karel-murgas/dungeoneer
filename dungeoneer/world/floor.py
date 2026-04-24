@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Optional
 
 from dungeoneer.world.map import DungeonMap
+from dungeoneer.world.room import Room
 from dungeoneer.entities.actor import Actor
 from dungeoneer.entities.item_entity import ItemEntity
 from dungeoneer.entities.container_entity import ContainerEntity
@@ -16,10 +17,17 @@ class Floor:
         self.actors:        list[Actor]           = []
         self.item_entities: list[ItemEntity]      = []
         self.containers:    list[ContainerEntity] = []
+        self.rooms:         list[Room]            = []
 
     # ------------------------------------------------------------------
     # Spatial queries
     # ------------------------------------------------------------------
+
+    def room_for_tile(self, x: int, y: int) -> Optional[Room]:
+        for room in self.rooms:
+            if room.x <= x < room.x + room.w and room.y <= y < room.y + room.h:
+                return room
+        return None
 
     def get_actor_at(self, x: int, y: int) -> Optional[Actor]:
         for actor in self.actors:
