@@ -11,7 +11,7 @@
 - [x] Fix toho, že minihra začíná mimo střed (asi oddriftuje před začátkem) a naopak se resetuje při přerušení
 - [x] Do overlaye dát instrukce (W/S nahoru/dolů pro udržení drainu v optimu)
 - [ ] Vyzkoušet vault v reálné hře i s únikem
-- [ ] Kolik dává vault? Optimalizováno na cca 500 kreditů...jinak bychom museli zpomalit, kolik se čerpá za vteřinu...- nechat na rebalanc
+- [x] Kolik dává vault? Optimalizováno na cca 500 kreditů...jinak bychom museli zpomalit, kolik se čerpá za vteřinu...- nechat na rebalanc
 ## Úklid
 - [ ] Reduce complexity / simplify / deduplicate / check consistency
 - [ ] Create most usefull documentation for you, so you don't need to read to much of a code (to save context)

@@ -113,6 +113,7 @@ class GameScene(Scene):
         self._overheal_pending: "Consumable | None" = None
         self._cheat_menu_open    = False
         self._minimap_open       = False
+        self._fov_debug_on       = False   # F10: paint LOS/FOV mismatches
         self._tutorial_open      = False                # tutorial overlay active
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
         self._heal_overlay       = None                 # HealOverlay instance when healing
@@ -634,6 +635,13 @@ class GameScene(Scene):
                 if event.key == pygame.K_F11:
                     self._cheat_menu_open = not self._cheat_menu_open
                     return
+                if event.key == pygame.K_F10:
+                    self._fov_debug_on = not self._fov_debug_on
+                    bus.post(LogMessageEvent(
+                        f"[debug] FOV/LOS overlay: {'ON' if self._fov_debug_on else 'OFF'}",
+                        (220, 120, 220),
+                    ))
+                    return
                 if event.key == pygame.K_m:
                     self._minimap_open = True
                     return
@@ -721,6 +729,17 @@ class GameScene(Scene):
                 return
             if action is None:
                 continue
+
+            # Heal consumables route through the same flow as [H] — honours
+            # use_heal_minigame / overheal threshold instead of flat-healing.
+            if isinstance(action, UseItemAction):
+                item = action.item
+                if isinstance(item, Consumable) and item.heal_amount > 0:
+                    if not action.validate(self.player, self.floor):
+                        continue
+                    self._inventory_open = False
+                    self._launch_heal_for(item)
+                    return
 
             if not action.validate(self.player, self.floor):
                 continue
@@ -1088,12 +1107,21 @@ class GameScene(Scene):
         exact = [i for i in healables if i.heal_amount * thr <= missing]
         consumable = max(exact, key=lambda c: c.heal_amount) if exact else min(healables, key=lambda c: c.heal_amount)
 
-        if not exact:
-            # All available items would overheal — ask the player to confirm.
+        self._launch_heal_for(consumable)
+
+    def _launch_heal_for(self, consumable) -> None:
+        """Route a specific consumable through overheal confirm + minigame (or flat heal)."""
+        assert self.player is not None
+        missing = self.player.max_hp - self.player.hp
+        if missing <= 0:
+            bus.post(LogMessageEvent(t("log.full_hp"), (120, 120, 140)))
+            self.audio.play("action_denied")
+            return
+        thr = self.heal_threshold_pct / 100.0
+        if consumable.heal_amount * thr > missing:
             self._overheal_pending = consumable
             self._overheal_confirm_open = True
             return
-
         self._do_launch_heal(consumable)
 
     def _do_launch_heal(self, consumable) -> None:
@@ -1783,6 +1811,64 @@ class GameScene(Scene):
             idx = enemies.index(self._aim_target)
             self._aim_target = enemies[(idx + 1) % len(enemies)]
 
+    def _draw_fov_debug(self, screen: pygame.Surface) -> None:
+        """F10 overlay: paint visibility/LOS mismatches and enemy reachability.
+
+        Red tile  — in dungeon_map.visible[] but has_los(player→tile) is False
+                    (i.e. player FOV believes the tile is visible, but the
+                    shared LOS check disagrees).
+        Cyan tile — has_los is True but visible[] is False (FOV undershoots LOS).
+        Magenta X — living enemy whose tile is NOT LOS-reachable from the player
+                    (helps spot bad enemy spawn placements).
+        Yellow circle — origin used for the debug check (player position).
+        """
+        if self.player is None or self.floor is None:
+            return
+        from dungeoneer.combat.line_of_sight import has_los
+
+        ts   = settings.TILE_SIZE
+        cam  = self.renderer.camera
+        dmap = self.floor.dungeon_map
+        px, py = self.player.x, self.player.y
+
+        red  = pygame.Surface((ts, ts), pygame.SRCALPHA)
+        red.fill((255, 40, 40, 110))
+        cyan = pygame.Surface((ts, ts), pygame.SRCALPHA)
+        cyan.fill((40, 200, 255, 90))
+
+        # Iterate only the on-screen tile rectangle for speed.
+        x0 = max(0, cam.offset_x // ts - 1)
+        y0 = max(0, cam.offset_y // ts - 1)
+        x1 = min(dmap.width,  (cam.offset_x + settings.SCREEN_WIDTH ) // ts + 2)
+        y1 = min(dmap.height, (cam.offset_y + settings.SCREEN_HEIGHT) // ts + 2)
+
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                v = bool(dmap.visible[y, x])
+                if not v and not dmap.explored[y, x]:
+                    continue   # never-seen tiles can't carry useful debug info
+                los = has_los(px, py, x, y, dmap)
+                if v == los:
+                    continue
+                sx, sy = cam.world_to_screen(x, y)
+                screen.blit(red if v and not los else cyan, (sx, sy))
+
+        # Magenta X on enemies whose tile fails has_los from the player.
+        for actor in self.floor.actors:
+            if not isinstance(actor, Enemy) or not actor.alive:
+                continue
+            if has_los(px, py, actor.x, actor.y, dmap):
+                continue
+            sx, sy = cam.world_to_screen(actor.x, actor.y)
+            pygame.draw.line(screen, (255, 0, 220), (sx + 2, sy + 2),
+                             (sx + ts - 2, sy + ts - 2), 2)
+            pygame.draw.line(screen, (255, 0, 220), (sx + ts - 2, sy + 2),
+                             (sx + 2, sy + ts - 2), 2)
+
+        sx, sy = cam.world_to_screen(px, py)
+        pygame.draw.circle(screen, (255, 230, 60),
+                           (sx + ts // 2, sy + ts // 2), ts // 3, 2)
+
     def _enemy_at_screen_pos(self, mx: int, my: int) -> "Enemy | None":
         """Return a visible living enemy whose tile is under the given screen pixel, or None."""
         if self.player is None or self.floor is None:
@@ -2039,6 +2125,8 @@ class GameScene(Scene):
                 combat_log=self.combat_log,
                 hide_player=hide_player,
             )
+            if self._fov_debug_on:
+                self._draw_fov_debug(screen)
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
             # Elevator / entry-elevator hints
