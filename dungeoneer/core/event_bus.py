@@ -35,6 +35,8 @@ class DamageEvent(Event):
 @dataclass
 class DeathEvent(Event):
     entity: Any
+    killer: Any = None      # Actor that dealt the killing blow (or None)
+    weapon_id: Any = None   # str weapon id used for the kill (or None)
 
 @dataclass
 class TurnEndEvent(Event):
@@ -90,11 +92,31 @@ class HackNodesCollectedEvent(Event):
     nodes_collected:   int   # total nodes hacked (each +HEAT_HACK_NODE)
     success:           bool  # False → extra HEAT_HACK_FAIL on top
     coolant_reduction: int   # total heat removed by COOLANT nodes
+    all_nodes_cleared: bool = False  # True only when every loot node was collected
 
 @dataclass
 class RoomRevealedEvent(Event):
     """Posted the first time a room enters the player's FOV."""
     room: Any
+
+@dataclass
+class HealEvent(Event):
+    """Emitted by Actor.heal() — amount is the actual HP restored (clamped to max)."""
+    actor: Any
+    amount: int
+
+@dataclass
+class BulletFiredEvent(Event):
+    """Emitted once per shot in resolve_ranged."""
+    shooter: Any
+    weapon_id: str
+
+@dataclass
+class ContainerLootedEvent(Event):
+    """Emitted on any container open (hack or physical)."""
+    container: Any
+    success: bool
+    was_hacked: bool
 
 
 # ---------------------------------------------------------------------------

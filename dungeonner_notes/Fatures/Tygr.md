@@ -1,0 +1,1 @@
+- Minigame v rámci meziběhového menu

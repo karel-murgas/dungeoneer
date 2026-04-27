@@ -23,13 +23,14 @@ dungeoneer/
 │   ├── settings.py      — Settings dataclass (LANGUAGE, difficulty, window)
 │   ├── difficulty.py    — Difficulty presets (Easy/Normal/Hard)
 │   ├── i18n.py          — t(key), set_language()
+│   ├── stats.py         — RunStats dataclass + merge_run_into_lifetime(run, lifetime, victory)
 │   └── logging_setup.py — logs → dungeoneer.log
 │
 ├── entities/
 │   ├── entity.py        — Entity (x, y, char, color, name, blocks)
 │   ├── actor.py         — Actor(Entity): hp, max_hp, attack, defence, total_defence property; equipped_weapon, inventory
 │   ├── player.py        — Player(Actor): credits, ammo_reserves dict, equipped_armor (Armor|None)
-│   ├── enemy.py         — Enemy(Actor): ai_brain, xp_value, loot_table
+│   ├── enemy.py         — Enemy(Actor): enemy_id (stable str, required), ai_brain, loot_table; canonical IDs: guard/drone/dog/heavy/turret/sniper_drone/riot_guard
 │   ├── item_entity.py   — ItemEntity (item on floor)
 │   └── container_entity.py — ContainerEntity (lootable chest)
 │
@@ -56,7 +57,8 @@ dungeoneer/
 │
 ├── systems/
 │   ├── heat.py          — HeatSystem: 5 heat levels, sources, patrol spawning
-│   └── encounter.py     — EncounterSystem: dynamic room-reveal spawning; "pack vs elite" model by heat level; ranged cap (≤2); spawn_patrol() for heat level-up
+│   ├── encounter.py     — EncounterSystem: dynamic room-reveal spawning; "pack vs elite" model by heat level; ranged cap (≤2); spawn_patrol() for heat level-up
+│   └── stats_tracker.py — StatsTracker: subscribes to DeathEvent/DamageEvent/HealEvent/BulletFiredEvent/ContainerLootedEvent/HackNodesCollectedEvent; owns RunStats; finalize() → credits_earned; subscribe/unsubscribe lifecycle
 │
 ├── world/
 │   ├── dungeon_generator.py — BSP tree generator → DungeonMap (enemy spawning removed in rebalance)
@@ -84,10 +86,14 @@ dungeoneer/
 │       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
 │       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
-│       ├── settings_overlay.py — SettingsOverlay: gear icon panel (difficulty, gameplay, audio, language)
+│       ├── settings_overlay.py — SettingsOverlay: gear icon panel (gameplay minigames + language + audio; difficulty shown read-only; auto-saves via scene helpers)
+│       ├── new_game_wizard.py  — NewGameWizard: 4-step overlay (language→name→difficulty→tutorial); signals scene._wizard_done(profile)
+│       ├── load_game_picker.py — LoadGamePicker: scrollable profile list with delete [x]; signals scene._load_game_done(name)
+│       ├── quick_game_overlay.py — QuickGameOverlay: no-profile config panel; pre-fills from last_quick_config; signals scene._quick_game_start(config)
 │       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Aiming/Melee/Healing/Hacking/Items/Heat/Enemies/Vault); open_tab(idx); _TAB_VAULT=9
 │       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
-│       └── tutorial_overlay.py — TutorialManager (tracks seen steps) + TutorialOverlay (blocking panel, 8 steps incl. melee, heat, vault; procedural illustrations)
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps; initial_seen: list[str] loads persisted steps from profile) + TutorialOverlay (blocking panel, 8 steps incl. melee, heat, vault; procedural illustrations)
+│       └── statistics_overlay.py — StatisticsOverlay: tabbed stats panel (Combat/Weapons/History); reads _active_profile.stats; kills_by_enemy and kills_by_weapon bucketed by stable IDs; opened from MainMenuScene
 │
 ├── audio/
 │   ├── audio_manager.py — AudioManager: listens to EventBus, plays SFX (procedural numpy); volume = vol × settings.SFX_VOLUME × settings.MASTER_VOLUME
@@ -97,9 +103,16 @@ dungeoneer/
 ├── assets/audio/music/  — calm.mp3, action.mp3, hacking.mp3, menu.mp3, vault.mp3 (copied from sources/music/)
 │
 ├── scenes/
-│   ├── main_menu_scene.py — MainMenuScene(Scene): hub with Start/Quit + ⚙ Settings + ? Help icons; all config in SettingsOverlay; ? opens HelpCatalogOverlay
-│   ├── game_scene.py    — GameScene(Scene): main game loop scene; params: difficulty, use_minigame; F1/? HUD button opens HelpCatalogOverlay (Exploration tab)
-│   └── game_over_scene.py — GameOverScene: victory/defeat screen; "Main Menu [R]" → MainMenuScene
+│   ├── main_menu_scene.py — MainMenuScene(Scene): profile hub (Continue/New/Load/Quick/Quit); loads GlobalConfig+Profile on on_enter; all selections route to MetaScene via _go_to_meta(profile); overlays: wizard, load picker, quick game, settings, help; callbacks: _wizard_done, _load_game_done, _quick_game_start
+│   ├── meta_scene.py    — MetaScene(Scene): between-runs hub; params: profile, global_cfg; top nav bar (Game▾/Preferences/Help/Statistics) + prominent profile name + [Start Run] button; Game dropdown: New/Load/Delete/Quit; exposes SettingsOverlay helpers (_effective_flags/_set_flag/_set_language/_save_audio); _wizard_done/_load_game_done callbacks
+│   ├── game_scene.py    — GameScene(Scene): main game loop scene; params: difficulty, use_minigame, player_name, profile; F1/? opens HelpCatalogOverlay; F3 opens StatisticsOverlay (profile runs only); self._active_profile for StatisticsOverlay access
+│   └── game_over_scene.py — GameOverScene: victory/defeat screen; "Main Menu [R]" → MainMenuScene(app) (no params; menu loads from GlobalConfig)
+│
+├── meta/
+│   ├── __init__.py          — re-exports Profile, LifetimeStats, GameplayFlags, GlobalConfig
+│   ├── profile.py           — Profile, LifetimeStats, GameplayFlags dataclasses + to_dict/from_dict
+│   ├── global_config.py     — GlobalConfig dataclass + to_dict/from_dict (audio volumes, last_active_profile, last_quick_config)
+│   └── storage.py           — get_save_dir(), list_profiles(), load/save/delete_profile(), load/save_global(), sanitize_name(); save dir: %APPDATA%/Dungeoneer/ (Win) / ~/.local/share/Dungeoneer/ (POSIX); _SAVE_DIR_OVERRIDE hook for tests
 │
 ├── minigame/
 │   ├── hack_node.py         — LootKind (incl. ARMOR, MYSTERY), SecurityKind enums (shared)

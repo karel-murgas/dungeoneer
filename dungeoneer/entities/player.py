@@ -15,12 +15,13 @@ if TYPE_CHECKING:
 
 
 class Player(Actor):
-    def __init__(self, x: int, y: int, difficulty: "Difficulty | None" = None) -> None:
+    def __init__(self, x: int, y: int, difficulty: "Difficulty | None" = None,
+                 name: str | None = None) -> None:
         from dungeoneer.core.difficulty import NORMAL
         diff = difficulty or NORMAL
         super().__init__(
             x, y,
-            name=t("entity.player.name"),
+            name=name if name is not None else t("entity.player.name"),
             render_colour=settings.COL_PLAYER,
             max_hp=diff.player_max_hp,
             attack=diff.player_attack,

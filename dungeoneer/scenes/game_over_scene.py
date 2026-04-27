@@ -7,7 +7,7 @@ import pygame
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.i18n import t, get_language
+from dungeoneer.core.i18n import t
 from dungeoneer.core.difficulty import Difficulty
 
 if TYPE_CHECKING:
@@ -29,6 +29,8 @@ class GameOverScene(Scene):
         use_aim_minigame: bool = True,
         use_melee_minigame: bool = True,
         credits_earned: int = 0,
+        credits_before: int = 0,
+        profile=None,
         audio=None,
         map_size: str = "large",
     ) -> None:
@@ -41,6 +43,8 @@ class GameOverScene(Scene):
         self._use_melee_minigame = use_melee_minigame
         self._map_size           = map_size
         self._credits_earned  = credits_earned
+        self._credits_before  = credits_before
+        self._profile         = profile
         self._audio           = audio
         self._font_big   = pygame.font.SysFont("consolas", 52, bold=True)
         self._font_med   = pygame.font.SysFont("consolas", 26)
@@ -110,6 +114,13 @@ class GameOverScene(Scene):
         )
         screen.blit(cr_surf, (sw // 2 - cr_surf.get_width() // 2, sh // 3 + 148))
 
+        if self._profile is not None:
+            pool = self._credits_before + self._credits_earned
+            pool_surf = self._font_small.render(
+                t("gameover.credits_pool").format(n=pool), True, (100, 160, 130)
+            )
+            screen.blit(pool_surf, (sw // 2 - pool_surf.get_width() // 2, sh // 3 + 186))
+
         # --- Buttons ---
         btn_y = sh * 2 // 3
         gap   = 24
@@ -135,16 +146,10 @@ class GameOverScene(Scene):
                                btn.centery - lbl.get_height() // 2))
 
     def _go_to_menu(self) -> None:
-        from dungeoneer.scenes.main_menu_scene import MainMenuScene
-        from dungeoneer.core.difficulty import NORMAL
-        self.app.scenes.replace(
-            MainMenuScene(
-                self.app,
-                difficulty=self._difficulty if self._difficulty is not None else NORMAL,
-                use_minigame=self._use_minigame,
-                use_aim_minigame=self._use_aim_minigame,
-                use_melee_minigame=self._use_melee_minigame,
-                map_size=self._map_size,
-                language=get_language(),
-            )
-        )
+        if self._profile is not None:
+            from dungeoneer.meta.storage import load_global
+            from dungeoneer.scenes.meta_scene import MetaScene
+            self.app.scenes.replace(MetaScene(self.app, self._profile, load_global()))
+        else:
+            from dungeoneer.scenes.main_menu_scene import MainMenuScene
+            self.app.scenes.replace(MainMenuScene(self.app))

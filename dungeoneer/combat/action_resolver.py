@@ -136,7 +136,8 @@ class ActionResolver:
                 brain.alert(actor.x, actor.y)
 
         if not target.alive:
-            bus.post(DeathEvent(target))
+            weapon = getattr(actor, "equipped_weapon", None)
+            bus.post(DeathEvent(target, killer=actor, weapon_id=weapon.id if weapon else None))
             msg += t("log.is_down").format(name=target.name)
             floor.remove_dead()
 
@@ -145,7 +146,7 @@ class ActionResolver:
     def resolve_ranged(
         self, actor: "Actor", action: RangedAttackAction, floor: "Floor"  # type: ignore[name-defined]
     ) -> ActionResult:
-        from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent, MissEvent
+        from dungeoneer.core.event_bus import bus, DamageEvent, DeathEvent, MissEvent, BulletFiredEvent
         from dungeoneer.entities.player import Player
         from dungeoneer.items.item import RangeType
 
@@ -196,6 +197,8 @@ class ActionResolver:
                     break
                 w.ammo_current -= 1
             shots_fired += 1
+            if weapon is not None:
+                bus.post(BulletFiredEvent(actor, weapon.id))
 
             if accuracy_values is not None:
                 acc = accuracy_values[i] if i < len(accuracy_values) else -1.0
@@ -244,7 +247,7 @@ class ActionResolver:
                 brain.alert(actor.x, actor.y)
 
         if not target.alive:
-            bus.post(DeathEvent(target))
+            bus.post(DeathEvent(target, killer=actor, weapon_id=weapon.id if weapon else None))
             msg += t("log.is_down").format(name=target.name)
             floor.remove_dead()
 
@@ -255,7 +258,7 @@ class ActionResolver:
     ) -> "ActionResult":
         from dungeoneer.entities.item_entity import ItemEntity
         from dungeoneer.entities.player import Player
-        from dungeoneer.core.event_bus import bus, LogMessageEvent, ObjectiveEvent
+        from dungeoneer.core.event_bus import bus, LogMessageEvent, ObjectiveEvent, ContainerLootedEvent
 
         container = action.container
         container.opened = True
@@ -285,4 +288,5 @@ class ActionResolver:
         for item in container.items:
             floor.add_item_entity(ItemEntity(container.x, container.y, item))
         names = ", ".join(i.name for i in container.items)
+        bus.post(ContainerLootedEvent(container, success=True, was_hacked=False))
         return ActionResult(True, t("log.container_open").format(name=container.name, items=names, credits=credits_str), (200, 180, 80))

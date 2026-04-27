@@ -10,9 +10,10 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent, RoomRevealedEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent, RoomRevealedEvent, ContainerLootedEvent
 from dungeoneer.systems.heat import HeatSystem
 from dungeoneer.systems.encounter import EncounterSystem
+from dungeoneer.systems.stats_tracker import StatsTracker
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -51,6 +52,7 @@ from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
 from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
 from dungeoneer.rendering.ui.minimap_overlay import MinimapOverlay
+from dungeoneer.rendering.ui.statistics_overlay import StatisticsOverlay
 from dungeoneer.audio.audio_manager import AudioManager
 from dungeoneer.audio.music_manager import MusicManager
 
@@ -72,8 +74,12 @@ class GameScene(Scene):
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
         map_size: str = "large",
+        player_name: str | None = None,
+        tutorial_seen: list[str] | None = None,
+        profile=None,
     ) -> None:
         super().__init__(app)
+        self._active_profile     = profile
         self.difficulty          = difficulty
         self.use_minigame        = use_minigame
         self.use_aim_minigame    = use_aim_minigame
@@ -81,6 +87,7 @@ class GameScene(Scene):
         self.use_melee_minigame  = use_melee_minigame
         self.heal_threshold_pct  = heal_threshold_pct
         self.map_size            = map_size
+        self.player_name         = player_name
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -92,9 +99,10 @@ class GameScene(Scene):
         self.quit_confirm     = QuitConfirmDialog()
         self.overheal_confirm = QuitConfirmDialog(key_prefix="overheal_confirm")
         self.cheat_menu       = CheatMenuOverlay()
-        self.tutorial_manager = TutorialManager(enabled=use_tutorial)
+        self.tutorial_manager = TutorialManager(enabled=use_tutorial, initial_seen=tutorial_seen)
         self.tutorial_overlay = TutorialOverlay()
         self.minimap          = MinimapOverlay()
+        self.statistics_overlay = StatisticsOverlay(self)
         self.alert_banner   = AlertBanner()
         self.audio          = AudioManager()
         self.music          = MusicManager()
@@ -103,6 +111,7 @@ class GameScene(Scene):
         self.floor:  Floor  | None = None
         self.heat_system: HeatSystem | None = None
         self.encounter_system: EncounterSystem | None = None
+        self.stats_tracker: StatsTracker | None = None
         self._game_over          = False
         self._subscribed         = False
         self._inventory_open     = False
@@ -113,6 +122,7 @@ class GameScene(Scene):
         self._overheal_pending: "Consumable | None" = None
         self._cheat_menu_open    = False
         self._minimap_open       = False
+        self._statistics_open    = False
         self._fov_debug_on       = False   # F10: paint LOS/FOV mismatches
         self._tutorial_open      = False                # tutorial overlay active
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
@@ -145,9 +155,13 @@ class GameScene(Scene):
 
     def on_enter(self) -> None:
         log.info(f"GameScene.on_enter  tutorial_enabled={self.tutorial_manager.enabled}")
-        self._subscribe_events()
         self.audio.attach()
         self._load_floor(depth=1)
+        # Subscribe stats tracker BEFORE game scene events so that on DeathEvent,
+        # counters are recorded before _trigger_game_over calls _save_run_stats.
+        self.stats_tracker = StatsTracker(self.player, credit_baseline=self.player.credits)
+        self.stats_tracker.subscribe()
+        self._subscribe_events()
         self.music.start()
 
     def on_exit(self) -> None:
@@ -155,6 +169,8 @@ class GameScene(Scene):
         self._unsubscribe_events()
         if self.encounter_system is not None:
             self.encounter_system.teardown()
+        if self.stats_tracker is not None:
+            self.stats_tracker.unsubscribe()
         self.audio.detach()
         self.music.stop()
         self.combat_log.close()
@@ -240,7 +256,8 @@ class GameScene(Scene):
 
         player_spawn = next(s for s in result.spawns if s.kind == "player")
         if existing_player is None:
-            self.player = Player(player_spawn.x, player_spawn.y, self.difficulty)
+            self.player = Player(player_spawn.x, player_spawn.y, self.difficulty,
+                                 name=self.player_name)
         else:
             existing_player.x = player_spawn.x
             existing_player.y = player_spawn.y
@@ -446,39 +463,53 @@ class GameScene(Scene):
             self.turn_manager.build_queue(self.floor)
             self.music.to_calm()
 
+    def _save_run_stats(self, victory: bool, credits_earned: int = 0):
+        """Merge run stats into profile, add credits to pool. Returns saved Profile or None."""
+        if self.stats_tracker is None:
+            return None
+        from dungeoneer.meta.storage import load_global, load_profile, save_profile
+        from dungeoneer.core.stats import merge_run_into_lifetime
+        run = self.stats_tracker.finalize()
+        cfg = load_global()
+        profile_name = cfg.last_active_profile
+        if not profile_name:
+            return None
+        profile = load_profile(profile_name)
+        if profile is None:
+            return None
+        merge_run_into_lifetime(run, profile.stats, victory)
+        profile.credits += credits_earned
+        save_profile(profile)
+        log.info("Run stats saved to profile %r  victory=%s  credits_pool=%d",
+                 profile_name, victory, profile.credits)
+        return profile
+
     def _trigger_game_over(self, *, victory: bool) -> None:
         log.info("_trigger_game_over  victory=%s  already=%s", victory, self._game_over)
         if self._game_over:
             return
         self._game_over = True
+        credits_earned = self.player.credits if self.player else 0
+        credits_before = self._active_profile.credits if self._active_profile else 0
+        saved_profile  = self._save_run_stats(victory, credits_earned)
         from dungeoneer.scenes.game_over_scene import GameOverScene
-        depth   = self.player.floor_depth if self.player else 1
-        credits = self.player.credits if self.player else 0
+        depth = self.player.floor_depth if self.player else 1
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
             use_aim_minigame=self.use_aim_minigame,
             use_melee_minigame=self.use_melee_minigame,
-            credits_earned=credits, audio=self.audio,
+            credits_earned=credits_earned,
+            credits_before=credits_before,
+            profile=saved_profile,
+            audio=self.audio,
             map_size=self.map_size,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
 
     def _go_to_menu(self) -> None:
         from dungeoneer.scenes.main_menu_scene import MainMenuScene
-        from dungeoneer.core.i18n import get_language
-        self.app.scenes.replace(
-            MainMenuScene(
-                self.app,
-                difficulty=self.difficulty,
-                use_minigame=self.use_minigame,
-                use_aim_minigame=self.use_aim_minigame,
-                use_melee_minigame=self.use_melee_minigame,
-                use_tutorial=self.tutorial_manager.enabled,
-                map_size=self.map_size,
-                language=get_language(),
-            )
-        )
+        self.app.scenes.replace(MainMenuScene(self.app))
 
     # ------------------------------------------------------------------
     # Input
@@ -546,16 +577,16 @@ class GameScene(Scene):
                 self._melee_overlay.handle_event(event)
             return
 
-        # Vault overlay takes exclusive input while active
-        if self._vault_overlay is not None:
-            for event in events:
-                self._vault_overlay.handle_event(event)
-            return
-
         # Tutorial overlay takes exclusive input while active
         if self._tutorial_open:
             for event in events:
                 self.tutorial_overlay.handle_event(event)
+            return
+
+        # Vault overlay takes exclusive input while active
+        if self._vault_overlay is not None:
+            for event in events:
+                self._vault_overlay.handle_event(event)
             return
 
         for event in events:
@@ -631,6 +662,17 @@ class GameScene(Scene):
                         self._minimap_open = False
                 continue
 
+            if self._statistics_open:
+                if event.type == pygame.KEYDOWN:
+                    if self.statistics_overlay.handle_key(event.key):
+                        self._statistics_open = False
+                elif event.type == pygame.MOUSEMOTION:
+                    self.statistics_overlay.handle_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.statistics_overlay.handle_click(event.pos):
+                        self._statistics_open = False
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     self._cheat_menu_open = not self._cheat_menu_open
@@ -644,6 +686,10 @@ class GameScene(Scene):
                     return
                 if event.key == pygame.K_m:
                     self._minimap_open = True
+                    return
+                if event.key == pygame.K_F3 and self._active_profile is not None:
+                    self.statistics_overlay.open()
+                    self._statistics_open = True
                     return
                 if event.key == pygame.K_ESCAPE:
                     if self._inventory_open:
@@ -693,7 +739,7 @@ class GameScene(Scene):
                     return
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
-                or self._minimap_open or self._heal_overlay is not None
+                or self._minimap_open or self._statistics_open or self._heal_overlay is not None
                 or self._melee_overlay is not None):
             return
 
@@ -1230,10 +1276,21 @@ class GameScene(Scene):
 
     def _on_tutorial_close(self) -> None:
         self._tutorial_open = False
-        # Re-check conditions (e.g. a container became visible while we were reading
-        # the movement tutorial) and then show the next queued step.
+        self._save_tutorial_seen()
         self._check_tutorial_triggers()
         self._drain_tutorial_queue()
+
+    def _save_tutorial_seen(self) -> None:
+        """Persist the current seen-set to the active profile (skip for Quick Game)."""
+        from dungeoneer.meta.storage import load_global, load_profile, save_profile
+        cfg = load_global()
+        if not cfg.last_active_profile:
+            return
+        profile = load_profile(cfg.last_active_profile)
+        if profile is None:
+            return
+        profile.tutorial_seen = list(self.tutorial_manager._seen)
+        save_profile(profile)
 
     def _check_tutorial_triggers(self) -> None:
         """Enqueue any tutorial steps whose conditions are now met.
@@ -1320,6 +1377,7 @@ class GameScene(Scene):
             drone.ai_brain.set_state(CombatState())
             self.floor.add_actor(drone)
             log.info("Spawned alert drone at (%d,%d) after failed hack", sx, sy)
+        bus.post(ContainerLootedEvent(container, success=success, was_hacked=True))
 
         self._hack_just_completed = True
         self._maybe_show_tutorial("heat")
@@ -2140,6 +2198,7 @@ class GameScene(Scene):
                 and not self._overheal_confirm_open
                 and not self._cheat_menu_open
                 and not self._minimap_open
+                and not self._statistics_open
                 and self._aim_overlay is None
                 and self._heal_overlay is None
                 and self._melee_overlay is None
@@ -2209,5 +2268,7 @@ class GameScene(Scene):
                 self.cheat_menu.draw(screen)
             if self._minimap_open:
                 self.minimap.draw(screen, self.floor, self.player)
+            if self._statistics_open:
+                self.statistics_overlay.draw(screen)
             if self._tutorial_open:
                 self.tutorial_overlay.draw(screen)

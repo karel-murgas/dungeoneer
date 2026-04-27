@@ -736,10 +736,12 @@ class HackGridScene(Scene):
         else:
             self._audio.play("success", volume=0.8)
         # Report heat impact to HeatSystem — applied at end of minigame
+        all_cleared = success and self._grid_map.active_loot_remaining() == 0
         bus.post(HackNodesCollectedEvent(
             nodes_collected=self._nodes_collected,
             success=success,
             coolant_reduction=self._coolant_reduction,
+            all_nodes_cleared=all_cleared,
         ))
 
     # ------------------------------------------------------------------
