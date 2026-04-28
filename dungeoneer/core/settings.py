@@ -90,8 +90,8 @@ MELEE_RESULT_PAUSE:   float = 0.35   # seconds to display result
 MELEE_BAR_W:          int   = 120    # power bar width in pixels
 MELEE_BAR_H:          int   = 12     # power bar height in pixels
 
-# Visual experiment — press P in hack minigame to toggle all custom PNG icons at once
-HACK_WEAPON_USE_PNG: bool = False   # True = custom PNGs for weapon + ammo nodes; False = procedural
+# Press P in hack minigame to toggle custom PNG icons at runtime
+HACK_WEAPON_USE_PNG: bool = True    # True = custom PNGs for weapon + ammo nodes; False = procedural
 
 # Heat mechanic
 HEAT_PER_LEVEL:        int   = 100   # points to fill one heat level bar (levels 1–5)

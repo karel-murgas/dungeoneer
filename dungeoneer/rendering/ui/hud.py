@@ -275,7 +275,7 @@ class HUD:
         pygame.draw.rect(screen, (100, 100, 100), (bar_x, bar_y, bar_w, bar_h), 1)
 
         # Level name label
-        lbl = t("hud.heat_level").format(level=LEVEL_NAMES[level])
+        lbl = t("hud.heat_level").format(n=level, name=LEVEL_NAMES[level])
         lbl_surf = self._font_small.render(lbl, True, fill_col)
         screen.blit(lbl_surf, (bar_x + (bar_w - lbl_surf.get_width()) // 2,
                                 bar_y + bar_h + 2))

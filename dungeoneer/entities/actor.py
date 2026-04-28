@@ -40,4 +40,7 @@ class Actor(Entity):
     def heal(self, amount: int) -> int:
         actual = min(amount, self.max_hp - self.hp)
         self.hp += actual
+        if actual > 0:
+            from dungeoneer.core.event_bus import bus, HealEvent
+            bus.post(HealEvent(self, actual))
         return actual

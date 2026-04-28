@@ -80,9 +80,9 @@ class TutorialManager:
 
     ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee", "heat", "vault")
 
-    def __init__(self, enabled: bool = False) -> None:
+    def __init__(self, enabled: bool = False, initial_seen: list[str] | None = None) -> None:
         self.enabled = enabled
-        self._seen: set[str] = set()
+        self._seen: set[str] = set(initial_seen or [])
 
     def should_show(self, step: str) -> bool:
         """Return True (and mark as seen) if tutorial is on and step not yet shown."""

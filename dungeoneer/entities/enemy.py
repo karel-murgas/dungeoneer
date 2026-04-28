@@ -16,6 +16,7 @@ class Enemy(Actor):
         self,
         x: int, y: int,
         name: str,
+        enemy_id: str,
         render_colour: tuple,
         *,
         max_hp: int,
@@ -40,6 +41,7 @@ class Enemy(Actor):
             x, y, name, render_colour,
             max_hp=max_hp, attack=attack, defence=defence,
         )
+        self.enemy_id     = enemy_id
         self.tier         = tier
         self.is_drone     = is_drone
         self.aim_skill    = aim_skill  # controls ranged accuracy sigma; higher = more consistent
@@ -101,6 +103,7 @@ def make_guard(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.guard.name"),
+        enemy_id="guard",
         render_colour=settings.COL_GUARD,
         max_hp=12, attack=3, defence=1,
         tier=1,
@@ -123,6 +126,7 @@ def make_drone(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.drone.name"),
+        enemy_id="drone",
         render_colour=settings.COL_DRONE,
         max_hp=8, attack=2, defence=0,
         tier=1,
@@ -146,6 +150,7 @@ def make_dog(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.dog.name"),
+        enemy_id="dog",
         render_colour=settings.COL_DOG,
         max_hp=6, attack=1, defence=0,
         tier=1,
@@ -169,6 +174,7 @@ def make_heavy(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.heavy.name"),
+        enemy_id="heavy",
         render_colour=settings.COL_HEAVY,
         max_hp=15, attack=3, defence=3,
         tier=2,
@@ -193,6 +199,7 @@ def make_turret(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.turret.name"),
+        enemy_id="turret",
         render_colour=settings.COL_TURRET,
         max_hp=12, attack=2, defence=1,
         tier=2,
@@ -219,6 +226,7 @@ def make_sniper_drone(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.sniper_drone.name"),
+        enemy_id="sniper_drone",
         render_colour=settings.COL_SNIPER,
         max_hp=6, attack=3, defence=0,
         tier=3,
@@ -243,6 +251,7 @@ def make_riot_guard(x: int, y: int) -> Enemy:
     enemy = Enemy(
         x, y,
         name=t("entity.riot_guard.name"),
+        enemy_id="riot_guard",
         render_colour=settings.COL_RIOT_GUARD,
         max_hp=16, attack=4, defence=4,
         tier=3,

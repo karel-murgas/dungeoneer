@@ -10,9 +10,10 @@ log = logging.getLogger(__name__)
 
 from dungeoneer.core.scene import Scene
 from dungeoneer.core import settings
-from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent, RoomRevealedEvent
+from dungeoneer.core.event_bus import bus, DeathEvent, StairEvent, ElevatorEvent, LogMessageEvent, ObjectiveEvent, DamageEvent, MissEvent, EnemyBurstQueueEvent, HeatLevelUpEvent, TurnEndEvent, RoomRevealedEvent, ContainerLootedEvent
 from dungeoneer.systems.heat import HeatSystem
 from dungeoneer.systems.encounter import EncounterSystem
+from dungeoneer.systems.stats_tracker import StatsTracker
 from dungeoneer.core.difficulty import Difficulty, NORMAL
 from dungeoneer.core.i18n import t
 from dungeoneer.world.dungeon_generator import DungeonGenerator
@@ -51,6 +52,8 @@ from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
 from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
 from dungeoneer.rendering.ui.minimap_overlay import MinimapOverlay
+from dungeoneer.rendering.ui.statistics_overlay import StatisticsOverlay
+from dungeoneer.rendering.ui.heat_notification import HeatLevelUpNotification
 from dungeoneer.audio.audio_manager import AudioManager
 from dungeoneer.audio.music_manager import MusicManager
 
@@ -72,8 +75,12 @@ class GameScene(Scene):
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
         map_size: str = "large",
+        player_name: str | None = None,
+        tutorial_seen: list[str] | None = None,
+        profile=None,
     ) -> None:
         super().__init__(app)
+        self._active_profile     = profile
         self.difficulty          = difficulty
         self.use_minigame        = use_minigame
         self.use_aim_minigame    = use_aim_minigame
@@ -81,6 +88,7 @@ class GameScene(Scene):
         self.use_melee_minigame  = use_melee_minigame
         self.heal_threshold_pct  = heal_threshold_pct
         self.map_size            = map_size
+        self.player_name         = player_name
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
         self.renderer       = Renderer()
@@ -92,10 +100,12 @@ class GameScene(Scene):
         self.quit_confirm     = QuitConfirmDialog()
         self.overheal_confirm = QuitConfirmDialog(key_prefix="overheal_confirm")
         self.cheat_menu       = CheatMenuOverlay()
-        self.tutorial_manager = TutorialManager(enabled=use_tutorial)
+        self.tutorial_manager = TutorialManager(enabled=use_tutorial, initial_seen=tutorial_seen)
         self.tutorial_overlay = TutorialOverlay()
         self.minimap          = MinimapOverlay()
-        self.alert_banner   = AlertBanner()
+        self.statistics_overlay = StatisticsOverlay(self)
+        self.alert_banner        = AlertBanner()
+        self.heat_notification   = HeatLevelUpNotification()
         self.audio          = AudioManager()
         self.music          = MusicManager()
         self.floating_nums  = FloatingNumbers()
@@ -103,6 +113,7 @@ class GameScene(Scene):
         self.floor:  Floor  | None = None
         self.heat_system: HeatSystem | None = None
         self.encounter_system: EncounterSystem | None = None
+        self.stats_tracker: StatsTracker | None = None
         self._game_over          = False
         self._subscribed         = False
         self._inventory_open     = False
@@ -113,11 +124,13 @@ class GameScene(Scene):
         self._overheal_pending: "Consumable | None" = None
         self._cheat_menu_open    = False
         self._minimap_open       = False
+        self._statistics_open    = False
         self._fov_debug_on       = False   # F10: paint LOS/FOV mismatches
         self._tutorial_open      = False                # tutorial overlay active
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
         self._heal_overlay       = None                 # HealOverlay instance when healing
         self._had_visible_enemies = False  # for alert-banner trigger detection
+        self._in_combat           = False  # True while any enemy is in CombatState/SearchState
         self._pending_advance    = False   # waiting for enemy-turn delay
         self._advance_timer      = 0.0     # seconds remaining before advance fires
         self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
@@ -145,9 +158,13 @@ class GameScene(Scene):
 
     def on_enter(self) -> None:
         log.info(f"GameScene.on_enter  tutorial_enabled={self.tutorial_manager.enabled}")
-        self._subscribe_events()
         self.audio.attach()
         self._load_floor(depth=1)
+        # Subscribe stats tracker BEFORE game scene events so that on DeathEvent,
+        # counters are recorded before _trigger_game_over calls _save_run_stats.
+        self.stats_tracker = StatsTracker(self.player, credit_baseline=self.player.credits)
+        self.stats_tracker.subscribe()
+        self._subscribe_events()
         self.music.start()
 
     def on_exit(self) -> None:
@@ -155,6 +172,8 @@ class GameScene(Scene):
         self._unsubscribe_events()
         if self.encounter_system is not None:
             self.encounter_system.teardown()
+        if self.stats_tracker is not None:
+            self.stats_tracker.unsubscribe()
         self.audio.detach()
         self.music.stop()
         self.combat_log.close()
@@ -240,7 +259,8 @@ class GameScene(Scene):
 
         player_spawn = next(s for s in result.spawns if s.kind == "player")
         if existing_player is None:
-            self.player = Player(player_spawn.x, player_spawn.y, self.difficulty)
+            self.player = Player(player_spawn.x, player_spawn.y, self.difficulty,
+                                 name=self.player_name)
         else:
             existing_player.x = player_spawn.x
             existing_player.y = player_spawn.y
@@ -338,6 +358,7 @@ class GameScene(Scene):
         compute_fov(fov_x, fov_y, self.floor.dungeon_map, rooms=self.floor.rooms)
         self.turn_manager.build_queue(self.floor)
         self._had_visible_enemies = False
+        self._in_combat = False
 
         log.info(
             "Floor %d loaded  actors=%s  stair=%s  entry=%s",
@@ -446,39 +467,53 @@ class GameScene(Scene):
             self.turn_manager.build_queue(self.floor)
             self.music.to_calm()
 
+    def _save_run_stats(self, victory: bool, credits_earned: int = 0):
+        """Merge run stats into profile, add credits to pool.
+
+        Returns (saved_profile, run_stats) — either may be None if no profile is active.
+        """
+        if self.stats_tracker is None:
+            return None, None
+        from dungeoneer.meta.storage import save_profile
+        from dungeoneer.core.stats import merge_run_into_lifetime
+        run = self.stats_tracker.finalize()
+        profile = self._active_profile
+        if profile is None:
+            return None, run
+        merge_run_into_lifetime(run, profile.stats, victory)
+        profile.credits += credits_earned
+        save_profile(profile)
+        log.info("Run stats saved to profile %r  victory=%s  credits_pool=%d",
+                 profile.name, victory, profile.credits)
+        return profile, run
+
     def _trigger_game_over(self, *, victory: bool) -> None:
         log.info("_trigger_game_over  victory=%s  already=%s", victory, self._game_over)
         if self._game_over:
             return
         self._game_over = True
+        credits_earned = self.player.credits if self.player else 0
+        credits_before = self._active_profile.credits if self._active_profile else 0
+        saved_profile, run_stats = self._save_run_stats(victory, credits_earned)
         from dungeoneer.scenes.game_over_scene import GameOverScene
-        depth   = self.player.floor_depth if self.player else 1
-        credits = self.player.credits if self.player else 0
+        depth = self.player.floor_depth if self.player else 1
         self.app.scenes.replace(GameOverScene(
             self.app, victory=victory, floor_depth=depth,
             difficulty=self.difficulty, use_minigame=self.use_minigame,
             use_aim_minigame=self.use_aim_minigame,
             use_melee_minigame=self.use_melee_minigame,
-            credits_earned=credits, audio=self.audio,
+            credits_earned=credits_earned,
+            credits_before=credits_before,
+            profile=saved_profile,
+            run_stats=run_stats,
+            audio=self.audio,
             map_size=self.map_size,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
 
     def _go_to_menu(self) -> None:
         from dungeoneer.scenes.main_menu_scene import MainMenuScene
-        from dungeoneer.core.i18n import get_language
-        self.app.scenes.replace(
-            MainMenuScene(
-                self.app,
-                difficulty=self.difficulty,
-                use_minigame=self.use_minigame,
-                use_aim_minigame=self.use_aim_minigame,
-                use_melee_minigame=self.use_melee_minigame,
-                use_tutorial=self.tutorial_manager.enabled,
-                map_size=self.map_size,
-                language=get_language(),
-            )
-        )
+        self.app.scenes.replace(MainMenuScene(self.app))
 
     # ------------------------------------------------------------------
     # Input
@@ -546,16 +581,16 @@ class GameScene(Scene):
                 self._melee_overlay.handle_event(event)
             return
 
-        # Vault overlay takes exclusive input while active
-        if self._vault_overlay is not None:
-            for event in events:
-                self._vault_overlay.handle_event(event)
-            return
-
         # Tutorial overlay takes exclusive input while active
         if self._tutorial_open:
             for event in events:
                 self.tutorial_overlay.handle_event(event)
+            return
+
+        # Vault overlay takes exclusive input while active
+        if self._vault_overlay is not None:
+            for event in events:
+                self._vault_overlay.handle_event(event)
             return
 
         for event in events:
@@ -631,6 +666,17 @@ class GameScene(Scene):
                         self._minimap_open = False
                 continue
 
+            if self._statistics_open:
+                if event.type == pygame.KEYDOWN:
+                    if self.statistics_overlay.handle_key(event.key):
+                        self._statistics_open = False
+                elif event.type == pygame.MOUSEMOTION:
+                    self.statistics_overlay.handle_motion(event.pos)
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.statistics_overlay.handle_click(event.pos):
+                        self._statistics_open = False
+                continue
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     self._cheat_menu_open = not self._cheat_menu_open
@@ -644,6 +690,10 @@ class GameScene(Scene):
                     return
                 if event.key == pygame.K_m:
                     self._minimap_open = True
+                    return
+                if event.key == pygame.K_F3 and self._active_profile is not None:
+                    self.statistics_overlay.open()
+                    self._statistics_open = True
                     return
                 if event.key == pygame.K_ESCAPE:
                     if self._inventory_open:
@@ -693,7 +743,7 @@ class GameScene(Scene):
                     return
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
-                or self._minimap_open or self._heal_overlay is not None
+                or self._minimap_open or self._statistics_open or self._heal_overlay is not None
                 or self._melee_overlay is not None):
             return
 
@@ -1005,28 +1055,41 @@ class GameScene(Scene):
             self._update_music_state()
 
     def _is_any_enemy_alert(self) -> bool:
-        """True if any living enemy is actively hunting the player (CombatState / SearchState)."""
+        """True if any living enemy is actively hunting the player.
+
+        Moving enemies count when in CombatState or SearchState.
+        Static enemies (can_move=False) only count when in CombatState with direct LOS to
+        the player — they can't pursue, so losing sight ends combat immediately.
+        """
         from dungeoneer.ai.states import CombatState, SearchState
+        from dungeoneer.combat.line_of_sight import has_los
         if self.floor is None:
             return False
         for actor in self.floor.actors:
-            if isinstance(actor, Enemy) and actor.alive:
-                state = getattr(actor.ai_brain, "current_state", None)
-                if isinstance(state, (CombatState, SearchState)):
-                    return True
+            if not isinstance(actor, Enemy) or not actor.alive:
+                continue
+            state = getattr(actor.ai_brain, "current_state", None)
+            if not isinstance(state, (CombatState, SearchState)):
+                continue
+            if not getattr(actor, "can_move", True):
+                # Static enemy: only alert while it has LOS to the player
+                if self.player is None or not has_los(
+                    actor.x, actor.y, self.player.x, self.player.y, self.floor.dungeon_map
+                ):
+                    continue
+            return True
         return False
 
     def _update_music_state(self) -> None:
-        """Switch music to action or calm.
-
-        Action continues as long as EITHER:
-          - any enemy is visible to the player, OR
-          - any enemy knows about the player (CombatState / SearchState).
-        """
-        if self._is_any_enemy_alert() or self._any_enemy_visible():
+        """Switch music to action or calm based on whether any enemy is actively hunting."""
+        now_in_combat = self._is_any_enemy_alert()
+        if now_in_combat:
             self.music.to_action()
         else:
             self.music.to_calm()
+            if self._in_combat:
+                bus.post(LogMessageEvent(t("log.room_clear"), (80, 200, 180)))
+        self._in_combat = now_in_combat
 
     def _key_to_action(self, key: int):
         assert self.player is not None
@@ -1230,10 +1293,18 @@ class GameScene(Scene):
 
     def _on_tutorial_close(self) -> None:
         self._tutorial_open = False
-        # Re-check conditions (e.g. a container became visible while we were reading
-        # the movement tutorial) and then show the next queued step.
+        self._save_tutorial_seen()
         self._check_tutorial_triggers()
         self._drain_tutorial_queue()
+
+    def _save_tutorial_seen(self) -> None:
+        """Persist the current seen-set to the active profile (skip for Quick Game)."""
+        profile = self._active_profile
+        if profile is None:
+            return
+        from dungeoneer.meta.storage import save_profile
+        profile.tutorial_seen = list(self.tutorial_manager._seen)
+        save_profile(profile)
 
     def _check_tutorial_triggers(self) -> None:
         """Enqueue any tutorial steps whose conditions are now met.
@@ -1320,6 +1391,7 @@ class GameScene(Scene):
             drone.ai_brain.set_state(CombatState())
             self.floor.add_actor(drone)
             log.info("Spawned alert drone at (%d,%d) after failed hack", sx, sy)
+        bus.post(ContainerLootedEvent(container, success=success, was_hacked=True))
 
         self._hack_just_completed = True
         self._maybe_show_tutorial("heat")
@@ -1651,16 +1723,26 @@ class GameScene(Scene):
         return None
 
     def _on_turn_end_heat(self, _event: TurnEndEvent) -> None:
-        """Add heat only when at least one enemy is in CombatState (active combat)."""
+        """Add heat only when at least one enemy is in active combat.
+
+        Static enemies (can_move=False) only count if they have LOS to the player.
+        """
         if self.heat_system is None or self.floor is None:
             return
         from dungeoneer.ai.states import CombatState
-        in_combat = any(
-            isinstance(a, Enemy) and isinstance(a.ai_brain.current_state, CombatState)
-            for a in self.floor.actors
-        )
-        if in_combat:
+        from dungeoneer.combat.line_of_sight import has_los
+        for actor in self.floor.actors:
+            if not isinstance(actor, Enemy) or not actor.alive:
+                continue
+            if not isinstance(actor.ai_brain.current_state, CombatState):
+                continue
+            if not getattr(actor, "can_move", True):
+                if self.player is None or not has_los(
+                    actor.x, actor.y, self.player.x, self.player.y, self.floor.dungeon_map
+                ):
+                    continue
             self.heat_system.add_heat(settings.HEAT_COMBAT_ROUND)
+            return
 
     def _on_heat_level_up(self, event: HeatLevelUpEvent) -> None:
         """Spawn a patrol when heat crosses into a new level (levels 2–5)."""
@@ -1681,6 +1763,7 @@ class GameScene(Scene):
             (220, 100, 40),
         ))
         self.alert_banner.trigger()
+        self.heat_notification.trigger(event.new_level)
 
     def _find_patrol_spawn(self) -> tuple[int, int] | None:
         """Find a free walkable tile 4–8 tiles from the player for a patrol spawn."""
@@ -1959,6 +2042,7 @@ class GameScene(Scene):
 
     def update(self, dt: float) -> None:
         self.alert_banner.update(dt)
+        self.heat_notification.update(dt)
         self.floating_nums.update(dt)
         self.music.update(dt)
 
@@ -2015,6 +2099,14 @@ class GameScene(Scene):
                     self._arrival_spawn_pos = None
                     compute_fov(self.player.x, self.player.y, self.floor.dungeon_map, rooms=self.floor.rooms)
                     self._maybe_show_tutorial("movement")
+                    # Check for enemies already visible on this floor (e.g. open room spawn)
+                    now_visible = self._any_enemy_visible()
+                    if now_visible and not self._had_visible_enemies:
+                        self.alert_banner.trigger()
+                        self.music.to_action(fast=True)
+                        self._maybe_show_tutorial("enemy")
+                        bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
+                    self._had_visible_enemies = now_visible
 
         if self._aim_overlay is not None:
             self._aim_overlay.update(dt)
@@ -2090,8 +2182,7 @@ class GameScene(Scene):
                     and not self._cheat_menu_open
                     and not self._tutorial_open
                     and not self.alert_banner.is_blocking
-                    and not self._had_visible_enemies
-                    and not self._is_any_enemy_alert()
+                    and not self._any_enemy_visible()
                 )
                 if can_act:
                     action = self._key_to_action(self._held_move_key)
@@ -2129,6 +2220,7 @@ class GameScene(Scene):
                 self._draw_fov_debug(screen)
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
+            self.heat_notification.draw(screen)
             # Elevator / entry-elevator hints
             _no_overlay = (
                 self._elevator_phase is None
@@ -2140,6 +2232,7 @@ class GameScene(Scene):
                 and not self._overheal_confirm_open
                 and not self._cheat_menu_open
                 and not self._minimap_open
+                and not self._statistics_open
                 and self._aim_overlay is None
                 and self._heal_overlay is None
                 and self._melee_overlay is None
@@ -2209,5 +2302,7 @@ class GameScene(Scene):
                 self.cheat_menu.draw(screen)
             if self._minimap_open:
                 self.minimap.draw(screen, self.floor, self.player)
+            if self._statistics_open:
+                self.statistics_overlay.draw(screen)
             if self._tutorial_open:
                 self.tutorial_overlay.draw(screen)

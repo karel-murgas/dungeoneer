@@ -43,6 +43,7 @@ set_language("cs")
 | `item.*` | Item names / descriptions |
 | `entity.*` | Enemy names |
 | `log.*` | Combat log messages |
+| `profile.*` | Profile persistence errors (`profile.error.read_failed`, `profile.error.write_failed`) |
 | `gameover.*` | Game over screen |
 | `quit_confirm.*` | In-game quit confirmation dialog (return to main menu) |
 | `exit_confirm.*` | Main menu exit confirmation dialog (quit the game) |
@@ -57,7 +58,13 @@ set_language("cs")
 ## Key namespaces in use
 | Namespace | Description |
 |---|---|
-| `menu.*` | MainMenuScene (difficulty, loot mode, language, start/quit, hints) |
+| `menu.*` | MainMenuScene hub (continue/load/new_game/quick/quit, profile.active/no_active/difficulty, no_saves) |
+| `meta.*` | MetaScene: nav bar (game/prefs/help/stats), game dropdown (new/load/delete/quit), start_run, agent label, guest, delete confirm (title/question/confirm/cancel) |
+| `wizard.*` | NewGameWizard: step labels, name prompt/errors/overwrite, nav (next/back/confirm), tutorial on/off |
+| `loadpicker.*` | LoadGamePicker: title, last_played (param: date), runs_won (param: n), empty state, new_cta |
+| `profile.delete.*` | Delete confirm dialog (confirm/question/yes/no) — legacy; MetaScene now uses meta.delete.* |
+| `quick.*` | QuickGameOverlay: title, start, difficulty, tutorial labels |
+| `settings.difficulty.*` | Settings read-only difficulty display: current (param: name) / none |
 | `gameover.*` | GameOverScene (title, sub, floors, credits, buttons) |
 | `help.*` | HelpScreen overlay (key bindings) |
 | `hud.*` | HUD: floor, HP, armor label, heal hint |
@@ -98,11 +105,14 @@ set_language("cs")
 | `help_catalog.items.icon.*` | HelpCatalog ITEMS tab illustration: `icon.9mm/rifle/shell` â€” ammo type PNG icon labels (en/cs/es) |
 | `help_catalog.heat.*` | HelpCatalog HEAT tab (h1: What is Heat, h2: What Raises Heat, h3: Effects); illustration: 5 level colour strips |
 | `tutorial.heat.*` | Tutorial step shown after first combat kill or first hack completion |
-| `hud.heat_level` | HUD heat bar level name label (param: `level`) |
+| `hud.heat_level` | HUD heat bar label showing number + name (params: `n`=level int, `name`=level name) — format: `"Lv{n}  {name}"` |
 | `log.heat_level_up` | Combat log when heat escalates (param: `level` = level name string) |
+| `heat.notify.sub` | HeatLevelUpNotification sub-line for levels 2–4 (param: `level` int) |
+| `heat.notify.sub_max` | HeatLevelUpNotification sub-line for level 5 (param: `level` int) |
 | `hack.status.purge` | HackScene status bar when COOLANT node collected |
 | `hack.overlay.purge_title/sub` | HackScene overlay banner for COOLANT node (no params â€” heat amount not shown) |
 | `hack.loot.coolant` | COOLANT loot kind display name in HackScene extracting status |
+| `stats.*` | StatisticsOverlay: title, tab names (tab.combat/weapons/history), section headers, stat row labels, empty, others, footer |
 | `cheat.section.heat` | Cheat menu section header |
 | `cheat.heat.level1â€“5` | Cheat menu rows to set heat level |
 
