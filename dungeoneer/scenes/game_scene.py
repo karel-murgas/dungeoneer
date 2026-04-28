@@ -53,6 +53,7 @@ from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
 from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
 from dungeoneer.rendering.ui.minimap_overlay import MinimapOverlay
 from dungeoneer.rendering.ui.statistics_overlay import StatisticsOverlay
+from dungeoneer.rendering.ui.heat_notification import HeatLevelUpNotification
 from dungeoneer.audio.audio_manager import AudioManager
 from dungeoneer.audio.music_manager import MusicManager
 
@@ -103,7 +104,8 @@ class GameScene(Scene):
         self.tutorial_overlay = TutorialOverlay()
         self.minimap          = MinimapOverlay()
         self.statistics_overlay = StatisticsOverlay(self)
-        self.alert_banner   = AlertBanner()
+        self.alert_banner        = AlertBanner()
+        self.heat_notification   = HeatLevelUpNotification()
         self.audio          = AudioManager()
         self.music          = MusicManager()
         self.floating_nums  = FloatingNumbers()
@@ -128,6 +130,7 @@ class GameScene(Scene):
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
         self._heal_overlay       = None                 # HealOverlay instance when healing
         self._had_visible_enemies = False  # for alert-banner trigger detection
+        self._in_combat           = False  # True while any enemy is in CombatState/SearchState
         self._pending_advance    = False   # waiting for enemy-turn delay
         self._advance_timer      = 0.0     # seconds remaining before advance fires
         self._burst_queue: list  = []      # [(time_remaining, DamageEvent), ...]
@@ -355,6 +358,7 @@ class GameScene(Scene):
         compute_fov(fov_x, fov_y, self.floor.dungeon_map, rooms=self.floor.rooms)
         self.turn_manager.build_queue(self.floor)
         self._had_visible_enemies = False
+        self._in_combat = False
 
         log.info(
             "Floor %d loaded  actors=%s  stair=%s  entry=%s",
@@ -464,25 +468,24 @@ class GameScene(Scene):
             self.music.to_calm()
 
     def _save_run_stats(self, victory: bool, credits_earned: int = 0):
-        """Merge run stats into profile, add credits to pool. Returns saved Profile or None."""
+        """Merge run stats into profile, add credits to pool.
+
+        Returns (saved_profile, run_stats) — either may be None if no profile is active.
+        """
         if self.stats_tracker is None:
-            return None
-        from dungeoneer.meta.storage import load_global, load_profile, save_profile
+            return None, None
+        from dungeoneer.meta.storage import save_profile
         from dungeoneer.core.stats import merge_run_into_lifetime
         run = self.stats_tracker.finalize()
-        cfg = load_global()
-        profile_name = cfg.last_active_profile
-        if not profile_name:
-            return None
-        profile = load_profile(profile_name)
+        profile = self._active_profile
         if profile is None:
-            return None
+            return None, run
         merge_run_into_lifetime(run, profile.stats, victory)
         profile.credits += credits_earned
         save_profile(profile)
         log.info("Run stats saved to profile %r  victory=%s  credits_pool=%d",
-                 profile_name, victory, profile.credits)
-        return profile
+                 profile.name, victory, profile.credits)
+        return profile, run
 
     def _trigger_game_over(self, *, victory: bool) -> None:
         log.info("_trigger_game_over  victory=%s  already=%s", victory, self._game_over)
@@ -491,7 +494,7 @@ class GameScene(Scene):
         self._game_over = True
         credits_earned = self.player.credits if self.player else 0
         credits_before = self._active_profile.credits if self._active_profile else 0
-        saved_profile  = self._save_run_stats(victory, credits_earned)
+        saved_profile, run_stats = self._save_run_stats(victory, credits_earned)
         from dungeoneer.scenes.game_over_scene import GameOverScene
         depth = self.player.floor_depth if self.player else 1
         self.app.scenes.replace(GameOverScene(
@@ -502,6 +505,7 @@ class GameScene(Scene):
             credits_earned=credits_earned,
             credits_before=credits_before,
             profile=saved_profile,
+            run_stats=run_stats,
             audio=self.audio,
             map_size=self.map_size,
         ))
@@ -1051,28 +1055,41 @@ class GameScene(Scene):
             self._update_music_state()
 
     def _is_any_enemy_alert(self) -> bool:
-        """True if any living enemy is actively hunting the player (CombatState / SearchState)."""
+        """True if any living enemy is actively hunting the player.
+
+        Moving enemies count when in CombatState or SearchState.
+        Static enemies (can_move=False) only count when in CombatState with direct LOS to
+        the player — they can't pursue, so losing sight ends combat immediately.
+        """
         from dungeoneer.ai.states import CombatState, SearchState
+        from dungeoneer.combat.line_of_sight import has_los
         if self.floor is None:
             return False
         for actor in self.floor.actors:
-            if isinstance(actor, Enemy) and actor.alive:
-                state = getattr(actor.ai_brain, "current_state", None)
-                if isinstance(state, (CombatState, SearchState)):
-                    return True
+            if not isinstance(actor, Enemy) or not actor.alive:
+                continue
+            state = getattr(actor.ai_brain, "current_state", None)
+            if not isinstance(state, (CombatState, SearchState)):
+                continue
+            if not getattr(actor, "can_move", True):
+                # Static enemy: only alert while it has LOS to the player
+                if self.player is None or not has_los(
+                    actor.x, actor.y, self.player.x, self.player.y, self.floor.dungeon_map
+                ):
+                    continue
+            return True
         return False
 
     def _update_music_state(self) -> None:
-        """Switch music to action or calm.
-
-        Action continues as long as EITHER:
-          - any enemy is visible to the player, OR
-          - any enemy knows about the player (CombatState / SearchState).
-        """
-        if self._is_any_enemy_alert() or self._any_enemy_visible():
+        """Switch music to action or calm based on whether any enemy is actively hunting."""
+        now_in_combat = self._is_any_enemy_alert()
+        if now_in_combat:
             self.music.to_action()
         else:
             self.music.to_calm()
+            if self._in_combat:
+                bus.post(LogMessageEvent(t("log.room_clear"), (80, 200, 180)))
+        self._in_combat = now_in_combat
 
     def _key_to_action(self, key: int):
         assert self.player is not None
@@ -1282,13 +1299,10 @@ class GameScene(Scene):
 
     def _save_tutorial_seen(self) -> None:
         """Persist the current seen-set to the active profile (skip for Quick Game)."""
-        from dungeoneer.meta.storage import load_global, load_profile, save_profile
-        cfg = load_global()
-        if not cfg.last_active_profile:
-            return
-        profile = load_profile(cfg.last_active_profile)
+        profile = self._active_profile
         if profile is None:
             return
+        from dungeoneer.meta.storage import save_profile
         profile.tutorial_seen = list(self.tutorial_manager._seen)
         save_profile(profile)
 
@@ -1709,16 +1723,26 @@ class GameScene(Scene):
         return None
 
     def _on_turn_end_heat(self, _event: TurnEndEvent) -> None:
-        """Add heat only when at least one enemy is in CombatState (active combat)."""
+        """Add heat only when at least one enemy is in active combat.
+
+        Static enemies (can_move=False) only count if they have LOS to the player.
+        """
         if self.heat_system is None or self.floor is None:
             return
         from dungeoneer.ai.states import CombatState
-        in_combat = any(
-            isinstance(a, Enemy) and isinstance(a.ai_brain.current_state, CombatState)
-            for a in self.floor.actors
-        )
-        if in_combat:
+        from dungeoneer.combat.line_of_sight import has_los
+        for actor in self.floor.actors:
+            if not isinstance(actor, Enemy) or not actor.alive:
+                continue
+            if not isinstance(actor.ai_brain.current_state, CombatState):
+                continue
+            if not getattr(actor, "can_move", True):
+                if self.player is None or not has_los(
+                    actor.x, actor.y, self.player.x, self.player.y, self.floor.dungeon_map
+                ):
+                    continue
             self.heat_system.add_heat(settings.HEAT_COMBAT_ROUND)
+            return
 
     def _on_heat_level_up(self, event: HeatLevelUpEvent) -> None:
         """Spawn a patrol when heat crosses into a new level (levels 2–5)."""
@@ -1739,6 +1763,7 @@ class GameScene(Scene):
             (220, 100, 40),
         ))
         self.alert_banner.trigger()
+        self.heat_notification.trigger(event.new_level)
 
     def _find_patrol_spawn(self) -> tuple[int, int] | None:
         """Find a free walkable tile 4–8 tiles from the player for a patrol spawn."""
@@ -2017,6 +2042,7 @@ class GameScene(Scene):
 
     def update(self, dt: float) -> None:
         self.alert_banner.update(dt)
+        self.heat_notification.update(dt)
         self.floating_nums.update(dt)
         self.music.update(dt)
 
@@ -2073,6 +2099,14 @@ class GameScene(Scene):
                     self._arrival_spawn_pos = None
                     compute_fov(self.player.x, self.player.y, self.floor.dungeon_map, rooms=self.floor.rooms)
                     self._maybe_show_tutorial("movement")
+                    # Check for enemies already visible on this floor (e.g. open room spawn)
+                    now_visible = self._any_enemy_visible()
+                    if now_visible and not self._had_visible_enemies:
+                        self.alert_banner.trigger()
+                        self.music.to_action(fast=True)
+                        self._maybe_show_tutorial("enemy")
+                        bus.post(LogMessageEvent(t("log.room_encounter"), colour=(220, 80, 60)))
+                    self._had_visible_enemies = now_visible
 
         if self._aim_overlay is not None:
             self._aim_overlay.update(dt)
@@ -2148,8 +2182,7 @@ class GameScene(Scene):
                     and not self._cheat_menu_open
                     and not self._tutorial_open
                     and not self.alert_banner.is_blocking
-                    and not self._had_visible_enemies
-                    and not self._is_any_enemy_alert()
+                    and not self._any_enemy_visible()
                 )
                 if can_act:
                     action = self._key_to_action(self._held_move_key)
@@ -2187,6 +2220,7 @@ class GameScene(Scene):
                 self._draw_fov_debug(screen)
             self.floating_nums.draw(screen, self.renderer.camera)
             self.alert_banner.draw(screen, self.renderer.camera, self.player.x, self.player.y)
+            self.heat_notification.draw(screen)
             # Elevator / entry-elevator hints
             _no_overlay = (
                 self._elevator_phase is None

@@ -92,7 +92,13 @@
       "Bash(sed -i '/`help_catalog.heat.\\\\*`/i | `help_catalog.items.icon.*` | HelpCatalog ITEMS tab illustration: `icon.9mm\\\\/rifle\\\\/shell` — ammo type PNG icon labels \\(en\\\\/cs\\\\/es\\) |' \"c:/Users/karel/Documents/Python/Dungeoneer/dungeoneer/.claude/memory/ref_i18n.md\")",
       "Read(//c/Users/karel/.claude/plans/**)",
       "Bash(python3 -c ' *)",
-      "Bash(pytest --tb=short -q)"
+      "Bash(pytest --tb=short -q)",
+      "Read(//c/Users/karel/.claude/**)",
+      "Bash(py -c ' *)",
+      "Bash(pytest tests/test_profiles.py -v)",
+      "Bash(pytest tests/test_enemy_ids.py -v)",
+      "Bash(pytest tests/test_enemy_ids.py tests/test_profiles.py -v)",
+      "Bash(git restore *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",

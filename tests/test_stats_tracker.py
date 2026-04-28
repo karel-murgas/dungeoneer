@@ -57,7 +57,8 @@ def test_runstats_defaults():
     r = RunStats()
     assert r.kills_total == 0
     assert r.deaths_total == 0
-    assert r.crits_total == 0
+    assert r.crits_ranged == 0
+    assert r.crits_melee == 0
     assert r.bullets_shot == 0
     assert r.credits_earned == 0
 
@@ -68,7 +69,7 @@ def test_runstats_defaults():
 
 def test_merge_scalars():
     run = RunStats(kills_total=5, deaths_total=1, hp_healed=20,
-                   bullets_shot=30, crits_total=3,
+                   bullets_shot=30, crits_ranged=2, crits_melee=1,
                    containers_hacked=2, nodes_hacked=4,
                    containers_fully_hacked=2, containers_failed=1,
                    credits_earned=100)
@@ -79,7 +80,8 @@ def test_merge_scalars():
     assert lts.deaths_total == 1
     assert lts.hp_healed == 20
     assert lts.bullets_shot == 30
-    assert lts.crits_total == 3
+    assert lts.crits_ranged == 2
+    assert lts.crits_melee == 1
     assert lts.containers_hacked == 2
     assert lts.nodes_hacked == 4
     assert lts.containers_fully_hacked == 2
@@ -190,11 +192,13 @@ def test_bullet_counts_only_player(tracker):
 def test_crit_tracking(tracker):
     player = tracker._player
     enemy = _enemy_mock()
-    bus.post(DamageEvent(attacker=player, target=enemy, amount=10, is_crit=True))
+    bus.post(DamageEvent(attacker=player, target=enemy, amount=10, is_crit=True, is_ranged=True))
+    bus.post(DamageEvent(attacker=player, target=enemy, amount=8, is_crit=True, is_ranged=False))
     bus.post(DamageEvent(attacker=player, target=enemy, amount=5, is_crit=False))
     bus.post(DamageEvent(attacker=enemy, target=player, amount=3, is_crit=True))
 
-    assert tracker.run.crits_total == 1  # only player crits
+    assert tracker.run.crits_ranged == 1  # ranged crit by player
+    assert tracker.run.crits_melee == 1   # melee crit by player
 
 
 def test_container_hacked_success(tracker):

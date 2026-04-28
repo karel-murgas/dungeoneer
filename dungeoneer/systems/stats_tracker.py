@@ -86,7 +86,10 @@ class StatsTracker:
     def _on_damage(self, event: DamageEvent) -> None:
         from dungeoneer.entities.player import Player
         if isinstance(event.attacker, Player) and event.is_crit:
-            self.run.crits_total += 1
+            if event.is_ranged:
+                self.run.crits_ranged += 1
+            else:
+                self.run.crits_melee += 1
 
     def _on_heal(self, event: HealEvent) -> None:
         from dungeoneer.entities.player import Player

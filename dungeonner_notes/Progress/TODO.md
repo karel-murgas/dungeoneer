@@ -1,26 +1,15 @@
-## Final vault
-- [x] Fix exploration tutorialu
-- [x] Check, že do vaultu nevlezu během fightu - fixnout
-- [x] Fixnout heartbeat
-- [x] Vyvážit drift
-- [x] Test spawnu nepřátel
-- [x] Test hudby v real vaultu - furt tiché
-- [x] Test při různých heatech
-- [x] Test, že vylootovat není automatika (lze zpomalit drain)
-- [x] Fix toho, že nepřátelé co nemohou útočit, někdy nic nedělají (místo obejití překážky - jdou na jediné konkrétní místo)
-- [x] Fix toho, že minihra začíná mimo střed (asi oddriftuje před začátkem) a naopak se resetuje při přerušení
-- [x] Do overlaye dát instrukce (W/S nahoru/dolů pro udržení drainu v optimu)
-- [ ] Vyzkoušet vault v reálné hře i s únikem
-- [x] Kolik dává vault? Optimalizováno na cca 500 kreditů...jinak bychom museli zpomalit, kolik se čerpá za vteřinu...- nechat na rebalanc
 ## Next steps##
 - [x] Main menu
 - [x] Ukládání hry
 - [x] Po spuštění hry začít v menu
-- [ ] Při změně heat levelu notifikace (přidat číslo heat levelu ke jménu)
+- [x] Po konci runu shrnutí
+- [x] Když uteču turretce z výhledu, má skončit bojová scéna
+- [x] Při změně heat levelu notifikace (přidat číslo heat levelu ke jménu)
 - [x] Nápověda na final vault píše, že lze ukončit mezerníkem, ale nelze
-- [ ] Když při vstupu do dungu vidíš nepřítele, zobraz tutoriál pro boj hned po tutoriálu na pohyb (a i bez tutorialu hoď notifikaci na zpozorování ještě před tím, než se hnu)
-- [ ] Rychlý pohyb se zdá, že se zablokuje už při spawnu nepřítele (tj. ještě před tím, než ho vidím a začne bojová scéna) - než vyletí vykřičník - ten jde až po dalším pohybu
-- [ ] Přepnout default na novou grafiku
+- [x] Když při vstupu do dungu vidíš nepřítele, zobraz tutoriál pro boj hned po tutoriálu na pohyb (a i bez tutorialu hoď notifikaci na zpozorování ještě před tím, než se hnu)
+- [x] Rychlý pohyb se zdá, že se zablokuje už při spawnu nepřítele (tj. ještě před tím, než ho vidím a začne bojová scéna) - než vyletí vykřičník - ten jde až po dalším pohybu
+- [x] Přepnout default na novou grafiku
+
 - [ ] Nechat Clauda dopracovat perky včetně balancu
 - [ ] Rozdělit perky na ty, co jsou už implementovat a ty, ke kterým chybí feature (granáty, tajné chodby)
 - [ ] Nechat Clauda udělat plán pro perky, které lze nasadit teď

@@ -105,8 +105,10 @@ set_language("cs")
 | `help_catalog.items.icon.*` | HelpCatalog ITEMS tab illustration: `icon.9mm/rifle/shell` â€” ammo type PNG icon labels (en/cs/es) |
 | `help_catalog.heat.*` | HelpCatalog HEAT tab (h1: What is Heat, h2: What Raises Heat, h3: Effects); illustration: 5 level colour strips |
 | `tutorial.heat.*` | Tutorial step shown after first combat kill or first hack completion |
-| `hud.heat_level` | HUD heat bar level name label (param: `level`) |
+| `hud.heat_level` | HUD heat bar label showing number + name (params: `n`=level int, `name`=level name) — format: `"Lv{n}  {name}"` |
 | `log.heat_level_up` | Combat log when heat escalates (param: `level` = level name string) |
+| `heat.notify.sub` | HeatLevelUpNotification sub-line for levels 2–4 (param: `level` int) |
+| `heat.notify.sub_max` | HeatLevelUpNotification sub-line for level 5 (param: `level` int) |
 | `hack.status.purge` | HackScene status bar when COOLANT node collected |
 | `hack.overlay.purge_title/sub` | HackScene overlay banner for COOLANT node (no params â€” heat amount not shown) |
 | `hack.loot.coolant` | COOLANT loot kind display name in HackScene extracting status |

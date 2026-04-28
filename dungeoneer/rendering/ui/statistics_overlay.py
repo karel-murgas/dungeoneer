@@ -317,6 +317,12 @@ class StatisticsOverlay:
                                    t("stats.hp_healed"), str(stats.hp_healed))
         cy = self._draw_stat_row(screen, ox, cy, pw, bottom,
                                    t("stats.bullets_shot"), str(stats.bullets_shot))
+        if stats.crits_ranged:
+            cy = self._draw_bucketed_row(screen, ox, cy, pw, bottom,
+                                          t("stats.crits_ranged"), str(stats.crits_ranged))
+        if stats.crits_melee:
+            cy = self._draw_bucketed_row(screen, ox, cy, pw, bottom,
+                                          t("stats.crits_melee"), str(stats.crits_melee))
 
     def _draw_history_tab(self, screen: pygame.Surface, ox: int, cy: int,
                            pw: int, bottom: int, stats: "LifetimeStats") -> None:

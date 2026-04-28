@@ -15,7 +15,8 @@ class LifetimeStats:
     deaths_by_killer: dict[str, int] = field(default_factory=dict)
     hp_healed: int = 0
     bullets_shot: int = 0
-    crits_total: int = 0
+    crits_ranged: int = 0
+    crits_melee: int = 0
     containers_hacked: int = 0
     nodes_hacked: int = 0
     containers_fully_hacked: int = 0
@@ -32,7 +33,8 @@ class LifetimeStats:
             "deaths_by_killer": dict(self.deaths_by_killer),
             "hp_healed": self.hp_healed,
             "bullets_shot": self.bullets_shot,
-            "crits_total": self.crits_total,
+            "crits_ranged": self.crits_ranged,
+            "crits_melee": self.crits_melee,
             "containers_hacked": self.containers_hacked,
             "nodes_hacked": self.nodes_hacked,
             "containers_fully_hacked": self.containers_fully_hacked,
@@ -51,7 +53,8 @@ class LifetimeStats:
             deaths_by_killer=d.get("deaths_by_killer", {}),
             hp_healed=d.get("hp_healed", 0),
             bullets_shot=d.get("bullets_shot", 0),
-            crits_total=d.get("crits_total", 0),
+            crits_ranged=d.get("crits_ranged", 0),
+            crits_melee=d.get("crits_melee", 0),
             containers_hacked=d.get("containers_hacked", 0),
             nodes_hacked=d.get("nodes_hacked", 0),
             containers_fully_hacked=d.get("containers_fully_hacked", 0),

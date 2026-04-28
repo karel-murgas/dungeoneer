@@ -14,7 +14,8 @@ class RunStats:
     deaths_by_killer: dict[str, int] = field(default_factory=dict)
     hp_healed: int = 0
     bullets_shot: int = 0
-    crits_total: int = 0
+    crits_ranged: int = 0
+    crits_melee: int = 0
     containers_hacked: int = 0
     nodes_hacked: int = 0
     containers_fully_hacked: int = 0
@@ -34,7 +35,8 @@ def merge_run_into_lifetime(
     lifetime.deaths_total += run.deaths_total
     lifetime.hp_healed += run.hp_healed
     lifetime.bullets_shot += run.bullets_shot
-    lifetime.crits_total += run.crits_total
+    lifetime.crits_ranged += run.crits_ranged
+    lifetime.crits_melee  += run.crits_melee
     lifetime.containers_hacked += run.containers_hacked
     lifetime.nodes_hacked += run.nodes_hacked
     lifetime.containers_fully_hacked += run.containers_fully_hacked

@@ -73,8 +73,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "gameover.floors":              "Floors cleared: {n}",
         "gameover.credits":             "Credits earned: \u00a5 {n}",
         "gameover.credits_pool":        "Credits pool: \u00a5 {n}",
-        "gameover.menu":                "Main Menu  [R]",
-        "gameover.quit":                "Quit  [Esc]",
+        "gameover.menu":                "Main Menu  [Enter]",
+        "gameover.run_stats_header":    "RUN STATISTICS",
+        "gameover.killed_by":           "Killed by: {name}",
 
         # --- Help screen ---
         "help.title":                   "HELP",
@@ -182,8 +183,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hint":                   "[\u2191\u2193] Navigate   [Enter] Use   [Esc] Close",
 
         # --- Heat system ---
-        "hud.heat_level":               "{level}",
+        "hud.heat_level":               "Lv{n}  {name}",
         "log.heat_level_up":            "Security escalated \u2014 {level}",
+        "heat.notify.sub":              "Heat Level {level} / 5  \u00b7  More patrols  \u00b7  Less hack time",
+        "heat.notify.sub_max":          "Heat Level 5 / 5  \u00b7  Maximum alert  \u00b7  Execute on sight",
         "hack.status.purge":            "Trace purged",
         "hack.overlay.purge_title":     "TRACE PURGE",
         "hack.overlay.purge_sub":       "HEAT REDUCED",
@@ -842,6 +845,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "stats.deaths_by_killer":               "Deaths by enemy",
         "stats.hp_healed":                      "HP healed",
         "stats.bullets_shot":                   "Bullets fired",
+        "stats.crits_ranged":                   "Ranged crits",
+        "stats.crits_melee":                    "Melee crits",
         "stats.containers_hacked":              "Containers hacked",
         "stats.containers_fully_hacked":        "Full clears",
         "stats.containers_failed":              "Hack failures",
@@ -881,8 +886,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "gameover.floors":              "Patra prob\u00e1d\u00e1na: {n}",
         "gameover.credits":             "Z\u00edskan\u00e9 kredity: \u00a5 {n}",
         "gameover.credits_pool":        "Kreditov\u00fd pool: \u00a5 {n}",
-        "gameover.menu":                "Hlavn\u00ed menu  [R]",
-        "gameover.quit":                "Ukon\u010dit  [Esc]",
+        "gameover.menu":                "Hlavn\u00ed menu  [Enter]",
+        "gameover.run_stats_header":    "STATISTIKY B\u011aHU",
+        "gameover.killed_by":           "Zabit: {name}",
 
         # --- Help screen ---
         "help.title":                   "N\u00c1POV\u011aDA",
@@ -990,8 +996,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hint":                   "[\u2191\u2193] Pohyb   [Enter] Pou\u017e\u00edt   [Esc] Zav\u0159\u00edt",
 
         # --- Heat system ---
-        "hud.heat_level":               "{level}",
+        "hud.heat_level":               "Lv{n}  {name}",
         "log.heat_level_up":            "Bezpe\u010dnost eskalovala \u2014 {level}",
+        "heat.notify.sub":              "\u00darove\u0148 heatu {level} / 5  \u00b7  V\u00edce hl\u00eddek  \u00b7  M\u00e9n\u011b \u010dasu na hack",
+        "heat.notify.sub_max":          "\u00darove\u0148 heatu 5 / 5  \u00b7  Maxim\u00e1ln\u00ed pohotovost  \u00b7  Zast\u0159elit na m\u00edst\u011b",
         "hack.status.purge":            "Stopa vymaz\u00e1na",
         "hack.overlay.purge_title":     "SMAZ\u00c1N\u00cd STOP",
         "hack.overlay.purge_sub":       "HEAT SN\u00cdŽEN",
@@ -1650,6 +1658,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "stats.deaths_by_killer":               "Smrt způsobena",
         "stats.hp_healed":                      "Léčení HP",
         "stats.bullets_shot":                   "Vystřeleno nábojů",
+        "stats.crits_ranged":                   "Kritické zásahy (střelba)",
+        "stats.crits_melee":                    "Kritické zásahy (boj)",
         "stats.containers_hacked":              "Hacknuté kontejnery",
         "stats.containers_fully_hacked":        "Plné dokončení",
         "stats.containers_failed":              "Neúspěšné hacky",
@@ -1689,8 +1699,9 @@ _STRINGS: dict[str, dict[str, str]] = {
         "gameover.floors":              "Plantas despejadas: {n}",
         "gameover.credits":             "Cr\u00e9ditos ganados: \u00a5 {n}",
         "gameover.credits_pool":        "Pool de cr\u00e9ditos: \u00a5 {n}",
-        "gameover.menu":                "Men\u00fa principal  [R]",
-        "gameover.quit":                "Salir  [Esc]",
+        "gameover.menu":                "Men\u00fa principal  [Enter]",
+        "gameover.run_stats_header":    "ESTAD\u00cdSTICAS DE PARTIDA",
+        "gameover.killed_by":           "Asesinado por: {name}",
 
         # --- Help screen ---
         "help.title":                   "AYUDA",
@@ -1798,8 +1809,10 @@ _STRINGS: dict[str, dict[str, str]] = {
         "cheat.hint":                   "[\u2191\u2193] Navegar   [Enter] Usar   [Esc] Cerrar",
 
         # --- Heat system ---
-        "hud.heat_level":               "{level}",
+        "hud.heat_level":               "Lv{n}  {name}",
         "log.heat_level_up":            "Seguridad escalada \u2014 {level}",
+        "heat.notify.sub":              "Nivel de Heat {level} / 5  \u00b7  M\u00e1s patrullas  \u00b7  Menos tiempo de hackeo",
+        "heat.notify.sub_max":          "Nivel de Heat 5 / 5  \u00b7  Alerta m\u00e1xima  \u00b7  Ejecutar a la vista",
         "hack.status.purge":            "Rastro eliminado",
         "hack.overlay.purge_title":     "ELIMINAR RASTRO",
         "hack.overlay.purge_sub":       "HEAT REDUCIDO",
@@ -2458,6 +2471,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "stats.deaths_by_killer":               "Muerte causada por",
         "stats.hp_healed":                      "HP curado",
         "stats.bullets_shot":                   "Balas disparadas",
+        "stats.crits_ranged":                   "Crits a distancia",
+        "stats.crits_melee":                    "Crits cuerpo a cuerpo",
         "stats.containers_hacked":              "Contenedores hackeados",
         "stats.containers_fully_hacked":        "Limpiezas completas",
         "stats.containers_failed":              "Hackeos fallidos",
