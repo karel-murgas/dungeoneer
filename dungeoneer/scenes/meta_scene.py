@@ -555,7 +555,6 @@ class MetaScene(Scene):
                 use_melee_minigame=flags.use_melee_minigame,
                 heal_threshold_pct=flags.heal_threshold_pct,
                 use_tutorial=self._profile.tutorial_enabled,
-                map_size="large",
                 player_name=self._profile.name,
                 tutorial_seen=list(self._profile.tutorial_seen),
                 profile=self._profile,
@@ -572,7 +571,6 @@ class MetaScene(Scene):
                 use_melee_minigame=qc.get("use_melee_minigame", True),
                 heal_threshold_pct=qc.get("heal_threshold_pct", 100),
                 use_tutorial=qc.get("tutorial", False),
-                map_size="large",
                 player_name=None,
                 profile=None,
             ))

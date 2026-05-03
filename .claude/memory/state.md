@@ -85,14 +85,6 @@ type: project
 - Legend bar at bottom; close with M or Esc
 - i18n: `minimap.*` keys (en/cs/es); help_screen + help_catalog EXPLORATION tab updated
 
-### New (2026-03-22) — map size setting
-- **SettingsOverlay** — new GAMEPLAY row: "Map" toggle (Large / Small)
-- Large = 60×40 (default, unchanged), Small = 40×26 (~60% area)
-- Enemy/container counts stay the same → higher density on small map
-- Setting carried through MainMenuScene → GameScene → GameOverScene → back to MainMenuScene
-- `settings.py`: `MAP_WIDTH_SMALL`, `MAP_HEIGHT_SMALL`
-- i18n: `settings.gameplay.map_size`, `menu.map_size.large`, `menu.map_size.small` (all 3 languages)
-
 ### New (2026-03-22) — elevator replaces stairs
 - **Floor descent** now uses an **elevator** instead of stairs
 - `TileType.ELEVATOR_CLOSED` / `ELEVATOR_OPEN` — wall-like tiles (not walkable when closed)

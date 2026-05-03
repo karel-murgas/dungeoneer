@@ -10,8 +10,12 @@
 - [x] Rychlý pohyb se zdá, že se zablokuje už při spawnu nepřítele (tj. ještě před tím, než ho vidím a začne bojová scéna) - než vyletí vykřičník - ten jde až po dalším pohybu
 - [x] Přepnout default na novou grafiku
 
+- [x] Aktualizovat readme
+- [x] Quickgame má hodit rovnou do runu
+
 - [ ] Nechat Clauda dopracovat perky včetně balancu
-- [ ] Rozdělit perky na ty, co jsou už implementovat a ty, ke kterým chybí feature (granáty, tajné chodby)
+- [ ] U perků bude taky potřeba dodělat energii a její dobíjení
+- [x] Rozdělit perky na ty, co jsou už implementovat a ty, ke kterým chybí feature (granáty, tajné chodby)
 - [ ] Nechat Clauda udělat plán pro perky, které lze nasadit teď
 - [ ] Implementovat
 - [ ] Připravit features k perkům, které ještě nejsou

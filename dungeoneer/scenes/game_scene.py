@@ -74,7 +74,6 @@ class GameScene(Scene):
         use_melee_minigame: bool = True,
         heal_threshold_pct: int = 100,
         use_tutorial: bool = False,
-        map_size: str = "large",
         player_name: str | None = None,
         tutorial_seen: list[str] | None = None,
         profile=None,
@@ -87,7 +86,6 @@ class GameScene(Scene):
         self.use_heal_minigame   = use_heal_minigame
         self.use_melee_minigame  = use_melee_minigame
         self.heal_threshold_pct  = heal_threshold_pct
-        self.map_size            = map_size
         self.player_name         = player_name
         self.resolver       = ActionResolver()
         self.turn_manager   = TurnManager()
@@ -241,10 +239,7 @@ class GameScene(Scene):
 
     def _load_floor(self, depth: int, existing_player: Player | None = None) -> None:
         log.info("_load_floor  depth=%d  reusing_player=%s", depth, existing_player is not None)
-        if self.map_size == "small":
-            mw, mh = settings.MAP_WIDTH_SMALL, settings.MAP_HEIGHT_SMALL
-        else:
-            mw, mh = settings.MAP_WIDTH, settings.MAP_HEIGHT
+        mw, mh = settings.MAP_WIDTH, settings.MAP_HEIGHT
         gen    = DungeonGenerator()
         # Heat system must exist before generate() call so tier_cap is correct.
         # On floor 1 the player is freshly created below, so we bootstrap with
@@ -507,7 +502,6 @@ class GameScene(Scene):
             profile=saved_profile,
             run_stats=run_stats,
             audio=self.audio,
-            map_size=self.map_size,
         ))
         log.info("GameOverScene pushed  current_scene=%s", type(self.app.scenes.current).__name__)
 

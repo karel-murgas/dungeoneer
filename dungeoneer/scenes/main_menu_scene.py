@@ -476,11 +476,24 @@ class MainMenuScene(Scene):
         self._go_to_meta(profile)
 
     def _quick_game_start(self, config: dict) -> None:
-        """Called by QuickGameOverlay on Start; go to between-runs hub with no profile."""
+        """Called by QuickGameOverlay on Start; launch run directly (no hub)."""
         self._quick_open = False
         self._global_cfg.last_quick_config = config
         save_global(self._global_cfg)
-        self._go_to_meta(None)
+        from dungeoneer.scenes.game_scene import GameScene
+        diff_obj = _DIFF_MAP.get(config.get("difficulty", "normal"), NORMAL)
+        self.app.scenes.replace(GameScene(
+            self.app,
+            difficulty=diff_obj,
+            use_minigame=config.get("use_minigame", True),
+            use_aim_minigame=config.get("use_aim_minigame", True),
+            use_heal_minigame=config.get("use_heal_minigame", True),
+            use_melee_minigame=config.get("use_melee_minigame", True),
+            heal_threshold_pct=config.get("heal_threshold_pct", 100),
+            use_tutorial=config.get("tutorial", False),
+            player_name=None,
+            profile=None,
+        ))
 
     # ------------------------------------------------------------------
     # Navigation to MetaScene

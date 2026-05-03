@@ -43,7 +43,6 @@ class GameOverScene(Scene):
         profile=None,
         run_stats: "RunStats | None" = None,
         audio=None,
-        map_size: str = "large",
     ) -> None:
         super().__init__(app)
         self.victory             = victory
@@ -52,7 +51,6 @@ class GameOverScene(Scene):
         self._use_minigame       = use_minigame
         self._use_aim_minigame   = use_aim_minigame
         self._use_melee_minigame = use_melee_minigame
-        self._map_size           = map_size
         self._credits_earned  = credits_earned
         self._credits_before  = credits_before
         self._profile         = profile
