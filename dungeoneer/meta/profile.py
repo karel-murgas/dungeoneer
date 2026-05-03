@@ -94,6 +94,14 @@ class GameplayFlags:
 
 @dataclass
 class Profile:
+    """Per-player save file.
+
+    perks shape: {perk_id: {"level": int}}
+        e.g. {"smartlink": {"level": 1}, "protocol_smg": {"level": 2}}
+
+    hotbar: list of 10 slots (indices 0–9 map to keys 1–0).
+        Each slot is a perk_id string or None (unassigned).
+    """
     name: str
     language: str = "en"
     difficulty: str = "normal"
@@ -104,6 +112,7 @@ class Profile:
     stats: LifetimeStats = field(default_factory=LifetimeStats)
     perks: dict = field(default_factory=dict)
     skills: dict = field(default_factory=dict)
+    hotbar: list = field(default_factory=lambda: [None] * 10)
     created_at: str = field(default_factory=lambda: _now_iso())
     updated_at: str = field(default_factory=lambda: _now_iso())
 
@@ -119,12 +128,17 @@ class Profile:
             "stats": self.stats.to_dict(),
             "perks": dict(self.perks),
             "skills": dict(self.skills),
+            "hotbar": list(self.hotbar),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Profile":
+        raw_hotbar = d.get("hotbar", [None] * 10)
+        # Normalise: always 10 slots
+        hotbar: list = list(raw_hotbar) + [None] * max(0, 10 - len(raw_hotbar))
+        hotbar = hotbar[:10]
         return cls(
             name=d["name"],
             language=d.get("language", "en"),
@@ -136,6 +150,7 @@ class Profile:
             stats=LifetimeStats.from_dict(d.get("stats", {})),
             perks=d.get("perks", {}),
             skills=d.get("skills", {}),
+            hotbar=hotbar,
             created_at=d.get("created_at", _now_iso()),
             updated_at=d.get("updated_at", _now_iso()),
         )

@@ -614,6 +614,58 @@ def _make_item_hack_mystery() -> pygame.Surface:
     return surf
 
 
+def _make_recharge_node() -> pygame.Surface:
+    """Recharge node — wall-embedded energy jack, purple/cyan glow."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    # Glow halo — purple
+    glow = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    pygame.draw.rect(glow, (120, 60, 220, 40), (2, 3, _TS - 4, _TS - 5))
+    surf.blit(glow, (0, 0))
+
+    # Wall mount body
+    pygame.draw.rect(surf, (22, 14, 40), (2, 3, _TS - 4, _TS - 6))
+    pygame.draw.rect(surf, (120, 60, 220), (2, 3, _TS - 4, _TS - 6), 1)
+
+    # Central jack socket — square with pin holes
+    jx, jy = cx - 5, cy - 5
+    pygame.draw.rect(surf, (12, 8, 28), (jx, jy, 10, 10))
+    pygame.draw.rect(surf, (160, 80, 255), (jx, jy, 10, 10), 1)
+    # Three pin holes
+    for px in (jx + 2, cx - 1, jx + 6):
+        pygame.draw.rect(surf, (80, 200, 255), (px, jy + 3, 2, 4))
+
+    # Cyan EP indicator bar at top
+    pygame.draw.rect(surf, (40, 160, 220), (5, 5, _TS - 10, 3))
+
+    # Corner screws
+    for bx, by in ((3, 4), (_TS - 5, 4), (3, _TS - 7), (_TS - 5, _TS - 7)):
+        pygame.draw.rect(surf, (180, 100, 255), (bx, by, 2, 2))
+
+    return surf
+
+
+def _make_recharge_node_spent() -> pygame.Surface:
+    """Recharge node — spent/used, greyed out."""
+    surf = pygame.Surface((_TS, _TS), pygame.SRCALPHA)
+    cx, cy = _TS // 2, _TS // 2
+
+    pygame.draw.rect(surf, (14, 10, 20), (2, 3, _TS - 4, _TS - 6))
+    pygame.draw.rect(surf, (50, 40, 70), (2, 3, _TS - 4, _TS - 6), 1)
+
+    jx, jy = cx - 5, cy - 5
+    pygame.draw.rect(surf, (10, 8, 16), (jx, jy, 10, 10))
+    pygame.draw.rect(surf, (50, 40, 70), (jx, jy, 10, 10), 1)
+    for px in (jx + 2, cx - 1, jx + 6):
+        pygame.draw.rect(surf, (30, 40, 50), (px, jy + 3, 2, 4))
+
+    # Dim bar
+    pygame.draw.rect(surf, (30, 40, 50), (5, 5, _TS - 10, 3))
+
+    return surf
+
+
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -641,6 +693,8 @@ _BUILDERS: dict[str, object] = {
     "item_hack_bonus_time":  _make_item_hack_bonus_time,
     "item_hack_coolant":     _make_item_hack_coolant,
     "item_hack_mystery":     _make_item_hack_mystery,
+    "recharge_node":         _make_recharge_node,
+    "recharge_node_spent":   _make_recharge_node_spent,
 }
 
 

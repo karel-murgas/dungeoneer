@@ -253,6 +253,33 @@ class ActionResolver:
 
         return ActionResult(True, msg, colour, burst_events=burst_events)
 
+    def resolve_recharge(
+        self, actor: "Actor", action: "RechargeAction", floor: "Floor",  # type: ignore[name-defined]
+        heat_system=None,
+    ) -> "ActionResult":
+        import math
+        from dungeoneer.core.event_bus import bus, LogMessageEvent
+        from dungeoneer.core import settings
+        from dungeoneer.entities.player import Player
+        from dungeoneer.core.i18n import t
+
+        if not isinstance(actor, Player):
+            return ActionResult(False)
+
+        actual_added = actor.add_energy(action.amount_ep)
+        heat_gain = int(math.ceil(action.amount_ep * settings.RECHARGE_HEAT_PER_EP))
+
+        if heat_system is not None:
+            heat_system.add_heat(heat_gain)
+
+        action.node.used = True
+
+        bus.post(LogMessageEvent(
+            t("log.perks.recharged").format(ep=actual_added, heat=heat_gain),
+            (80, 200, 255),
+        ))
+        return ActionResult(True)
+
     def resolve_open_container(
         self, actor: "Actor", action: "OpenContainerAction", floor: "Floor"  # type: ignore[name-defined]
     ) -> "ActionResult":

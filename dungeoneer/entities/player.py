@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from dungeoneer.core import settings
 from dungeoneer.core.i18n import t
+from dungeoneer.core.settings import ENERGY_START, ENERGY_MAX
 from dungeoneer.entities.actor import Actor
 from dungeoneer.items.inventory import Inventory
 from dungeoneer.items.weapon import Weapon, make_pistol, make_combat_knife
@@ -35,7 +36,21 @@ class Player(Actor):
         self.floor_depth:      int            = 1
         self.aim_skill:        float          = diff.player_aim_skill
         self.heat:             int            = 0   # cumulative heat (0–500); level = heat//100 + 1
+        self.energy:           int            = ENERGY_START
         self.inventory.add(make_combat_knife())
+
+    def consume_energy(self, cost: int) -> bool:
+        """Deduct cost EP. Returns False (no deduction) if insufficient."""
+        if self.energy < cost:
+            return False
+        self.energy -= cost
+        return True
+
+    def add_energy(self, amount: int) -> int:
+        """Add EP up to ENERGY_MAX. Returns actual amount added."""
+        before = self.energy
+        self.energy = min(self.energy + amount, ENERGY_MAX)
+        return self.energy - before
 
     @property
     def total_defence(self) -> int:

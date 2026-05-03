@@ -10,6 +10,7 @@ from dungeoneer.core.i18n import t
 if TYPE_CHECKING:
     from dungeoneer.entities.actor import Actor
     from dungeoneer.entities.container_entity import ContainerEntity
+    from dungeoneer.entities.recharge_node import RechargeNode
     from dungeoneer.world.floor import Floor
     from dungeoneer.combat.action_resolver import ActionResolver
     from dungeoneer.items.item import Item
@@ -243,3 +244,20 @@ class OpenContainerAction(Action):
 
     def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
         return resolver.resolve_open_container(actor, self, floor)
+
+
+class RechargeAction(Action):
+    """Use an adjacent recharge node — costs a turn."""
+    def __init__(self, node: "RechargeNode", amount_ep: int) -> None:
+        self.node      = node
+        self.amount_ep = amount_ep
+
+    def validate(self, actor: "Actor", floor: "Floor") -> bool:
+        if self.node.used:
+            return False
+        dx = abs(actor.x - self.node.x)
+        dy = abs(actor.y - self.node.y)
+        return (dx + dy) <= 1
+
+    def execute(self, actor: "Actor", floor: "Floor", resolver: "ActionResolver") -> ActionResult:
+        return resolver.resolve_recharge(actor, self, floor)

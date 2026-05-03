@@ -8,16 +8,18 @@ from dungeoneer.world.room import Room
 from dungeoneer.entities.actor import Actor
 from dungeoneer.entities.item_entity import ItemEntity
 from dungeoneer.entities.container_entity import ContainerEntity
+from dungeoneer.entities.recharge_node import RechargeNode
 
 
 class Floor:
     def __init__(self, dungeon_map: DungeonMap, depth: int = 1) -> None:
-        self.dungeon_map  = dungeon_map
-        self.depth        = depth
-        self.actors:        list[Actor]           = []
-        self.item_entities: list[ItemEntity]      = []
-        self.containers:    list[ContainerEntity] = []
-        self.rooms:         list[Room]            = []
+        self.dungeon_map    = dungeon_map
+        self.depth          = depth
+        self.actors:          list[Actor]           = []
+        self.item_entities:   list[ItemEntity]      = []
+        self.containers:      list[ContainerEntity] = []
+        self.recharge_nodes:  list[RechargeNode]    = []
+        self.rooms:           list[Room]            = []
 
     # ------------------------------------------------------------------
     # Spatial queries
@@ -66,3 +68,12 @@ class Floor:
 
     def add_container(self, container: ContainerEntity) -> None:
         self.containers.append(container)
+
+    def add_recharge_node(self, node: RechargeNode) -> None:
+        self.recharge_nodes.append(node)
+
+    def get_recharge_node_at(self, x: int, y: int) -> Optional[RechargeNode]:
+        for node in self.recharge_nodes:
+            if node.x == x and node.y == y:
+                return node
+        return None

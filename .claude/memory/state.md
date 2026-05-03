@@ -4,10 +4,18 @@ description: Current development phase, what's complete, what are stubs, and the
 type: project
 ---
 
-## Current State (2026-04-23, in dev)
+## Current State (2026-05-03, in dev)
 
 **Phase 1 MVP ✅ + Phase 2 UI Polish ✅ + Phase 3 core content ✅ complete.**
 **Rebalance (dynamic spawning + loot/credit economy) ✅ complete (all 4 chunks).**
+**Phase 1 Cyberware/Perks framework ✅ complete (all 5 steps).**
+
+### New (2026-05-03) — Phase 1 Cyberware/Perks framework (5 steps)
+- **Step 1**: `dungeoneer/perks/` package — `PerkDef`, `PerkType`, `BodyPart`, `CATALOG` (18 entries), `state.py` helpers; `Player.energy` field + `consume_energy/add_energy`; `Profile.hotbar list[str|None]` len=10; ~40 i18n keys (`perk.*`, `log.perks.*`)
+- **Step 2**: `CyberwareShopOverlay` (`rendering/ui/cyberware_shop_overlay.py`) — tabbed hub shop; buy/upgrade flow via `QuitConfirmDialog`; MetaScene nav button `[Cyberware]`; `buy_perks` tutorial step; i18n: `cyberware.*`, `nav.cyberware`, `tutorial.buy_perks.*`
+- **Step 3**: HUD energy bar (neon-blue, 180×10 px); `CyberwareMenuOverlay` (key K): ACTIVE/PASSIVE sections, hotbar slot assign; hotbar HUD 10 slots; `GameScene._fire_perk(slot)` stub (deducts EP, logs fired); cheat menu PERKS section; `use_perks` tutorial step; i18n: `hud.energy`, `cyberware.menu.*`, `hotbar.*`, `log.perks.*`
+- **Step 4**: `RechargeNode` entity (`entities/recharge_node.py`); dungeon generator places 1–2 nodes per floor; `RechargeAction` + `resolve_recharge`; `RechargeOverlay` (4-option: 25/50/75/100%); procedural sprite `recharge_node/recharge_node_spent`; cheat menu spawn; i18n: `recharge.*`, `entity.recharge_node.*`, `hint.recharge`, `log.perks.recharged`
+- **Step 5**: Help catalog CYBERWARE tab (tab 10, `_TAB_CYBERWARE=10`) — 5 sections: basics/energy/recharge/hotbar/buying; procedural illustration (energy bar + hotbar slots); i18n: `help_catalog.tab.cyberware`, `help_catalog.cw.*`; memory files updated; `perks.md` Phase 1 TODO marked done
 
 ### New (2026-04-23) — Dynamic spawning + loot/credit rebalance (4 chunks)
 - **Chunk 1**: `RoomRevealedEvent` infrastructure — `room.revealed`, `floor.rooms`, `fov.py` posts event on first reveal

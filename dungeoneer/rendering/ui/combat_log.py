@@ -32,12 +32,20 @@ class CombatLog:
 
     def draw(self, screen: pygame.Surface) -> None:
         now = time.monotonic()
-        x = 12
-        y = settings.SCREEN_HEIGHT - 20
+        # Right half of the bottom HUD band, beside the hotbar.
+        # Align top with hotbar (same vertical centering formula).
+        _SLOT_H   = 28
+        x         = 610
+        band_top  = settings.SCREEN_HEIGHT - settings.VIEWPORT_Y_BOTTOM
+        y         = band_top + (settings.VIEWPORT_Y_BOTTOM - _SLOT_H) // 2
+        max_y     = settings.SCREEN_HEIGHT - 6
 
         for text, colour, ts in self._messages:
+            if y >= max_y:
+                break
             age = now - ts
             if age > _FADE_SECONDS:
+                y += 20
                 continue
             # Fade alpha: full for first 4 s, then fade out
             fade = max(0.0, 1.0 - (age - (_FADE_SECONDS - 2)) / 2.0)
@@ -46,4 +54,4 @@ class CombatLog:
             surf = self._font.render(text, True, (r, g, b))
             surf.set_alpha(alpha)
             screen.blit(surf, (x, y))
-            y -= 20
+            y += 20

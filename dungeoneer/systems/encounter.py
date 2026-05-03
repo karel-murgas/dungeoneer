@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from dungeoneer.core.event_bus import bus, RoomRevealedEvent
 from dungeoneer.core import settings
 from dungeoneer.world.dungeon_generator import _ENEMY_POOL
+from dungeoneer.world.tile import TileType
 from dungeoneer.entities.enemy import (
     make_guard, make_drone, make_dog,
     make_heavy, make_turret, make_sniper_drone, make_riot_guard,
@@ -93,16 +94,29 @@ class EncounterSystem:
             self._floor.add_actor(enemy)
         self._turn_manager.build_queue(self._floor)
 
+    _ELEVATOR_TYPES = frozenset({
+        TileType.ELEVATOR_CLOSED, TileType.ELEVATOR_OPEN, TileType.ELEVATOR_ENTRY,
+    })
+
     def _pick_room_pos(
         self,
         room: "Room",
         occupied: set[tuple[int, int]],
         max_tries: int = 20,
     ) -> tuple[int, int] | None:
+        dm = self._floor.dungeon_map
         for _ in range(max_tries):
             pos = room.random_inner_point()
-            if pos not in occupied and self._floor.dungeon_map.is_walkable(*pos):
-                return pos
+            x, y = pos
+            if pos in occupied or not dm.is_walkable(x, y):
+                continue
+            if any(
+                dm.in_bounds(x + dx, y + dy)
+                and dm.get_type(x + dx, y + dy) in self._ELEVATOR_TYPES
+                for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0))
+            ):
+                continue
+            return pos
         return None
 
     # ------------------------------------------------------------------

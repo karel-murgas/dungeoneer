@@ -5,10 +5,15 @@
 LANGUAGE = "en"
 
 # Display
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+SCREEN_WIDTH  = 1280
+SCREEN_HEIGHT = 920
 FPS = 60
 TITLE = "Dungeoneer"
+
+# Viewport bands — tiles are rendered only in the middle region;
+# HUD occupies the top and bottom bands.
+VIEWPORT_Y_TOP    = 100   # height of the top HUD band (HP, heat, energy, floor info)
+VIEWPORT_Y_BOTTOM = 100   # height of the bottom HUD band (hotbar + combat log)
 
 # Tiles
 TILE_SIZE = 32          # pixels per tile
@@ -137,3 +142,10 @@ VAULT_MULT_FAIL:         float = -0.30
 ENCOUNTER_MIN_ROOM_AREA:   int   = 9     # inner tiles below this → no encounter
 ENCOUNTER_PACK_CHANCE:     float = 0.40  # probability of pack branch at heat 3+
 ENCOUNTER_T3_CHANCE_AT_H4: float = 0.10  # chance to unlock tier 3 at heat 4
+
+# Cyberware / energy system
+ENERGY_START:              int   = 100   # EP at run start
+ENERGY_MAX:                int   = 100   # EP hard cap
+RECHARGE_NODE_EP:          int   = 50    # capacity of one recharge node
+RECHARGE_HEAT_PER_EP:      float = 0.2   # heat per EP taken: int(ceil(ep * 0.2)) → 1 heat / 5 EP
+RECHARGE_NODES_PER_FLOOR:  tuple = (1, 2) # (min, max) recharge nodes generated per floor

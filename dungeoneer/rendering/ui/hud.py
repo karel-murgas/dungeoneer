@@ -23,16 +23,50 @@ _HEAT_COLOURS = [
 ]
 
 
+_EP_BAR_COL    = (80, 200, 255)   # neon-blue energy fill
+_EP_BAR_EMPTY  = (20, 40, 60)     # energy bar background
+_EP_SLOT_DIM   = (25, 35, 50)     # hotbar slot background (empty)
+_EP_SLOT_LIT   = (30, 80, 120)    # hotbar slot background (assigned)
+_EP_SLOT_LOW   = (100, 30, 30)    # hotbar slot border when EP insufficient
+_EP_SLOT_BDR   = (60, 140, 200)   # hotbar slot border (normal)
+_EP_SLOT_W     = 54
+_EP_SLOT_H     = 44
+
+_TIP_W         = 240    # hotbar tooltip width
+_TIP_BG        = (8, 10, 20, 220)
+_TIP_BDR       = (60, 160, 200)
+
+
+def _wrap_text(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
+    if font.size(text)[0] <= max_w:
+        return [text]
+    words, lines, cur = text.split(), [], ""
+    for word in words:
+        cand = (cur + " " + word).strip()
+        if font.size(cand)[0] <= max_w:
+            cur = cand
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines or [text]
+
+
 class HUD:
     def __init__(self, heal_threshold_pct: int = 100) -> None:
         self._heal_threshold_pct = heal_threshold_pct
         self._font_large = pygame.font.SysFont("consolas", 18, bold=True)
         self._font_small = pygame.font.SysFont("consolas", 14)
+        self._font_tiny  = pygame.font.SysFont("consolas", 11)
         self.weapon_rect:   pygame.Rect | None = None
         self.heal_rect:     pygame.Rect | None = None
         self.help_btn_rect: pygame.Rect | None = None
         self.heat_system = None          # set by GameScene after HeatSystem is created
         self.vault_credits_banked: int = 0  # set by GameScene when vault credits change
+        self.profile      = None         # set by GameScene; provides hotbar + perks
+        self._hotbar_rects: list[pygame.Rect] = []  # updated each frame for mouse hit-testing
 
     # ------------------------------------------------------------------
     # Helpers
@@ -208,6 +242,12 @@ class HUD:
         # ── heat bar (centre-top) ─────────────────────────────────────
         self._draw_heat_bar(screen)
 
+        # ── energy bar (centre-top, below heat bar) ───────────────────
+        self._draw_energy_bar(screen, player)
+
+        # ── hotbar (bottom-left) ──────────────────────────────────────
+        self._draw_hotbar(screen, player)
+
         # ── help button [?] to the left of the right panel ───────────
         f1_text = t("hud.help_hint")
         f1_probe = self._font_small.render(f1_text, True, (0, 0, 0))
@@ -279,3 +319,192 @@ class HUD:
         lbl_surf = self._font_small.render(lbl, True, fill_col)
         screen.blit(lbl_surf, (bar_x + (bar_w - lbl_surf.get_width()) // 2,
                                 bar_y + bar_h + 2))
+
+    # ------------------------------------------------------------------
+    # Energy bar
+    # ------------------------------------------------------------------
+
+    def _draw_energy_bar(self, screen: pygame.Surface, player: "Player") -> None:  # type: ignore[name-defined]
+        ep     = getattr(player, "energy", 0)
+        ep_max = settings.ENERGY_MAX
+
+        bar_w, bar_h = 180, 10
+        bar_x = (settings.SCREEN_WIDTH - bar_w) // 2
+
+        # Position just below the heat panel
+        # Heat bar is at bar_y=16 with panel_h = bar_h_heat + lbl_h + 3*_M ≈ 46
+        # Add a small gap so the two panels sit close but separate.
+        bar_y = 70
+
+        lbl_text = f"{ep} / {ep_max} {t('hud.energy')}"
+        lbl_surf = self._font_tiny.render(lbl_text, True, _EP_BAR_COL)
+        lbl_h    = lbl_surf.get_height()
+
+        panel_h = bar_h + lbl_h + 2 * _M
+        self._draw_panel(screen, bar_x - _M, bar_y - _M, bar_w + 2 * _M, panel_h)
+
+        # Background track
+        pygame.draw.rect(screen, _EP_BAR_EMPTY, (bar_x, bar_y, bar_w, bar_h))
+
+        # Fill
+        if ep_max > 0:
+            fill_w = round(bar_w * min(1.0, ep / ep_max))
+            if fill_w > 0:
+                pygame.draw.rect(screen, _EP_BAR_COL, (bar_x, bar_y, fill_w, bar_h))
+
+        # Border
+        pygame.draw.rect(screen, (60, 120, 160), (bar_x, bar_y, bar_w, bar_h), 1)
+
+        # Label centred below bar
+        screen.blit(lbl_surf, (bar_x + (bar_w - lbl_surf.get_width()) // 2,
+                                bar_y + bar_h + 2))
+
+    # ------------------------------------------------------------------
+    # Hotbar
+    # ------------------------------------------------------------------
+
+    def _draw_hotbar(self, screen: pygame.Surface, player: "Player") -> None:  # type: ignore[name-defined]
+        profile = self.profile
+        if profile is None:
+            return
+
+        from dungeoneer.perks import CATALOG, get_perk
+        from dungeoneer.core.settings import ENERGY_MAX
+
+        ep = getattr(player, "energy", 0)
+
+        sw = settings.SCREEN_WIDTH
+        sh = settings.SCREEN_HEIGHT
+        n  = 10
+        gap = 4
+        total_w = n * _EP_SLOT_W + (n - 1) * gap
+        sx = 12
+        # Vertically centre the hotbar in the bottom HUD band.
+        band_top = sh - settings.VIEWPORT_Y_BOTTOM
+        sy = band_top + (settings.VIEWPORT_Y_BOTTOM - _EP_SLOT_H) // 2
+
+        self._hotbar_rects = []
+        for i in range(n):
+            rx = sx + i * (_EP_SLOT_W + gap)
+            rect = pygame.Rect(rx, sy, _EP_SLOT_W, _EP_SLOT_H)
+            self._hotbar_rects.append(rect)
+
+            perk_id = profile.hotbar[i] if i < len(profile.hotbar) else None
+            slot_key = str((i + 1) % 10)  # 1–9, 0 for slot 10
+
+            if perk_id and perk_id in CATALOG:
+                pdef = CATALOG[perk_id]
+                cost = pdef.ep_cost if pdef.ep_cost is not None else pdef.ep_per_turn
+                can_fire = cost is None or ep >= cost
+                bdr = _EP_SLOT_BDR if can_fire else _EP_SLOT_LOW
+                pygame.draw.rect(screen, _EP_SLOT_LIT, rect, border_radius=3)
+                pygame.draw.rect(screen, bdr, rect, 1, border_radius=3)
+
+                # Slot number (top-left)
+                k_surf = self._font_tiny.render(slot_key, True, (120, 160, 200))
+                screen.blit(k_surf, (rx + 3, sy + 2))
+
+                # EP cost (top-right)
+                if cost is not None:
+                    ep_str   = str(cost)
+                    ep_col   = (80, 200, 255) if can_fire else (200, 60, 60)
+                    ep_surf  = self._font_tiny.render(ep_str, True, ep_col)
+                    screen.blit(ep_surf, (rx + _EP_SLOT_W - ep_surf.get_width() - 3, sy + 2))
+
+                # Icon centred in slot (fallback: name abbreviation)
+                from dungeoneer.rendering.perk_icons import get_icon
+                icon = get_icon(perk_id, size=28)
+                if icon is not None:
+                    screen.blit(icon, (rx + (_EP_SLOT_W - 28) // 2,
+                                       sy + (_EP_SLOT_H - 28) // 2))
+                else:
+                    name = t(pdef.name_key)
+                    abbr = name[:7] if len(name) > 7 else name
+                    ab_surf = self._font_tiny.render(abbr, True, (160, 200, 220))
+                    screen.blit(ab_surf, (rx + _EP_SLOT_W // 2 - ab_surf.get_width() // 2,
+                                          sy + _EP_SLOT_H - ab_surf.get_height() - 2))
+            else:
+                pygame.draw.rect(screen, _EP_SLOT_DIM, rect, border_radius=3)
+                pygame.draw.rect(screen, (40, 55, 70), rect, 1, border_radius=3)
+
+                k_surf = self._font_tiny.render(slot_key, True, (60, 75, 90))
+                screen.blit(k_surf, (rx + 3, sy + 2))
+
+        # Tooltip for hovered slot
+        mx, my = pygame.mouse.get_pos()
+        for i, rect in enumerate(self._hotbar_rects):
+            if rect.collidepoint(mx, my):
+                perk_id = profile.hotbar[i] if i < len(profile.hotbar) else None
+                if perk_id and perk_id in CATALOG:
+                    from dungeoneer.perks import get_level
+                    lvl = get_level(self.profile, perk_id)
+                    self._draw_hotbar_tooltip(screen, CATALOG[perk_id], rect, ep, lvl)
+                break
+
+    def _draw_hotbar_tooltip(
+        self,
+        screen: pygame.Surface,
+        pdef: "PerkDef",  # type: ignore[name-defined]
+        slot_rect: pygame.Rect,
+        ep: int,
+        level: int = 1,
+    ) -> None:
+        from dungeoneer.rendering.perk_icons import get_icon
+        from dungeoneer.core.i18n import t as _t
+        from dungeoneer.perks.catalog import desc_for_level
+
+        pad = 8
+        icon = get_icon(pdef.id, size=24)
+        icon_w = 24 + 6 if icon is not None else 0
+
+        name_surf = self._font_small.render(_t(pdef.name_key), True, (80, 200, 255))
+        desc_lines = _wrap_text(self._font_tiny, desc_for_level(pdef.id, level), _TIP_W - 2 * pad)
+
+        cost = pdef.ep_cost if pdef.ep_cost is not None else pdef.ep_per_turn
+        ep_text = (
+            f"EP/turn: {cost}" if pdef.ep_per_turn is not None else f"EP: {cost}"
+        ) if cost is not None else None
+
+        row_h  = self._font_tiny.get_height() + 2
+        content_h = (
+            max(name_surf.get_height(), 24) + 4
+            + len(desc_lines) * row_h
+            + (self._font_tiny.get_height() + 6 if ep_text else 0)
+        )
+        tip_h = content_h + 2 * pad
+
+        # Position above the slot, clamped to screen
+        tx = max(0, min(slot_rect.centerx - _TIP_W // 2,
+                        settings.SCREEN_WIDTH - _TIP_W))
+        ty = slot_rect.top - tip_h - 6
+
+        # Background
+        tip_surf = pygame.Surface((_TIP_W, tip_h), pygame.SRCALPHA)
+        tip_surf.fill(_TIP_BG)
+        screen.blit(tip_surf, (tx, ty))
+        pygame.draw.rect(screen, _TIP_BDR, (tx, ty, _TIP_W, tip_h), 1, border_radius=4)
+
+        cx = tx + pad
+        cy = ty + pad
+
+        # Icon + name on first line
+        if icon is not None:
+            screen.blit(icon, (cx, cy + (name_surf.get_height() - 24) // 2))
+            cx += icon_w
+        screen.blit(name_surf, (cx, cy))
+        cy += max(name_surf.get_height(), 24) + 4
+        cx = tx + pad
+
+        # Description
+        for line in desc_lines:
+            s = self._font_tiny.render(line, True, (170, 185, 200))
+            screen.blit(s, (cx, cy))
+            cy += row_h
+
+        # EP cost
+        if ep_text:
+            cy += 2
+            can = cost is None or ep >= cost
+            ep_col = (80, 200, 255) if can else (200, 60, 60)
+            ep_s = self._font_tiny.render(ep_text, True, ep_col)
+            screen.blit(ep_s, (cx, cy))

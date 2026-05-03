@@ -9,6 +9,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 
+from dungeoneer.core import settings as _settings
 from dungeoneer.core.settings import STAIR_FARTHEST_CANDIDATES
 from dungeoneer.world.map import DungeonMap
 from dungeoneer.world.room import Room
@@ -101,6 +102,7 @@ class DungeonGenerator:
         drones: int = _DEFAULT_DRONES,
         containers: int = _DEFAULT_CONTAINERS,
         tier_cap: int = 1,
+        place_vault: bool = False,
     ) -> GenerationResult:
         dungeon_map = DungeonMap(width, height)
         root = BSPNode(0, 0, width, height)
@@ -150,13 +152,57 @@ class DungeonGenerator:
                 break
         for sp in spawns:
             blocked.add((sp.x, sp.y))
+
+        # Track which floor tiles are already "interaction zones" of placed wall
+        # entities (tiles the player must stand on to use them).  New wall entities
+        # must not share an interaction zone with any existing one so that pressing
+        # [E] from a single tile is never ambiguous.
+        def _add_interaction_zone(wx: int, wy: int) -> None:
+            for ddx, ddy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                fnx, fny = wx + ddx, wy + ddy
+                if dungeon_map.is_walkable(fnx, fny):
+                    interaction_zones.add((fnx, fny))
+
+        interaction_zones: set[tuple[int, int]] = set()
+        _add_interaction_zone(sx, sy)
+        _add_interaction_zone(entry_x, entry_y)
+
+        # Vault objective — placed before containers so its interaction zone is
+        # respected by subsequent wall-entity placement.
+        if place_vault:
+            vp = self._find_vault_pos(
+                end_room, rooms, dungeon_map, blocked, interaction_zones,
+                room_tile_set, sx, sy,
+            )
+            if vp is not None:
+                vx, vy = vp
+                spawns.append(SpawnDesc("vault_objective", vx, vy))
+                blocked.add((vx, vy))
+                # Vault is a floor entity: block the vault tile itself AND
+                # all adjacent floor tiles so no wall entity shares its zone.
+                interaction_zones.add((vx, vy))
+                _add_interaction_zone(vx, vy)
+
         for room in container_rooms:
-            wall_pos = self._wall_container_pos(room, dungeon_map, blocked)
+            wall_pos = self._wall_container_pos(room, dungeon_map, blocked, interaction_zones)
             if wall_pos is None:
                 continue  # no suitable wall in this room — skip container
             cx, cy = wall_pos
             spawns.append(SpawnDesc("container", cx, cy))
             blocked.add((cx, cy))
+            _add_interaction_zone(cx, cy)
+
+        # Recharge nodes — 1-2 per floor on wall tiles with one floor neighbour
+        n_nodes = self._rng.randint(*_settings.RECHARGE_NODES_PER_FLOOR)
+        node_rooms = self._rng.choices(rooms, k=n_nodes)
+        for room in node_rooms:
+            wall_pos = self._wall_container_pos(room, dungeon_map, blocked, interaction_zones)
+            if wall_pos is None:
+                continue
+            nx, ny = wall_pos
+            spawns.append(SpawnDesc("recharge_node", nx, ny))
+            blocked.add((nx, ny))
+            _add_interaction_zone(nx, ny)
 
         return GenerationResult(dungeon_map, rooms, spawns, (sx, sy), (entry_x, entry_y))
 
@@ -299,18 +345,76 @@ class DungeonGenerator:
                     return rx, ry
         return cx, cy
 
+    def _find_vault_pos(
+        self,
+        preferred_room: Room,
+        all_rooms: list[Room],
+        dungeon_map: DungeonMap,
+        blocked: set[tuple[int, int]],
+        interaction_zones: set[tuple[int, int]],
+        room_tile_set: set[tuple[int, int]],
+        elevator_x: int,
+        elevator_y: int,
+        min_dist: int = 3,
+        min_candidates: int = 1,
+    ) -> tuple[int, int] | None:
+        """Return a safe floor tile for the vault objective container.
+
+        Candidates must be room-interior, not corridor-adjacent, not in any
+        existing interaction zone, and at least *min_dist* tiles from the
+        elevator wall tile.  Tries the elevator's own room first; falls back
+        to the largest other room if too few candidates are available.
+        """
+        def _candidates(room: Room) -> list[tuple[int, int]]:
+            result = []
+            for ty in range(room.inner_y, room.inner_y + room.inner_h):
+                for tx in range(room.inner_x, room.inner_x + room.inner_w):
+                    if not dungeon_map.is_walkable(tx, ty):
+                        continue
+                    if (tx, ty) in blocked:
+                        continue
+                    if (tx, ty) in interaction_zones:
+                        continue
+                    if self._adjacent_to_corridor(tx, ty, room_tile_set, dungeon_map):
+                        continue
+                    if abs(tx - elevator_x) + abs(ty - elevator_y) < min_dist:
+                        continue
+                    result.append((tx, ty))
+            return result
+
+        cands = _candidates(preferred_room)
+        if len(cands) >= min_candidates:
+            return self._rng.choice(cands)
+
+        # Fallback: largest other rooms (by inner area)
+        others = sorted(
+            [r for r in all_rooms if r is not preferred_room],
+            key=lambda r: r.inner_w * r.inner_h,
+            reverse=True,
+        )
+        for room in others:
+            cands = _candidates(room)
+            if len(cands) >= min_candidates:
+                return self._rng.choice(cands)
+        return None
+
     def _wall_container_pos(
         self,
         room: Room,
         dungeon_map: DungeonMap,
         blocked: set[tuple[int, int]],
+        interaction_zones: set[tuple[int, int]] | None = None,
     ) -> tuple[int, int] | None:
-        """Find a perimeter wall tile for a wall-mounted supply locker.
+        """Find a perimeter wall tile for a wall-mounted entity.
 
         The tile must belong to a single room's wall — tiles with walkable floor
         on both north+south or both east+west are rejected (they separate two
         separate floor areas, i.e. sit between two rooms or a room and a corridor).
         Corner positions (floor on two adjacent sides) are allowed.
+
+        If *interaction_zones* is given, candidates whose adjacent floor tiles
+        overlap with it are rejected, preventing two interactables from sharing
+        the same [E]-press tile.
 
         Returns None if no suitable position exists in this room.
         """
@@ -325,6 +429,15 @@ class DungeonGenerator:
                 if (x, y) not in blocked and dungeon_map.get_type(x, y) == TileType.WALL:
                     if self._single_side_floor(x, y, dungeon_map):
                         candidates.append((x, y))
+        if interaction_zones:
+            candidates = [
+                (x, y) for (x, y) in candidates
+                if not any(
+                    (x + ddx, y + ddy) in interaction_zones
+                    for ddx, ddy in ((0, 1), (0, -1), (1, 0), (-1, 0))
+                    if dungeon_map.is_walkable(x + ddx, y + ddy)
+                )
+            ]
         if candidates:
             return self._rng.choice(candidates)
         return None

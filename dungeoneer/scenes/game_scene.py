@@ -32,7 +32,7 @@ from dungeoneer.combat.turn_manager import TurnManager
 from dungeoneer.combat.action import (
     MoveAction, MeleeAttackAction, RangedAttackAction,
     WaitAction, ReloadAction, StairAction, ElevatorAction,
-    EquipAction, UseItemAction, OpenContainerAction,
+    EquipAction, UseItemAction, OpenContainerAction, RechargeAction,
 )
 from dungeoneer.items.item import RangeType
 from dungeoneer.items.weapon import Weapon
@@ -51,6 +51,7 @@ from dungeoneer.rendering.ui.alert_banner import AlertBanner
 from dungeoneer.rendering.ui.quit_confirm import QuitConfirmDialog
 from dungeoneer.rendering.ui.cheat_menu import CheatMenuOverlay
 from dungeoneer.rendering.ui.tutorial_overlay import TutorialManager, TutorialOverlay
+from dungeoneer.rendering.ui.cyberware_menu_overlay import CyberwareMenuOverlay
 from dungeoneer.rendering.ui.minimap_overlay import MinimapOverlay
 from dungeoneer.rendering.ui.statistics_overlay import StatisticsOverlay
 from dungeoneer.rendering.ui.heat_notification import HeatLevelUpNotification
@@ -126,6 +127,10 @@ class GameScene(Scene):
         self._fov_debug_on       = False   # F10: paint LOS/FOV mismatches
         self._tutorial_open      = False                # tutorial overlay active
         self._tutorial_queue:    list[str] = []        # steps waiting to be shown
+        self._cyberware_menu_open = False
+        self._cyberware_menu: CyberwareMenuOverlay | None = None
+        self._hotbar_changed     = False
+        self._recharge_overlay   = None                 # RechargeOverlay instance when recharging
         self._heal_overlay       = None                 # HealOverlay instance when healing
         self._had_visible_enemies = False  # for alert-banner trigger detection
         self._in_combat           = False  # True while any enemy is in CombatState/SearchState
@@ -135,6 +140,8 @@ class GameScene(Scene):
         self._hack_just_completed = False  # advance enemy turns once hack scene pops
         self._held_move_key: int | None = None   # key currently held for auto-repeat
         self._move_hold_timer: float    = 0.0    # seconds until next auto-repeat step
+        self._cheat_held_key: int | None = None  # w/s held inside cheat menu
+        self._cheat_hold_timer: float    = 0.0
         self._aim_target: Enemy | None = None   # currently highlighted ranged target
         self._aim_overlay = None                # AimOverlay instance when aiming
         self._melee_overlay = None              # MeleeOverlay instance when charging melee
@@ -164,6 +171,10 @@ class GameScene(Scene):
         self.stats_tracker.subscribe()
         self._subscribe_events()
         self.music.start()
+        # Give HUD access to the profile (hotbar + perks) for the energy/hotbar widgets
+        self.hud.profile = self._active_profile
+        # Trigger use_perks tutorial if the player owns at least one active perk
+        self._maybe_show_tutorial("use_perks")
 
     def on_exit(self) -> None:
         log.info("GameScene.on_exit  game_over=%s", self._game_over)
@@ -248,6 +259,7 @@ class GameScene(Scene):
             mw, mh,
             floor_depth=depth,
             containers=self.difficulty.containers_per_floor,
+            place_vault=depth == FLOORS_PER_RUN,
         )
         self.floor = Floor(result.dungeon_map, depth)
         self.floor.rooms = result.rooms
@@ -273,40 +285,18 @@ class GameScene(Scene):
         for spawn in result.spawns:
             if spawn.kind == "container":
                 self.floor.add_container(self._make_container(spawn.x, spawn.y))
-
-        # On the final floor keep the elevator for extraction and place the vault
-        # in the same room but at least 3 tiles away so [E] doesn't trigger both.
-        if depth == FLOORS_PER_RUN:
-            import random as _rnd
-            ex, ey = result.stair_pos  # exit elevator stays as ELEVATOR_CLOSED
-            # Find the room containing the elevator and pick a far floor tile for vault
-            vault_x, vault_y = None, None
-            candidates = []
-            for room in result.rooms:
-                if room.x <= ex < room.x + room.w and room.y <= ey < room.y + room.h:
-                    for ty in range(room.y, room.y + room.h):
-                        for tx in range(room.x, room.x + room.w):
-                            if not self.floor.dungeon_map.is_walkable(tx, ty):
-                                continue
-                            if max(abs(tx - ex), abs(ty - ey)) >= 3:
-                                candidates.append((tx, ty))
-                    break
-            if candidates:
-                vault_x, vault_y = _rnd.choice(candidates)
-            else:
-                # Fallback: adjacent tile (shouldn't happen in normal maps)
-                for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
-                    if self.floor.dungeon_map.is_walkable(ex + dx, ey + dy):
-                        vault_x, vault_y = ex + dx, ey + dy
-                        break
-            if vault_x is not None:
+            elif spawn.kind == "vault_objective":
                 obj_credits = self.difficulty.objective_credits
                 self.floor.add_container(
-                    ContainerEntity(vault_x, vault_y, credits=obj_credits,
+                    ContainerEntity(spawn.x, spawn.y, credits=obj_credits,
                                     is_objective=True, name=t("entity.corp_vault.name"))
                 )
-            # Reset vault state for this run (only on floor 1 load, but depth==FLOORS_PER_RUN
-            # means a fresh run reaching floor 3 — vault is always fresh here)
+            elif spawn.kind == "recharge_node":
+                from dungeoneer.entities.recharge_node import RechargeNode
+                self.floor.add_recharge_node(RechargeNode(spawn.x, spawn.y))
+
+        if depth == FLOORS_PER_RUN:
+            # Reset vault session state for this fresh final floor.
             self._vault_credits_banked = 0
             self._vault_fully_drained = False
             self._vault_overlay = None
@@ -525,8 +515,13 @@ class GameScene(Scene):
                 if not self._cheat_menu_open:
                     self._held_move_key   = event.key
                     self._move_hold_timer = self._MOVE_HOLD_INITIAL
+                elif event.key in (pygame.K_w, pygame.K_s, pygame.K_UP, pygame.K_DOWN):
+                    self._cheat_held_key   = event.key
+                    self._cheat_hold_timer = self._MOVE_HOLD_INITIAL
             elif event.type == pygame.KEYUP and event.key == self._held_move_key:
                 self._held_move_key = None
+            elif event.type == pygame.KEYUP and event.key == self._cheat_held_key:
+                self._cheat_held_key = None
 
         # Help catalog takes priority over all overlays (F1 always works)
         if self._help_open:
@@ -585,6 +580,19 @@ class GameScene(Scene):
         if self._vault_overlay is not None:
             for event in events:
                 self._vault_overlay.handle_event(event)
+            return
+
+        # Recharge overlay takes exclusive input while active
+        if self._recharge_overlay is not None:
+            for event in events:
+                if self._recharge_overlay is None:
+                    break
+                self._recharge_overlay.handle_event(event)
+            return
+
+        # Cyberware menu routes its own events (K key also handled inside)
+        if self._cyberware_menu_open and self._cyberware_menu is not None:
+            self._cyberware_menu.handle_events(events)
             return
 
         for event in events:
@@ -712,6 +720,12 @@ class GameScene(Scene):
                         self._inventory_open = False
                         self.weapon_picker.open(self.player)
                     return
+                if event.key == pygame.K_k:
+                    if self._cyberware_menu_open:
+                        self._close_cyberware_menu()
+                    else:
+                        self._open_cyberware_menu()
+                    return
                 if event.key == pygame.K_p:
                     settings.HACK_WEAPON_USE_PNG = not settings.HACK_WEAPON_USE_PNG
                     return
@@ -738,7 +752,8 @@ class GameScene(Scene):
 
         if (self._quit_confirm_open or self._overheal_confirm_open or self._cheat_menu_open
                 or self._minimap_open or self._statistics_open or self._heal_overlay is not None
-                or self._melee_overlay is not None):
+                or self._melee_overlay is not None or self._cyberware_menu_open
+                or self._recharge_overlay is not None):
             return
 
         if self._inventory_open:
@@ -909,13 +924,33 @@ class GameScene(Scene):
 
             key = event.key
 
+            # Hotbar 1–0: fire perk (no turn consumed)
+            _HOTBAR_KEYS = {
+                pygame.K_1: 0, pygame.K_2: 1, pygame.K_3: 2, pygame.K_4: 3,
+                pygame.K_5: 4, pygame.K_6: 5, pygame.K_7: 6, pygame.K_8: 7,
+                pygame.K_9: 8, pygame.K_0: 9,
+            }
+            if key in _HOTBAR_KEYS:
+                self._fire_perk(_HOTBAR_KEYS[key])
+                continue  # no turn advance
+
             if key == pygame.K_h:
                 self._launch_heal()
                 continue   # no immediate turn advance
-            else:
-                action = self._key_to_action(key)
-                if action is None:
-                    continue
+
+            action = self._key_to_action(key)
+
+            # Recharge node — opens overlay (amount chosen interactively)
+            if isinstance(action, RechargeAction):
+                if action.node.used:
+                    bus.post(LogMessageEvent(t("recharge.spent"), (120, 100, 80)))
+                    self.audio.play("action_denied")
+                else:
+                    self._open_recharge_overlay(action.node)
+                continue
+
+            if action is None:
+                continue
 
             log.debug(
                 "Player action: %s  pos=(%d,%d)  hp=%d/%d",
@@ -1109,15 +1144,19 @@ class GameScene(Scene):
         if key == pygame.K_r:
             return ReloadAction()
         if key in (pygame.K_GREATER, pygame.K_KP_ENTER, pygame.K_e):
-            # E also opens adjacent containers (same key as elevator/interact)
+            # Priority: container > entry-elevator (no-return) > exit-elevator > recharge node
             container = self._find_adjacent_container()
             if container:
                 return OpenContainerAction(container)
-            # Entry elevator: show "no way back" and consume the keypress
             if self._adjacent_entry_elevator_pos() is not None:
                 bus.post(LogMessageEvent(t("hint.elevator_no_return"), (160, 130, 90)))
                 self.audio.play("action_denied")
                 return None
+            # Recharge node only when no exit elevator is adjacent
+            if self._adjacent_elevator_pos() is None:
+                node = self._find_adjacent_recharge_node()
+                if node is not None:
+                    return RechargeAction(node, 0)
             return ElevatorAction()
         if key == pygame.K_f:
             w = self.player.equipped_weapon
@@ -1231,6 +1270,32 @@ class GameScene(Scene):
                 return c
         return None
 
+    def _find_adjacent_recharge_node(self):
+        if self.player is None or self.floor is None:
+            return None
+        for node in self.floor.recharge_nodes:
+            if abs(self.player.x - node.x) + abs(self.player.y - node.y) <= 1:
+                return node
+        return None
+
+    def _open_recharge_overlay(self, node) -> None:
+        from dungeoneer.rendering.ui.recharge_overlay import RechargeOverlay
+        assert self.player is not None
+
+        def on_choice(amount_ep):
+            self._recharge_overlay = None
+            if amount_ep is None:
+                return
+            action = RechargeAction(node, amount_ep)
+            if not action.validate(self.player, self.floor):
+                return
+            self.resolver.resolve_recharge(
+                self.player, action, self.floor, self.heat_system
+            )
+            self._schedule_advance()
+
+        self._recharge_overlay = RechargeOverlay(node, self.player, on_choice)
+
     def _adjacent_elevator_pos(self) -> tuple[int, int] | None:
         """Return (x, y) of a cardinally adjacent ELEVATOR_CLOSED tile, or None."""
         if self.player is None or self.floor is None:
@@ -1333,6 +1398,15 @@ class GameScene(Scene):
         # Medipack tutorial: player has a consumable
         if any(isinstance(it, Consumable) for it in self.player.inventory):
             self._enqueue_tutorial("medipack")
+        # use_perks tutorial: profile owns at least one active perk
+        if self._active_profile is not None:
+            from dungeoneer.perks import CATALOG, PerkType, get_level
+            has_active = any(
+                pdef.type == PerkType.ACTIVE and get_level(self._active_profile, pid) >= 1
+                for pid, pdef in CATALOG.items()
+            )
+            if has_active:
+                self._enqueue_tutorial("use_perks")
 
     # ------------------------------------------------------------------
     # Hack minigame integration
@@ -1554,6 +1628,77 @@ class GameScene(Scene):
             self._vault_fully_drained = True
 
     # ------------------------------------------------------------------
+    # Cyberware menu
+    # ------------------------------------------------------------------
+
+    def _open_cyberware_menu(self) -> None:
+        assert self.player is not None
+        self._hotbar_changed = False
+
+        def on_close() -> None:
+            self._cyberware_menu_open = False
+            if self._hotbar_changed and self._active_profile is not None:
+                from dungeoneer.meta.storage import save_profile
+                save_profile(self._active_profile)
+                self._hotbar_changed = False
+
+        def on_assign(slot: int, perk_id: str | None) -> None:
+            if self._active_profile is not None:
+                if slot < len(self._active_profile.hotbar):
+                    self._active_profile.hotbar[slot] = perk_id
+                    self._hotbar_changed = True
+
+        self._cyberware_menu = CyberwareMenuOverlay(
+            profile=self._active_profile,
+            player=self.player,
+            on_close=on_close,
+            on_assign_hotbar=on_assign,
+        )
+        self._cyberware_menu_open = True
+
+    def _close_cyberware_menu(self) -> None:
+        if self._cyberware_menu is not None:
+            self._cyberware_menu._on_close()
+
+    # ------------------------------------------------------------------
+    # Perk firing
+    # ------------------------------------------------------------------
+
+    def _fire_perk(self, slot: int) -> bool:
+        """Fire the perk in hotbar slot *slot* (0-indexed). Returns True on success."""
+        if self.player is None or self._active_profile is None:
+            return False
+
+        hotbar = self._active_profile.hotbar
+        perk_id = hotbar[slot] if slot < len(hotbar) else None
+
+        if not perk_id:
+            bus.post(LogMessageEvent(t("log.perks.empty_slot"), (100, 100, 100)))
+            return False
+
+        from dungeoneer.perks import CATALOG, get_level
+        if perk_id not in CATALOG:
+            return False
+
+        pdef = CATALOG[perk_id]
+
+        if pdef.target_required:
+            bus.post(LogMessageEvent(t("log.perks.target_required"), (180, 140, 60)))
+            return False
+
+        cost = pdef.ep_cost if pdef.ep_cost is not None else pdef.ep_per_turn
+        if cost is not None:
+            if not self.player.consume_energy(cost):
+                bus.post(LogMessageEvent(t("log.perks.no_energy"), (200, 80, 80)))
+                return False
+
+        bus.post(LogMessageEvent(
+            t("log.perks.fired").format(name=t(pdef.name_key)),
+            (80, 200, 255),
+        ))
+        return True
+
+    # ------------------------------------------------------------------
     # Cheat / debug menu
     # ------------------------------------------------------------------
 
@@ -1623,6 +1768,25 @@ class GameScene(Scene):
                 from dungeoneer.systems.heat import LEVEL_NAMES
                 bus.post(LogMessageEvent(f"[CHEAT] Heat → {LEVEL_NAMES[level]}", (80, 220, 120)))
 
+        elif action == "energy:+50":
+            self.player.add_energy(50)
+            bus.post(LogMessageEvent(f"[CHEAT] EP → {self.player.energy}/{settings.ENERGY_MAX}", (80, 220, 120)))
+
+        elif action == "energy:max":
+            self.player.add_energy(settings.ENERGY_MAX)
+            bus.post(LogMessageEvent(f"[CHEAT] EP → {self.player.energy}/{settings.ENERGY_MAX}", (80, 220, 120)))
+
+        elif action == "spawn_recharge_node":
+            from dungeoneer.entities.recharge_node import RechargeNode
+            pos = self._cheat_find_spawn_pos()
+            if pos is None:
+                return
+            tx, ty = pos
+            node = RechargeNode(tx, ty)
+            self.floor.add_recharge_node(node)
+            self._cheat_menu_open = False
+            bus.post(LogMessageEvent("[CHEAT] recharge node spawned", (80, 220, 120)))
+
         elif action == "vault:open":
             pos = self._cheat_find_spawn_pos()
             if pos is None:
@@ -1668,6 +1832,14 @@ class GameScene(Scene):
             self._vault_container = None
             self._vault_session_state = None
             bus.post(LogMessageEvent("[CHEAT] vault state reset", (80, 220, 120)))
+
+        elif action == "win_run":
+            self._cheat_menu_open = False
+            self._trigger_game_over(victory=True)
+
+        elif action == "lose_run":
+            self._cheat_menu_open = False
+            self._trigger_game_over(victory=False)
 
     @staticmethod
     def _make_cheat_item(item_id: str):
@@ -1916,8 +2088,9 @@ class GameScene(Scene):
         # Iterate only the on-screen tile rectangle for speed.
         x0 = max(0, cam.offset_x // ts - 1)
         y0 = max(0, cam.offset_y // ts - 1)
-        x1 = min(dmap.width,  (cam.offset_x + settings.SCREEN_WIDTH ) // ts + 2)
-        y1 = min(dmap.height, (cam.offset_y + settings.SCREEN_HEIGHT) // ts + 2)
+        vp_h = settings.SCREEN_HEIGHT - settings.VIEWPORT_Y_TOP - settings.VIEWPORT_Y_BOTTOM
+        x1 = min(dmap.width,  (cam.offset_x + settings.SCREEN_WIDTH) // ts + 2)
+        y1 = min(dmap.height, (cam.offset_y + vp_h) // ts + 2)
 
         for y in range(y0, y1):
             for x in range(x0, x1):
@@ -1951,8 +2124,7 @@ class GameScene(Scene):
         if self.player is None or self.floor is None:
             return None
         cam = self.renderer.camera
-        tile_x = (mx + cam.offset_x) // settings.TILE_SIZE
-        tile_y = (my + cam.offset_y) // settings.TILE_SIZE
+        tile_x, tile_y = cam.screen_to_world(mx, my)
         for actor in self.floor.actors:
             if (
                 isinstance(actor, Enemy) and actor.alive
@@ -1967,8 +2139,7 @@ class GameScene(Scene):
         if self.player is None or self.floor is None:
             return None
         cam = self.renderer.camera
-        tile_x = (mx + cam.offset_x) // settings.TILE_SIZE
-        tile_y = (my + cam.offset_y) // settings.TILE_SIZE
+        tile_x, tile_y = cam.screen_to_world(mx, my)
         for container in self.floor.containers:
             if (
                 not container.opened
@@ -2198,6 +2369,16 @@ class GameScene(Scene):
                         # Obstacle/enemy in the way — stop repeating until key is re-pressed
                         self._held_move_key = None
 
+        # Auto-repeat w/s navigation inside the cheat menu
+        if self._cheat_held_key is not None:
+            if self._cheat_menu_open:
+                self._cheat_hold_timer -= dt
+                if self._cheat_hold_timer <= 0.0:
+                    self.cheat_menu.handle_key(self._cheat_held_key)
+                    self._cheat_hold_timer = self._MOVE_HOLD_REPEAT
+            else:
+                self._cheat_held_key = None
+
     def render(self, screen: pygame.Surface) -> None:
         if self.floor and self.player:
             hide_player = (
@@ -2231,14 +2412,12 @@ class GameScene(Scene):
                 and self._heal_overlay is None
                 and self._melee_overlay is None
                 and self._vault_overlay is None
+                and self._recharge_overlay is None
             )
             _hint_text: str | None = None
             _hint_col: tuple = (220, 220, 100)
             if _no_overlay:
-                if self._find_adjacent_container() is not None:
-                    _hint_text = t("hint.container_open")
-                    _hint_col  = (80, 200, 200)
-                elif self._adjacent_elevator_pos() is not None:
+                if self._adjacent_elevator_pos() is not None:
                     if self.player and self.player.floor_depth == FLOORS_PER_RUN:
                         _hint_text = t("hint.elevator_extract")
                     else:
@@ -2246,6 +2425,14 @@ class GameScene(Scene):
                 elif self._adjacent_entry_elevator_pos() is not None:
                     _hint_text = t("hint.elevator_no_return")
                     _hint_col  = (160, 130, 90)
+                elif self._find_adjacent_container() is not None:
+                    _hint_text = t("hint.container_open")
+                    _hint_col  = (80, 200, 200)
+                else:
+                    _adj_node = self._find_adjacent_recharge_node()
+                    if _adj_node is not None and not _adj_node.used:
+                        _hint_text = t("hint.recharge")
+                        _hint_col  = (80, 160, 255)
             if _hint_text is not None:
                 cam = self.renderer.camera
                 ts  = settings.TILE_SIZE
@@ -2265,23 +2452,26 @@ class GameScene(Scene):
             # Targeting highlight — yellow outline around selected aim target
             if self._aim_target is not None and self._aim_target.alive:
                 cam = self.renderer.camera
-                sx = self._aim_target.x * settings.TILE_SIZE - cam.offset_x
-                sy = self._aim_target.y * settings.TILE_SIZE - cam.offset_y
+                sx, sy = cam.world_to_screen(self._aim_target.x, self._aim_target.y)
                 pygame.draw.rect(screen, (240, 220, 0), (sx, sy, settings.TILE_SIZE, settings.TILE_SIZE), 2)
             # Aim overlay (in-world arc, no scene push)
             if self._aim_overlay is not None:
                 cam = self.renderer.camera
-                self._aim_overlay.render(screen, cam.offset_x, cam.offset_y)
+                # Pass adjusted offset so the overlay's `world*TS - offset` gives screen coords with VIEWPORT_Y_TOP.
+                self._aim_overlay.render(screen, cam.offset_x, cam.offset_y - settings.VIEWPORT_Y_TOP)
             # Heal overlay (centred panel, no scene push)
             if self._heal_overlay is not None:
                 self._heal_overlay.render(screen)
             # Melee overlay (in-world power bar, no scene push)
             if self._melee_overlay is not None:
                 cam = self.renderer.camera
-                self._melee_overlay.render(screen, cam.offset_x, cam.offset_y)
+                self._melee_overlay.render(screen, cam.offset_x, cam.offset_y - settings.VIEWPORT_Y_TOP)
             # Vault overlay (centred panel, no scene push)
             if self._vault_overlay is not None:
                 self._vault_overlay.render(screen)
+            # Recharge overlay (centred panel, no scene push)
+            if self._recharge_overlay is not None:
+                self._recharge_overlay.draw(screen)
             if self._inventory_open:
                 self.inventory_ui.draw(screen, self.player)
             elif self._weapon_picker_open:
@@ -2300,3 +2490,5 @@ class GameScene(Scene):
                 self.statistics_overlay.draw(screen)
             if self._tutorial_open:
                 self.tutorial_overlay.draw(screen)
+            if self._cyberware_menu_open and self._cyberware_menu is not None:
+                self._cyberware_menu.draw(screen)

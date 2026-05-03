@@ -301,6 +301,34 @@ _TABS: list[tuple[str, list[tuple[str, list[str]]]]] = [
             "help_catalog.vault.extract",
         ]),
     ]),
+    ("help_catalog.tab.cyberware", [
+        ("help_catalog.cw.h1", [
+            "help_catalog.cw.1.1",
+            "help_catalog.cw.1.2",
+            "help_catalog.cw.1.3",
+        ]),
+        ("help_catalog.cw.h2", [
+            "help_catalog.cw.2.1",
+            "help_catalog.cw.2.2",
+            "help_catalog.cw.2.3",
+        ]),
+        ("help_catalog.cw.h3", [
+            "help_catalog.cw.3.1",
+            "help_catalog.cw.3.2",
+            "help_catalog.cw.3.3",
+            "help_catalog.cw.3.4",
+        ]),
+        ("help_catalog.cw.h4", [
+            "help_catalog.cw.4.1",
+            "help_catalog.cw.4.2",
+            "help_catalog.cw.4.3",
+        ]),
+        ("help_catalog.cw.h5", [
+            "help_catalog.cw.5.1",
+            "help_catalog.cw.5.2",
+            "help_catalog.cw.5.3",
+        ]),
+    ]),
 ]
 
 _TAB_EXPLORATION = 0
@@ -312,6 +340,7 @@ _TAB_ITEMS       = 6
 _TAB_HEAT        = 7
 _TAB_ENEMIES     = 8
 _TAB_VAULT       = 9
+_TAB_CYBERWARE   = 10
 
 
 def _wrap(font: pygame.font.Font, text: str, max_w: int) -> list[str]:
@@ -558,6 +587,8 @@ class HelpCatalogOverlay:
             return self._draw_items_illustration(screen, ox, cy, pw)
         if self._tab_idx == _TAB_VAULT:
             return self._draw_vault_illustration(screen, ox, cy, pw)
+        if self._tab_idx == _TAB_CYBERWARE:
+            return self._draw_cyberware_illustration(screen, ox, cy, pw)
         return 0
 
     # ------------------------------------------------------------------
@@ -1186,6 +1217,63 @@ class HelpCatalogOverlay:
         screen.blit(hint, (ox + pw // 2 - hint.get_width() // 2, gy + gh + 8))
 
         return panel_h
+
+    # ------------------------------------------------------------------
+    # Cyberware illustration — energy bar + 10 hotbar slots
+    # ------------------------------------------------------------------
+
+    def _draw_cyberware_illustration(self, screen: pygame.Surface,
+                                      ox: int, cy: int, pw: int) -> int:
+        _EP_FILL  = (80, 200, 255)
+        _EP_TRACK = (10, 30, 45)
+        _SLOT_LIT = (80, 200, 255)
+        _SLOT_DIM = (22, 35, 50)
+        _SLOT_RIM = (40, 80, 110)
+        IH = 80
+
+        panel_rect = pygame.Rect(ox + _PAD, cy, pw - _PAD * 2, IH)
+        pygame.draw.rect(screen, (8, 12, 22), panel_rect, border_radius=4)
+        pygame.draw.rect(screen, (28, 48, 44), panel_rect, 1, border_radius=4)
+
+        # Energy bar (EP)
+        bar_w = pw - _PAD * 4 - 60
+        bar_h = 10
+        bx = ox + _PAD + 20
+        by = cy + 14
+
+        ep_label = self._font_ill.render("EP  70 / 100", True, _EP_FILL)
+        screen.blit(ep_label, (bx, by - ep_label.get_height() - 2))
+
+        pygame.draw.rect(screen, _EP_TRACK, (bx, by, bar_w, bar_h), border_radius=3)
+        pygame.draw.rect(screen, _EP_FILL, (bx, by, round(0.70 * bar_w), bar_h), border_radius=3)
+        pygame.draw.rect(screen, _EP_FILL, (bx, by, bar_w, bar_h), 1, border_radius=3)
+
+        # Hotbar slots
+        n_slots  = 10
+        slot_sz  = 22
+        slot_gap = 4
+        total_slots_w = n_slots * slot_sz + (n_slots - 1) * slot_gap
+        sx = ox + (pw - total_slots_w) // 2
+        sy = by + bar_h + 12
+
+        for i in range(n_slots):
+            slot_x = sx + i * (slot_sz + slot_gap)
+            lit = i == 0
+            bg  = _SLOT_LIT if lit else _SLOT_DIM
+            rim = _EP_FILL  if lit else _SLOT_RIM
+            pygame.draw.rect(screen, bg,  (slot_x, sy, slot_sz, slot_sz), border_radius=3)
+            pygame.draw.rect(screen, rim, (slot_x, sy, slot_sz, slot_sz), 1, border_radius=3)
+            key_label = str(i + 1) if i < 9 else "0"
+            lbl = self._font_ill.render(key_label, True, _EP_FILL if lit else _COL_DIM)
+            screen.blit(lbl, (slot_x + (slot_sz - lbl.get_width()) // 2,
+                               sy + (slot_sz - self._font_ill.get_height()) // 2 + 1))
+
+        # EP cost hint on first slot
+        cost_lbl = self._font_ill.render("8 EP", True, _EP_FILL)
+        screen.blit(cost_lbl, (sx + (slot_sz - cost_lbl.get_width()) // 2,
+                                sy + slot_sz + 2))
+
+        return IH
 
     # ------------------------------------------------------------------
     # Helpers

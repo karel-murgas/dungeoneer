@@ -78,7 +78,7 @@ def _get_tileset():
 class TutorialManager:
     """Tracks which tutorial steps have been shown this run."""
 
-    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee", "heat", "vault")
+    ALL_STEPS = ("movement", "enemy", "container", "ammo", "medipack", "melee", "heat", "vault", "buy_perks", "use_perks")
 
     def __init__(self, enabled: bool = False, initial_seen: list[str] | None = None) -> None:
         self.enabled = enabled
@@ -671,6 +671,118 @@ def _draw_vault(screen: pygame.Surface, rect: pygame.Rect) -> None:
     screen.blit(hint, (rect.centerx - hint.get_width() // 2, gy + gh + 8))
 
 
+def _draw_buy_perks(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Coin icon + mini perk-grid mock for the buy_perks tutorial step."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    cx = rect.centerx
+    font_s = pygame.font.SysFont("consolas", 11)
+    font_m = pygame.font.SysFont("consolas", 13, bold=True)
+
+    # --- Coin icon (top half) ---
+    coin_r = 22
+    coin_cy = rect.top + 48
+    pygame.draw.circle(screen, (160, 120, 0), (cx, coin_cy), coin_r)
+    pygame.draw.circle(screen, (220, 180, 40), (cx, coin_cy), coin_r, 2)
+    cr_s = font_m.render("CR", True, (255, 220, 60))
+    screen.blit(cr_s, (cx - cr_s.get_width() // 2, coin_cy - cr_s.get_height() // 2 + 1))
+
+    # Separator
+    sep_y = coin_cy + coin_r + 10
+    pygame.draw.line(screen, (25, 50, 45), (rect.left + 12, sep_y), (rect.right - 12, sep_y))
+
+    # --- Mini perk grid (bottom half) ---
+    grid_top  = sep_y + 10
+    cell_w, cell_h = 72, 22
+    gap = 4
+    cols  = 2
+    rows  = [
+        ("Smartlink",    True,  (0, 200, 140)),
+        ("Skeleton",     True,  (0, 200, 140)),
+        ("SMG Protocol", False, (110, 145, 135)),
+        ("Scanner",      False, (110, 145, 135)),
+    ]
+    gx = cx - (cols * cell_w + gap) // 2
+    for i, (label, owned, col) in enumerate(rows):
+        row_idx = i // cols
+        col_idx = i % cols
+        bx = gx + col_idx * (cell_w + gap)
+        by = grid_top + row_idx * (cell_h + gap)
+        bg  = (12, 60, 50) if owned else (18, 32, 28)
+        bdr = (0, 200, 140) if owned else (50, 80, 70)
+        pygame.draw.rect(screen, bg, (bx, by, cell_w, cell_h), border_radius=3)
+        pygame.draw.rect(screen, bdr, (bx, by, cell_w, cell_h), 1, border_radius=3)
+        prefix = "[x]" if owned else "[ ]"
+        lbl_s = font_s.render(f"{prefix} {label}", True, col)
+        # Clip label to cell width
+        raw = f"{prefix} {label}"
+        while font_s.size(raw)[0] > cell_w - 4 and len(raw) > 4:
+            raw = raw[:-1]
+        lbl_s = font_s.render(raw, True, col)
+        screen.blit(lbl_s, (bx + 3, by + (cell_h - lbl_s.get_height()) // 2 + 1))
+
+
+def _draw_use_perks(screen: pygame.Surface, rect: pygame.Rect) -> None:
+    """Hotbar mock with one lit slot + key glyph "1" for the use_perks tutorial step."""
+    pygame.draw.rect(screen, _COL_IMG, rect, border_radius=4)
+    pygame.draw.rect(screen, (30, 80, 70), rect, 1, border_radius=4)
+
+    cx = rect.centerx
+    font_s = pygame.font.SysFont("consolas", 11)
+    font_m = pygame.font.SysFont("consolas", 13, bold=True)
+    font_k = pygame.font.SysFont("consolas", 22, bold=True)
+
+    # --- Hotbar strip (upper half) ---
+    n_slots  = 5
+    slot_w   = 38
+    slot_h   = 28
+    gap      = 3
+    strip_w  = n_slots * slot_w + (n_slots - 1) * gap
+    sx_start = cx - strip_w // 2
+    sy       = rect.top + 30
+
+    for i in range(n_slots):
+        bx  = sx_start + i * (slot_w + gap)
+        lit = (i == 0)  # slot 1 is assigned
+        bg  = (25, 65, 105) if lit else (18, 28, 42)
+        bdr = (60, 160, 220) if lit else (35, 50, 65)
+        pygame.draw.rect(screen, bg,  (bx, sy, slot_w, slot_h), border_radius=3)
+        pygame.draw.rect(screen, bdr, (bx, sy, slot_w, slot_h), 1, border_radius=3)
+        key_lbl = str(i + 1)
+        ks = font_s.render(key_lbl, True, (100, 150, 200) if lit else (50, 65, 80))
+        screen.blit(ks, (bx + 3, sy + 2))
+        if lit:
+            ep_s = font_s.render("8 EP", True, (80, 200, 255))
+            screen.blit(ep_s, (bx + slot_w - ep_s.get_width() - 3, sy + 2))
+            nm_s = font_s.render("Scan", True, (140, 200, 230))
+            screen.blit(nm_s, (bx + slot_w // 2 - nm_s.get_width() // 2,
+                                sy + slot_h - nm_s.get_height() - 2))
+
+    # Three dots for remaining slots
+    dots_s = font_s.render("· · · · ·", True, (50, 70, 90))
+    screen.blit(dots_s, (cx - dots_s.get_width() // 2, sy + slot_h + 4))
+
+    sep_y = sy + slot_h + 22
+    pygame.draw.line(screen, (25, 50, 45), (rect.left + 12, sep_y), (rect.right - 12, sep_y))
+
+    # --- Key "1" glyph (bottom half) ---
+    ky = sep_y + 14
+    ksz = 42
+    kx = cx - ksz // 2
+    _KBG = (20, 55, 50)
+    _BDR = (0, 200, 160)
+    _TXT = (0, 240, 200)
+    pygame.draw.rect(screen, _KBG, (kx, ky, ksz, ksz), border_radius=5)
+    pygame.draw.rect(screen, _BDR, (kx, ky, ksz, ksz), 2, border_radius=5)
+    one_s = font_k.render("1", True, _TXT)
+    screen.blit(one_s, (kx + ksz // 2 - one_s.get_width() // 2,
+                         ky + ksz // 2 - font_k.get_height() // 2 + 1))
+
+    hint_s = font_s.render("activate", True, (60, 120, 110))
+    screen.blit(hint_s, (cx - hint_s.get_width() // 2, ky + ksz + 6))
+
+
 _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "movement":  _draw_movement,
     "enemy":     _draw_enemy,
@@ -680,4 +792,6 @@ _DRAW_FNS: dict[str, Callable[[pygame.Surface, pygame.Rect], None]] = {
     "melee":     _draw_melee,
     "heat":      _draw_heat,
     "vault":     _draw_vault,
+    "buy_perks": _draw_buy_perks,
+    "use_perks": _draw_use_perks,
 }

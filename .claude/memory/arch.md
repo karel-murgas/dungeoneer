@@ -5,7 +5,9 @@ type: project
 ---
 
 ## Tech Stack Constants
-- Window: **1280×720**, 60 FPS, tile **32px**, map **60×40** tiles
+- Window: **1280×920**, 60 FPS, tile **32px**, map **50×50** tiles
+- Viewport: y=100–820 (720px tile area); top HUD band 100px, bottom HUD band 100px; requires ≥1080p display
+- `VIEWPORT_Y_TOP=100`, `VIEWPORT_Y_BOTTOM=100` in `core/settings.py`
 - Entry: `main.py` → `core/game.py` (`GameApp`) → `SceneManager` → scenes
 - Deps: `pygame-ce ≥2.5.0`, `python-tcod ≥16.0.0` (FOV), `numpy ≥1.26.0`, `pytest ≥8.0.0`, `rembg[cpu]` (asset post-processing)
 - Asset generation: `scripts/sd_generate.py` (SD WebUI API), `scripts/asset_postprocess.py` (rembg + PCA rotate + frame fill + downscale)
@@ -32,7 +34,8 @@ dungeoneer/
 │   ├── player.py        — Player(Actor): credits, ammo_reserves dict, equipped_armor (Armor|None)
 │   ├── enemy.py         — Enemy(Actor): enemy_id (stable str, required), ai_brain, loot_table; canonical IDs: guard/drone/dog/heavy/turret/sniper_drone/riot_guard
 │   ├── item_entity.py   — ItemEntity (item on floor)
-│   └── container_entity.py — ContainerEntity (lootable chest)
+│   ├── container_entity.py — ContainerEntity (lootable chest)
+│   └── recharge_node.py  — RechargeNode @dataclass(x,y,capacity_ep,used,sprite_key); wall-embedded, single-use per floor
 │
 ├── items/
 │   ├── item.py          — Item dataclass (id, name, description, ItemType enum)
@@ -44,7 +47,7 @@ dungeoneer/
 │
 ├── combat/
 │   ├── action.py        — Action ABC + all action subclasses (see API section)
-│   ├── action_resolver.py — ActionResolver: resolve_move/melee/ranged/open_container + _auto_pickup
+│   ├── action_resolver.py — ActionResolver: resolve_move/melee/ranged/open_container/recharge(node,action,floor,heat_system=None) + _auto_pickup
 │   ├── turn_manager.py  — TurnManager: player turn → enemy turns, burst queue, delay logic
 │   ├── damage.py        — damage formula: roll(weapon) + atk − total_defence, min 1
 │   └── line_of_sight.py — raycast LOS check
@@ -63,7 +66,7 @@ dungeoneer/
 ├── world/
 │   ├── dungeon_generator.py — BSP tree generator → DungeonMap (enemy spawning removed in rebalance)
 │   ├── map.py           — DungeonMap: tiles 2D array, entities list, items list
-│   ├── floor.py         — Floor: wraps map + entity lists for a single depth level; rooms: list[Room]; room_for_tile(x,y)
+│   ├── floor.py         — Floor: wraps map + entity lists; rooms, containers, recharge_nodes lists; room_for_tile(x,y)
 │   ├── room.py          — Room dataclass; revealed: bool
 │   ├── tile.py          — Tile: walkable, transparent, explored, visible
 │   └── fov.py           — FOV via python-tcod shadowcasting; posts RoomRevealedEvent on first room reveal
@@ -78,21 +81,24 @@ dungeoneer/
 │   ├── floating_numbers.py   — floating damage number animations
 │   ├── range_overlay.py      — range highlight overlay
 │   └── ui/
-│       ├── hud.py         — HUD: HP, floor, weapon, ammo, credits
+│       ├── hud.py         — HUD: HP, floor, weapon, ammo, credits, EP energy bar (centre-top below heat), hotbar 10 slots (bottom-left); hud.profile set by GameScene
 │       ├── combat_log.py  — CombatLog: scrolling message log
 │       ├── inventory_ui.py— InventoryUI: 8-slot grid overlay
 │       ├── weapon_picker.py — WeaponPickerUI (key C): keyboard+mouse weapon swap
 │       ├── help_screen.py — HelpScreen: legacy key-binding overlay (unused, kept for reference)
 │       ├── alert_banner.py — AlertBanner: animated ! on first enemy sighting
 │       ├── quit_confirm.py — QuitConfirmDialog (Esc in-run): confirm/cancel return to main menu
-│       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits
+│       ├── cheat_menu.py  — CheatMenuOverlay (F11): dev/debug overlay; keyboard+mouse; spawn items/enemies/chest, adjust HP/credits, Energy +50/MAX
 │       ├── settings_overlay.py — SettingsOverlay: gear icon panel (gameplay minigames + language + audio; difficulty shown read-only; auto-saves via scene helpers)
 │       ├── new_game_wizard.py  — NewGameWizard: 4-step overlay (language→name→difficulty→tutorial); signals scene._wizard_done(profile)
 │       ├── load_game_picker.py — LoadGamePicker: scrollable profile list with delete [x]; signals scene._load_game_done(name)
 │       ├── quick_game_overlay.py — QuickGameOverlay: no-profile config panel; pre-fills from last_quick_config; signals scene._quick_game_start(config)
-│       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Aiming/Melee/Healing/Hacking/Items/Heat/Enemies/Vault); open_tab(idx); _TAB_VAULT=9
+│       ├── help_catalog.py — HelpCatalogOverlay (F1): tabbed help reference (Exploration/Combat/Aiming/Melee/Healing/Hacking/Items/Heat/Enemies/Vault/Cyberware); open_tab(idx); _TAB_VAULT=9, _TAB_CYBERWARE=10
 │       ├── minimap_overlay.py — MinimapOverlay (key M): fullscreen dungeon minimap; explored tiles, fog of war, containers, elevator, vault, enemies, items
-│       └── tutorial_overlay.py — TutorialManager (tracks seen steps; initial_seen: list[str] loads persisted steps from profile) + TutorialOverlay (blocking panel, 8 steps incl. melee, heat, vault; procedural illustrations)
+│       ├── cyberware_menu_overlay.py — CyberwareMenuOverlay (key K in-run): ACTIVE/PASSIVE perk list; click active → assign mode → 1-0 assigns hotbar slot; on_close saves profile
+│       ├── cyberware_shop_overlay.py — CyberwareShopOverlay (MetaScene nav): tabbed perk shop by body-part; buy/upgrade; confirm dialog; deferred perks greyed
+│       └── tutorial_overlay.py — TutorialManager (tracks seen steps; initial_seen: list[str] loads persisted steps from profile) + TutorialOverlay (blocking panel, 10 steps incl. buy_perks, use_perks; procedural illustrations)
+│       ├── recharge_overlay.py — RechargeOverlay: 4-option (25/50/75/100%) centred panel; disables rows where EP gain=0; keys 1-4/Esc/click
 │       └── statistics_overlay.py — StatisticsOverlay: tabbed stats panel (Combat/Weapons/History); reads _active_profile.stats; kills_by_enemy and kills_by_weapon bucketed by stable IDs; opened from MainMenuScene
 │
 ├── audio/
@@ -110,9 +116,14 @@ dungeoneer/
 │
 ├── meta/
 │   ├── __init__.py          — re-exports Profile, LifetimeStats, GameplayFlags, GlobalConfig
-│   ├── profile.py           — Profile, LifetimeStats, GameplayFlags dataclasses + to_dict/from_dict
+│   ├── profile.py           — Profile, LifetimeStats, GameplayFlags dataclasses + to_dict/from_dict; Profile.perks {perk_id: {"level": int}}; Profile.hotbar list[str|None] len=10
 │   ├── global_config.py     — GlobalConfig dataclass + to_dict/from_dict (audio volumes, last_active_profile, last_quick_config)
 │   └── storage.py           — get_save_dir(), list_profiles(), load/save/delete_profile(), load/save_global(), sanitize_name(); save dir: %APPDATA%/Dungeoneer/ (Win) / ~/.local/share/Dungeoneer/ (POSIX); _SAVE_DIR_OVERRIDE hook for tests
+│
+├── perks/                   — Cyberware system (added 2026-05-03, Phase 1 Step 1)
+│   ├── __init__.py          — re-exports PerkDef, PerkType, BodyPart, CATALOG, get_perk(), get_level(), is_owned(), set_level(), total_cost_to()
+│   ├── catalog.py           — PerkType(ACTIVE/PASSIVE), BodyPart(BRAIN/EYES/HANDS/BODY/LEGS), @dataclass PerkDef, CATALOG dict[str, PerkDef] with 18 entries
+│   └── state.py             — pure helpers on profile.perks: get_level(), is_owned(), set_level(), total_cost_to()
 │
 ├── minigame/
 │   ├── hack_node.py         — LootKind (incl. ARMOR, MYSTERY), SecurityKind enums (shared)
@@ -131,7 +142,7 @@ main_hack.py             — standalone hack minigame entry point (dev/test)
 ```
 
 ## Key Action Subclasses (combat/action.py)
-`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` (legacy) | `ElevatorAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)`
+`MoveAction(dx,dy)` | `MeleeAttackAction(target)` | `RangedAttackAction(target)` | `WaitAction` | `StairAction` (legacy) | `ElevatorAction` | `ReloadAction` | `EquipAction(weapon)` | `UseItemAction(item)` | `DropItemAction(item)` | `OpenContainerAction(container)` | `RechargeAction(node, amount_ep)`
 
 ## Key Events (core/event_bus.py)
 `MoveEvent` | `DamageEvent` | `DeathEvent` | `TurnEndEvent` | `StairEvent` (legacy) | `ElevatorEvent(elevator_x, elevator_y)` | `ObjectiveEvent` | `LogMessageEvent` | `RoomRevealedEvent(room)` | `HeatChangeEvent` | `HeatLevelUpEvent` | `HackNodesCollectedEvent`

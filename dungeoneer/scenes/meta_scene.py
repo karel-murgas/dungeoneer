@@ -29,6 +29,7 @@ from dungeoneer.rendering.ui.help_catalog import HelpCatalogOverlay
 from dungeoneer.rendering.ui.new_game_wizard import NewGameWizard
 from dungeoneer.rendering.ui.load_game_picker import LoadGamePicker
 from dungeoneer.rendering.ui.statistics_overlay import StatisticsOverlay
+from dungeoneer.rendering.ui.cyberware_shop_overlay import CyberwareShopOverlay
 
 if TYPE_CHECKING:
     from dungeoneer.core.game import GameApp
@@ -97,6 +98,7 @@ class MetaScene(Scene):
         self._settings_open       = False
         self._help_open           = False
         self._statistics_open     = False
+        self._cyberware_open      = False
         self._wizard_open         = False
         self._load_open           = False
         self._delete_confirm_open = False
@@ -106,6 +108,7 @@ class MetaScene(Scene):
         self._settings_overlay   = SettingsOverlay(self)
         self._help_overlay       = HelpCatalogOverlay()
         self._statistics_overlay = StatisticsOverlay(self)
+        self._cyberware_overlay  = self._make_cyberware_overlay()
         self._wizard             = NewGameWizard(self)
         self._load_picker        = LoadGamePicker(self)
         self._delete_confirm     = QuitConfirmDialog("meta.delete")
@@ -116,6 +119,9 @@ class MetaScene(Scene):
         self._drop_rects: dict[str, pygame.Rect] = {}
         self._btn_rects:  dict[str, pygame.Rect] = {}
         self._hovered: str | None = None
+
+        # Tutorial overlay (lazy, shown once after first run)
+        self._buy_perks_tutorial = None
 
     # ------------------------------------------------------------------
     # Scene lifecycle
@@ -128,6 +134,7 @@ class MetaScene(Scene):
         settings.SFX_VOLUME    = self._global_cfg.sfx_volume
         if self._profile:
             set_language(self._profile.language)
+            self._maybe_show_buy_perks_tutorial()
         _music_path = os.path.join(
             os.path.dirname(__file__), "..", "assets", "audio", "music", "menu.mp3"
         )
@@ -146,6 +153,12 @@ class MetaScene(Scene):
     # ------------------------------------------------------------------
 
     def handle_events(self, events: List[pygame.event.Event]) -> None:
+        # Tutorial overlay absorbs all events while active
+        tut = self._buy_perks_tutorial
+        if tut is not None and tut.is_active:
+            for event in events:
+                tut.handle_event(event)
+            return
         for event in events:
             if event.type == pygame.KEYDOWN:
                 self._handle_keydown(event)
@@ -196,6 +209,9 @@ class MetaScene(Scene):
             if self._statistics_overlay.handle_key(key):
                 self._statistics_open = False
             return
+        if self._cyberware_open:
+            self._cyberware_overlay.handle_events([pygame.event.Event(pygame.KEYDOWN, key=key)])
+            return
         if key == pygame.K_ESCAPE:
             self._game_menu_open = False
         elif key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
@@ -226,6 +242,11 @@ class MetaScene(Scene):
             self._hovered = self._hit_test_nav(pos)
         elif self._statistics_open:
             self._statistics_overlay.handle_motion(pos)
+            self._hovered = self._hit_test_nav(pos)
+        elif self._cyberware_open:
+            self._cyberware_overlay.handle_events(
+                [pygame.event.Event(pygame.MOUSEMOTION, pos=pos, rel=(0, 0), buttons=(0, 0, 0))]
+            )
             self._hovered = self._hit_test_nav(pos)
         else:
             self._hovered = self._hit_test(pos)
@@ -274,6 +295,11 @@ class MetaScene(Scene):
             if self._statistics_overlay.handle_click(pos):
                 self._statistics_open = False
             return
+        if self._cyberware_open:
+            self._cyberware_overlay.handle_events(
+                [pygame.event.Event(pygame.MOUSEBUTTONDOWN, pos=pos, button=1)]
+            )
+            return
         if self._game_menu_open:
             hit = self._drop_hit(pos)
             if hit:
@@ -305,6 +331,7 @@ class MetaScene(Scene):
         self._btn_rects  = {}
 
         any_modal = (self._settings_open or self._help_open or self._statistics_open
+                     or self._cyberware_open
                      or self._wizard_open or self._load_open or self._delete_confirm_open
                      or self._quit_confirm_open)
         hard_modal = (self._wizard_open or self._load_open
@@ -397,6 +424,22 @@ class MetaScene(Scene):
         screen.blit(lbl_s, (btn_rect.centerx - lbl_s.get_width() // 2,
                              btn_rect.centery - lbl_s.get_height() // 2 + 1))
 
+        # ── Cyberware button (profile only) ──────────────────────────
+        if self._profile:
+            cw_h = 36
+            cw_w = btn_w
+            cw_rect = pygame.Rect(cx - cw_w // 2, btn_rect.bottom + 8, cw_w, cw_h)
+            self._btn_rects["btn_cyberware"] = cw_rect
+            hov_cw = self._hovered == "btn_cyberware" and not any_modal and not self._game_menu_open
+            active_cw = self._cyberware_open
+            cw_bg  = _BTN_HOV if (hov_cw or active_cw) else _BTN_BG
+            cw_bdr = _BTN_BDR_HOV if (hov_cw or active_cw) else _BTN_BDR
+            pygame.draw.rect(screen, cw_bg, cw_rect, border_radius=6)
+            pygame.draw.rect(screen, cw_bdr, cw_rect, 2, border_radius=6)
+            cw_s = self._font_diff.render(t("nav.cyberware"), True, _BTN_TXT)
+            screen.blit(cw_s, (cw_rect.centerx - cw_s.get_width() // 2,
+                                cw_rect.centery - cw_s.get_height() // 2 + 1))
+
         # ── Game dropdown ─────────────────────────────────────────────
         if self._game_menu_open:
             self._draw_game_dropdown(screen)
@@ -416,6 +459,11 @@ class MetaScene(Scene):
             self._help_overlay.draw(screen)
         elif self._statistics_open:
             self._statistics_overlay.draw(screen)
+        elif self._cyberware_open:
+            self._cyberware_overlay.render(screen)
+
+        # Tutorial overlay always on top when active
+        self._draw_buy_perks_tutorial(screen)
 
     def _draw_game_dropdown(self, screen: pygame.Surface) -> None:
         self._drop_rects = {}
@@ -495,6 +543,7 @@ class MetaScene(Scene):
         self._settings_open   = False
         self._help_open       = False
         self._statistics_open = False
+        self._cyberware_open  = False
         self._game_menu_open  = False
 
     def _drop_hit(self, pos: tuple) -> str | None:
@@ -523,6 +572,10 @@ class MetaScene(Scene):
                 self._statistics_open = True
         elif hit == "start_run":
             self._start_run()
+        elif hit == "btn_cyberware":
+            if self._profile:
+                self._cyberware_overlay = self._make_cyberware_overlay()
+                self._cyberware_open = True
 
     def _dispatch_drop(self, hit: str) -> None:
         self._game_menu_open = False
@@ -668,3 +721,52 @@ class MetaScene(Scene):
             pygame.mixer.music.set_volume(settings.MASTER_VOLUME * settings.MUSIC_VOLUME)
         except Exception:
             pass
+
+    # ------------------------------------------------------------------
+    # Cyberware overlay
+    # ------------------------------------------------------------------
+
+    def _make_cyberware_overlay(self) -> "CyberwareShopOverlay":
+        return CyberwareShopOverlay(
+            profile=self._profile,
+            on_close=self._on_cyberware_close,
+            on_purchase=self._on_cyberware_purchase,
+        )
+
+    def _on_cyberware_close(self) -> None:
+        self._cyberware_open = False
+
+    def _on_cyberware_purchase(self, profile: Profile) -> None:
+        save_profile(profile)
+
+    # ------------------------------------------------------------------
+    # Tutorial
+    # ------------------------------------------------------------------
+
+    def _maybe_show_buy_perks_tutorial(self) -> None:
+        p = self._profile
+        if p is None:
+            return
+        if not p.tutorial_enabled:
+            return
+        if "buy_perks" in p.tutorial_seen:
+            return
+        runs_done = p.stats.deaths_total + p.stats.runs_won
+        if runs_done < 1:
+            return
+        # Lazy import to avoid circular dependency
+        from dungeoneer.rendering.ui.tutorial_overlay import TutorialOverlay
+        overlay = TutorialOverlay()
+
+        def _on_dismiss() -> None:
+            p.tutorial_seen = list(set(list(p.tutorial_seen) + ["buy_perks"]))
+            save_profile(p)
+
+        overlay.show("buy_perks", on_close=_on_dismiss)
+        # Store overlay so it gets drawn and can receive events
+        self._buy_perks_tutorial = overlay
+
+    def _draw_buy_perks_tutorial(self, screen: pygame.Surface) -> None:
+        tut = getattr(self, "_buy_perks_tutorial", None)
+        if tut is not None and tut.is_active:
+            tut.draw(screen)

@@ -114,7 +114,36 @@ set_language("cs")
 | `hack.loot.coolant` | COOLANT loot kind display name in HackScene extracting status |
 | `stats.*` | StatisticsOverlay: title, tab names (tab.combat/weapons/history), section headers, stat row labels, empty, others, footer |
 | `cheat.section.heat` | Cheat menu section header |
-| `cheat.heat.level1â€“5` | Cheat menu rows to set heat level |
+| `cheat.heat.level1–5` | Cheat menu rows to set heat level |
+| `perk.*` | Cyberware/perk system (added Step 1, 2026-05-03) |
+| `perk.body.*` | Body part names: brain/eyes/hands/body/legs |
+| `perk.type.*` | Perk type labels: active/passive |
+| `perk.deferred` | “Coming soon” label for unimplemented perks |
+| `perk.<id>.name` | Perk display name for each of 18 perk IDs |
+| `perk.<id>.desc` | Perk description for each of 18 perk IDs |
+| `log.perks.no_energy` | Log message when player lacks EP to activate perk |
+| `log.perks.fired` | Log message on perk activation (param: `{name}`) |
+| `log.perks.empty_slot` | Log message when hotbar slot is empty |
+| `log.perks.target_required` | Log message when perk needs a target (Phase 1 stub) |
+| `hud.energy` | Label for energy bar ("EP") |
+| `cyberware.menu.*` | In-run cyberware menu overlay (title, section headers, assign hint, always_on) |
+| `hotbar.empty` | Hotbar slot empty label |
+| `tutorial.use_perks.*` | Tutorial step for first active perk use in-run (title + body) |
+| `cheat.section.perks` | Cheat menu PERKS section header |
+| `cheat.energy.*` | Cheat menu energy rows (plus50, max) |
+| `cheat.spawn_recharge` | Cheat menu: spawn recharge node at player |
+| `cheat.section.run` | Cheat menu RUN section header |
+| `cheat.win_run` | Cheat menu: trigger victory game-over |
+| `cheat.lose_run` | Cheat menu: trigger defeat game-over |
+| `entity.recharge_node.name` | Recharge node entity display name |
+| `recharge.title` | RechargeOverlay title |
+| `recharge.cancel` | RechargeOverlay cancel hint "[Esc] Cancel" |
+| `recharge.spent` | Message when node is already used |
+| `log.perks.recharged` | Log after recharge (params: `{ep}`, `{heat}`) |
+| `hint.recharge` | In-world hint when adjacent to unused node: "[E] Recharge" |
+| `help_catalog.tab.cyberware` | CYBERWARE tab label (tab index 10) |
+| `help_catalog.cw.h1`–`h5` | Section headers: Basics / Energy / Recharge Nodes / Hotbar / Buying |
+| `help_catalog.cw.1.1`–`5.3` | Bullet content for each of the 5 CYBERWARE tab sections (3–4 bullets each) |
 
 ## Rule (from CLAUDE.md)
 - Every user-visible string goes through `t("key")`

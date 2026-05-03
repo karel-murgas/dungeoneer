@@ -98,7 +98,9 @@
       "Bash(pytest tests/test_profiles.py -v)",
       "Bash(pytest tests/test_enemy_ids.py -v)",
       "Bash(pytest tests/test_enemy_ids.py tests/test_profiles.py -v)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "PowerShell(Select-String -Path \"c:\\\\Users\\\\karel\\\\Documents\\\\Python\\\\Dungeoneer\\\\dungeoneer\\\\dungeoneer\\\\rendering\\\\procedural_sprites.py\" -Pattern \"recharge|node\" -CaseSensitive:$false)",
+      "PowerShell(Get-Content \"c:\\\\Users\\\\karel\\\\Documents\\\\Python\\\\Dungeoneer\\\\dungeoneer\\\\dungeoneer\\\\rendering\\\\procedural_sprites.py\" | Select-Object -Index \\(616..648\\))"
     ],
     "additionalDirectories": [
       "c:\\Users\\karel\\.claude\\projects\\c--Users-karel-Documents-Python-Dungeoneer-dungeoneer\\memory",
@@ -108,7 +110,8 @@
       "C:\\Users\\karel\\.claude\\plans",
       "C:\\Users\\karel\\Documents\\Programming\\Dungeoneer\\sources",
       "c:\\Users\\karel\\Documents\\Programming\\Dungeoneer\\dungeoneer\\.claude",
-      "C:\\Users\\karel\\Documents\\Programming\\Dungeoneer\\dungeoneer\\.claude"
+      "C:\\Users\\karel\\Documents\\Programming\\Dungeoneer\\dungeoneer\\.claude",
+      "c:\\Users\\karel\\Documents\\Python\\Dungeoneer\\dungeoneer\\.claude\\plans"
     ]
   }
 }

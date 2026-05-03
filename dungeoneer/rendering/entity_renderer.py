@@ -109,9 +109,20 @@ class EntityRenderer:
         ts = settings.TILE_SIZE
         half = ts // 2
 
-        # Draw containers — behave like tiles: show in fog-of-war, hide only unseen
+        # Draw recharge nodes — behave like wall tiles: show when explored
         fog_overlay = pygame.Surface((ts, ts), pygame.SRCALPHA)
         fog_overlay.fill((0, 0, 0, 170))
+        for node in floor.recharge_nodes:
+            dmap = floor.dungeon_map
+            if not dmap.explored[node.y, node.x]:
+                continue
+            sx, sy = camera.world_to_screen(node.x, node.y)
+            key = "recharge_node_spent" if node.used else "recharge_node"
+            screen.blit(procedural_sprites.get(key), (sx, sy))
+            if not dmap.visible[node.y, node.x]:
+                screen.blit(fog_overlay, (sx, sy))
+
+        # Draw containers — behave like tiles: show in fog-of-war, hide only unseen
         for container in floor.containers:
             dmap = floor.dungeon_map
             if not dmap.explored[container.y, container.x]:

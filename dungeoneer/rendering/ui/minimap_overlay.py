@@ -10,7 +10,9 @@ Legend:
   - Cyan: player position
   - Red: visible enemies
   - Yellow: unopened containers (chests)
-  - Blue: elevator / vault
+  - Blue: elevator
+  - Cyan: vault (objective)
+  - Purple: active recharge node
   - Dim coloured dots: items on floor (only in explored area)
 """
 from __future__ import annotations
@@ -45,7 +47,8 @@ _COL_ENEMY      = (220, 60, 60)      # red
 _COL_CONTAINER  = (240, 210, 40)     # yellow
 _COL_ELEVATOR       = (40, 120, 220)     # blue  — descent elevator
 _COL_ELEVATOR_ENTRY = (55, 60, 80)      # dim grey-blue — entry elevator (no way back)
-_COL_VAULT          = (40, 120, 220)    # blue (same as elevator — objective marker)
+_COL_VAULT          = (80, 200, 255)    # neon-cyan -- objective vault (distinct from elevator)
+_COL_RECHARGE   = (160, 80, 255)       # purple -- active recharge node
 _COL_ITEM       = (160, 150, 60, 160)  # dim yellow
 
 _LEGEND_COL     = (140, 150, 165)
@@ -156,6 +159,17 @@ class MinimapOverlay:
                 col = _COL_CONTAINER
             map_surf.fill(col, (px, py, pw, ph))
 
+        # --- draw active recharge nodes (explored only) ------------------
+        for node in floor.recharge_nodes:
+            if node.used:
+                continue
+            if not dmap.explored[node.y, node.x]:
+                continue
+            cx = int((node.x + 0.5) * cell)
+            cy = int((node.y + 0.5) * cell)
+            r = max(1, int(cell * 0.35))
+            pygame.draw.circle(map_surf, _COL_RECHARGE, (cx, cy), r)
+
         # --- draw visible enemies -----------------------------------------
         for actor in floor.actors:
             if actor is player:
@@ -186,6 +200,8 @@ class MinimapOverlay:
             (_COL_ENEMY, t("minimap.legend.enemy")),
             (_COL_CONTAINER, t("minimap.legend.container")),
             (_COL_ELEVATOR, t("minimap.legend.elevator")),
+            (_COL_VAULT, t("minimap.legend.vault")),
+            (_COL_RECHARGE, t("minimap.legend.recharge")),
         ]
         lx = _PAD
         for col, label in legend_items:
