@@ -1,6 +1,6 @@
 """Settings overlay — opened from main menu gear icon.
 
-Gameplay minigames + language + audio.  Difficulty/tutorial/map_size have been
+Gameplay minigames + language + audio.  Difficulty/tutorial have been
 moved to the New Game Wizard and are no longer editable here.
 
 Auto-save: any gameplay/language change is written back to the active profile

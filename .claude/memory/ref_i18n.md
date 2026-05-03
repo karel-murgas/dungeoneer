@@ -97,7 +97,7 @@ set_language("cs")
 | `tutorial.melee.*` | Tutorial step for melee weapon equip |
 | `settings.gameplay.melee` | Settings row label for melee minigame toggle |
 | `overheal_confirm.*` | Overheal warning dialog reusing QuitConfirmDialog (title, question, confirm, cancel) |
-| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `settings.gameplay.map_size`, `menu.map_size.large/small`, `menu.heal.threshold_pct` |
+| `settings.*` | SettingsOverlay (title, sections, labels, footer); `settings.gameplay.heal`, `settings.gameplay.heal_threshold`, `settings.gameplay.tutorial`, `menu.heal.threshold_pct` |
 | `minimap.*` | MinimapOverlay (title, legend labels: player/enemy/container/elevator, hint_close) |
 | `help_catalog.*` | HelpCatalogOverlay (title, 9 tabs: Exploration/Combat/Shooting/Aiming/Hacking/Melee/Healing/Heat/Enemies) |
 | `help_catalog.enem.*` | HelpCatalog ENEMIES tab (h1/h2/h3 section headers, 7 enemy bullets, tag.* chip labels) |
@@ -124,3 +124,4 @@ set_language("cs")
 
 ## Add a new language
 Add a new dict entry in `_STRINGS` with language code as key.
+

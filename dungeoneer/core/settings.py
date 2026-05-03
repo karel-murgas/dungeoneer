@@ -18,10 +18,6 @@ MAP_HEIGHT = 50         # tiles tall
 # Dungeon generation
 STAIR_FARTHEST_CANDIDATES = 5   # stairs/vault placed in one of N farthest rooms from start
 
-# Map size presets  ("large" = current default, "small" = compact ~60 % area)
-MAP_WIDTH_SMALL  = 32
-MAP_HEIGHT_SMALL = 32
-
 # Audio volumes (0.0 – 1.0); adjusted from settings overlay
 MASTER_VOLUME: float = 1.0    # overall multiplier applied to all audio
 MUSIC_VOLUME:  float = 0.30   # max volume for music tracks
